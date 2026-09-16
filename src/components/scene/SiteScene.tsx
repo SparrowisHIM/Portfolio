@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, type RefObject } from "react";
+import { useEffect, useMemo, useState, type RefObject } from "react";
 import { Canvas } from "@react-three/fiber";
+import { AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import type { Site } from "@/lib/site-generator";
 import { palette } from "./materials";
@@ -23,10 +24,23 @@ type SiteSceneProps = {
   sectionCount: number;
   activeFloor: number;
   animate?: boolean;
+  /** The intro plays once this is true (the loader has gone). */
+  started?: boolean;
   shiftX?: number;
   shiftY?: number;
   onSelectFloor?: (index: number) => void;
+  /** Called once the scene has mounted and drawn. */
+  onReady?: () => void;
 };
+
+/** Reports the first committed frame. */
+function Ready({ onReady }: { onReady?: () => void }) {
+  useEffect(() => {
+    const id = requestAnimationFrame(() => onReady?.());
+    return () => cancelAnimationFrame(id);
+  }, [onReady]);
+  return null;
+}
 
 export function SiteScene({
   site,
@@ -34,10 +48,15 @@ export function SiteScene({
   sectionCount,
   activeFloor,
   animate = true,
+  started = true,
   shiftX = 0,
   shiftY = 0,
   onSelectFloor,
+  onReady,
 }: SiteSceneProps) {
+  // Post-processing is the first thing to go on a machine that cannot keep up.
+  const [effects, setEffects] = useState(true);
+
   // Section value derived from progress, shared by everything on the site.
   const section = useMemo(() => {
     const ref = { current: 0 };
@@ -51,7 +70,7 @@ export function SiteScene({
     <Canvas
       dpr={[1, 1.75]}
       camera={{ position: [30, 12, 30], fov: 36, near: 0.5, far: 220 }}
-      gl={{ antialias: false, powerPreference: "high-performance", localClippingEnabled: true }}
+      gl={{ antialias: true, powerPreference: "high-performance", localClippingEnabled: true }}
       onCreated={({ gl }) => {
         // Let vertical touch drags scroll the page; horizontal ones orbit.
         gl.domElement.style.touchAction = "pan-y";
@@ -75,14 +94,26 @@ export function SiteScene({
         site={site}
         progress={progress}
         animate={animate}
+        started={started}
         shiftX={shiftX}
         shiftY={shiftY}
       />
-      <EffectComposer multisampling={4}>
-        <Bloom luminanceThreshold={0.85} mipmapBlur intensity={0.7} radius={0.6} />
-        <Vignette offset={0.22} darkness={0.75} />
-        <Noise opacity={0.055} />
-      </EffectComposer>
+      <PerformanceMonitor
+        bounds={() => [40, 60]}
+        flipflops={2}
+        onDecline={() => setEffects(false)}
+        onFallback={() => setEffects(false)}
+      >
+        <AdaptiveDpr pixelated />
+      </PerformanceMonitor>
+      {effects && (
+        <EffectComposer multisampling={2}>
+          <Bloom luminanceThreshold={0.85} mipmapBlur intensity={0.7} radius={0.6} />
+          <Vignette offset={0.22} darkness={0.75} />
+          <Noise opacity={0.055} />
+        </EffectComposer>
+      )}
+      <Ready onReady={onReady} />
     </Canvas>
   );
 }

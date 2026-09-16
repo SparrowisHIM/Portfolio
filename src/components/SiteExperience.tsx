@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useReducedMotion } from "framer-motion";
-import { projects } from "@/lib/projects";
+import { projects, type Project } from "@/lib/projects";
 import { randomSeed } from "@/lib/random";
 import { generateSite } from "@/lib/site-generator";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
@@ -13,6 +13,8 @@ import { Hero } from "./overlay/Hero";
 import { FloorPanel } from "./overlay/FloorPanel";
 import { Roof } from "./overlay/Roof";
 import { RebuildButton } from "./overlay/RebuildButton";
+import { Loader } from "./overlay/Loader";
+import { WalkIn } from "./overlay/WalkIn";
 
 const SiteScene = dynamic(
   () => import("./scene/SiteScene").then((m) => m.SiteScene),
@@ -25,15 +27,20 @@ const FIRST_SEED = 0x2026_0916;
 
 export function SiteExperience() {
   const [seed, setSeed] = useState(FIRST_SEED);
+  const [ready, setReady] = useState(false);
+  const [walkIn, setWalkIn] = useState<Project | null>(null);
   const site = useMemo(() => generateSite(seed, projects), [seed]);
   const { progress, section } = useScrollProgress(SECTION_COUNT);
   const reduced = useReducedMotion() ?? false;
   const wide = useMediaQuery("(min-width: 768px)");
 
   const rebuild = useCallback(() => setSeed(randomSeed()), []);
+  const onReady = useCallback(() => setReady(true), []);
+  const closeWalkIn = useCallback(() => setWalkIn(null), []);
 
   return (
     <div className="relative">
+      <Loader ready={ready} />
       <SiteSign />
 
       <div className="sticky top-0 h-screen w-full overflow-hidden">
@@ -42,14 +49,16 @@ export function SiteExperience() {
           progress={progress}
           sectionCount={SECTION_COUNT}
           activeFloor={section - 1}
+          animate={!reduced}
+          started={ready}
+          shiftX={wide ? 0.16 : 0}
+          shiftY={wide ? 0 : 0.14}
+          onReady={onReady}
           onSelectFloor={(index) => {
             document.getElementById(projects[index].slug)?.scrollIntoView({
               behavior: reduced ? "auto" : "smooth",
             });
           }}
-          animate={!reduced}
-          shiftX={wide ? 0.16 : 0}
-          shiftY={wide ? 0 : 0.14}
         />
         {/* On small screens the copy sits over the ground, so shade it. */}
         <div
@@ -60,19 +69,21 @@ export function SiteExperience() {
 
       {/* Sections let pointer events through to the site; only their copy catches them. */}
       <div className="pointer-events-none relative z-10 -mt-[100vh]">
-        <Hero />
+        <Hero started={ready} />
         {projects.map((project, i) => (
           <FloorPanel
             key={project.slug}
             project={project}
             number={i + 1}
             active={section === i + 1}
+            onWalkIn={setWalkIn}
           />
         ))}
         <Roof active={section === SECTION_COUNT - 1} />
       </div>
 
       <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} />
+      <WalkIn project={walkIn} onClose={closeWalkIn} />
     </div>
   );
 }
