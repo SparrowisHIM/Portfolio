@@ -22,6 +22,11 @@ type CameraRigProps = {
   progress: RefObject<number>;
   /** When false the camera snaps to its target instead of easing. */
   animate: boolean;
+  /**
+   * Fraction of the orbit radius to slide the camera sideways, so the tower
+   * sits beside the text column instead of behind it.
+   */
+  shiftX?: number;
 };
 
 const INTRO_SECONDS = 2.6;
@@ -53,15 +58,15 @@ export function buildKeyframes(site: Site): Keyframe[] {
   });
   // Roof: above the unfinished top level, looking down at the slab on the hook.
   frames.push({
-    lookY: site.topLevel.y + 0.8,
-    rise: 6,
-    radius: 26,
+    lookY: site.topLevel.y + 1.5,
+    rise: 7,
+    radius: 34,
     angle: start + sweep + 0.2,
   });
   return frames;
 }
 
-export function CameraRig({ site, progress, animate }: CameraRigProps) {
+export function CameraRig({ site, progress, animate, shiftX = 0 }: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const frames = useMemo(() => buildKeyframes(site), [site]);
   const intro = useRef(animate ? 0 : 1);
@@ -112,6 +117,8 @@ export function CameraRig({ site, progress, animate }: CameraRigProps) {
     );
     look.current.set(0, c.lookY, 0);
     camera.lookAt(look.current);
+    // Slide along the camera's own right axis; orientation stays the same.
+    camera.translateX(-c.radius * shiftX);
   });
 
   return null;
