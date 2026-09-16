@@ -21,9 +21,11 @@ function Line({ children, delay }: { children: string; delay: number }) {
   );
 }
 
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
 export function Hero() {
   const reduced = useReducedMotion();
-  const floors = projects.length;
+  const floors = WORDS[projects.length] ?? String(projects.length);
 
   return (
     <section
@@ -44,8 +46,8 @@ export function Hero() {
             A portfolio under construction.
           </p>
           <p className="mt-2 max-w-[26rem] text-[15px] leading-relaxed text-chalk-dim">
-            I&apos;m Efe, a frontend engineer. {floors} floors of work are up
-            and the crane is still running.
+            I&apos;m Efe, a frontend engineer. Scroll to climb: {floors} floors
+            of work are up and the crane is still running.
           </p>
           <a
             href={`#${projects[0].slug}`}
