@@ -70,7 +70,7 @@ export function SiteScene({
       <Lamps site={site} />
       <Sparks site={site} section={section} animate={animate} />
       <WorkLamp site={site} animate={animate} />
-      <Dust seed={site.seed} height={site.totalHeight} animate={animate} />
+      <Dust seed={site.seed} color={site.lamp.color} height={site.totalHeight} animate={animate} />
       <CameraRig
         site={site}
         progress={progress}

@@ -72,7 +72,7 @@ export function SiteExperience() {
         <Roof active={section === SECTION_COUNT - 1} />
       </div>
 
-      <RebuildButton seed={seed} onRebuild={rebuild} />
+      <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import type { Site } from "@/lib/site-generator";
-import { palette } from "./materials";
 
 /** Sodium work lamps: warm point lights with a glowing head. */
 export function Lamps({ site }: { site: Site }) {
@@ -13,14 +12,14 @@ export function Lamps({ site }: { site: Site }) {
           <mesh>
             <boxGeometry args={[0.42, 0.3, 0.2]} />
             <meshStandardMaterial
-              color={palette.sodium}
-              emissive={palette.sodium}
+              color={site.lamp.color}
+              emissive={site.lamp.color}
               emissiveIntensity={3}
               toneMapped={false}
             />
           </mesh>
           <pointLight
-            color={palette.sodium}
+            color={site.lamp.color}
             intensity={i === last ? 60 : 28}
             distance={i === last ? 30 : 16}
             decay={2}

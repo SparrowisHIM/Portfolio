@@ -4,11 +4,13 @@ import { motion, useReducedMotion } from "framer-motion";
 
 type RebuildButtonProps = {
   seed: number;
+  /** Name of the lighting rig on the current site. */
+  lamp: string;
   onRebuild: () => void;
 };
 
 /** Tear the site down and put it up again from a new seed. */
-export function RebuildButton({ seed, onRebuild }: RebuildButtonProps) {
+export function RebuildButton({ seed, lamp, onRebuild }: RebuildButtonProps) {
   const reduced = useReducedMotion();
   return (
     <div className="pointer-events-none fixed bottom-5 right-5 z-20 flex flex-col items-end gap-2 md:bottom-7 md:right-8">
@@ -38,7 +40,7 @@ export function RebuildButton({ seed, onRebuild }: RebuildButtonProps) {
         Rebuild
       </motion.button>
       <p className="text-[11px] tabular-nums text-steel" aria-live="polite">
-        Site no. {seed.toString(16).padStart(8, "0")}
+        Site no. {seed.toString(16).padStart(8, "0")}, {lamp} lighting
       </p>
     </div>
   );

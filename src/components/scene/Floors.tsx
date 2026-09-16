@@ -13,7 +13,6 @@ const STUB = 0.18;
 
 const GLASS = {
   color: palette.glass,
-  emissive: palette.sodium,
   emissiveIntensity: 0.04,
   roughness: 0.15,
   metalness: 0.4,
@@ -33,6 +32,7 @@ type Face = {
 type FloorBlockProps = {
   floor: Floor;
   active: boolean;
+  lamp: string;
   /** Section value from scroll: 0 ground, 1..N floors, N+1 roof. */
   section: RefObject<number>;
   onSelect?: (index: number) => void;
@@ -42,7 +42,7 @@ type FloorBlockProps = {
  * One floor, built in front of you. Column height, slab, glazing and lamp all
  * follow the floor's construction progress, which follows page scroll.
  */
-function FloorBlock({ floor, active, section, onSelect }: FloorBlockProps) {
+function FloorBlock({ floor, active, lamp, section, onSelect }: FloorBlockProps) {
   const glazing = useRef<THREE.MeshStandardMaterial[]>([]);
   const glazingMeshes = useRef<THREE.Mesh[]>([]);
   const columns = useRef<THREE.Mesh[]>([]);
@@ -148,6 +148,7 @@ function FloorBlock({ floor, active, section, onSelect }: FloorBlockProps) {
               ref={(material) => {
                 if (material) glazing.current[i] = material;
               }}
+              emissive={lamp}
               {...GLASS}
             />
           </mesh>
@@ -155,7 +156,7 @@ function FloorBlock({ floor, active, section, onSelect }: FloorBlockProps) {
       <pointLight
         ref={light}
         position={[0, FLOOR_HEIGHT * 0.7, 0]}
-        color={palette.sodium}
+        color={lamp}
         intensity={0}
         distance={14}
         decay={2}
@@ -180,6 +181,7 @@ export function Floors({ site, activeFloor, section, onSelect }: FloorsProps) {
           key={floor.index}
           floor={floor}
           active={floor.index === activeFloor}
+          lamp={site.lamp.color}
           section={section}
           onSelect={onSelect}
         />

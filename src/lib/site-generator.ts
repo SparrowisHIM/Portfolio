@@ -50,7 +50,18 @@ export type Site = {
   viewAngle: number;
   /** Which side of the crane the slab yard sits on, as seen from the crane. */
   yardSide: 1 | -1;
+  /** The work lighting on this site. */
+  lamp: Lamp;
 };
+
+export type Lamp = { name: string; color: string };
+
+/** Each rebuild may switch the lighting rig. */
+export const LAMPS: Lamp[] = [
+  { name: "sodium", color: "#f5b043" },
+  { name: "halogen", color: "#ffd2a1" },
+  { name: "led", color: "#d7e6ff" },
+];
 
 const SIDE_ANGLE: Record<(typeof SIDES)[number], number> = {
   "+z": 0,
@@ -218,5 +229,6 @@ export function generateSite(
     totalHeight,
     viewAngle,
     yardSide: craneCorner === 1 ? -1 : 1,
+    lamp: rnd.chance(0.55) ? LAMPS[0] : rnd.pick(LAMPS),
   };
 }

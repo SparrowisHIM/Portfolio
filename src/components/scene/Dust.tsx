@@ -4,17 +4,17 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { createRandom } from "@/lib/random";
-import { palette } from "./materials";
 
 type DustProps = {
   seed: number;
+  color: string;
   height: number;
   animate: boolean;
   count?: number;
 };
 
 /** Slow-drifting dust caught in the work lights. */
-export function Dust({ seed, height, animate, count = 500 }: DustProps) {
+export function Dust({ seed, color, height, animate, count = 500 }: DustProps) {
   const points = useRef<THREE.Points>(null);
   const spread = 22;
 
@@ -52,7 +52,7 @@ export function Dust({ seed, height, animate, count = 500 }: DustProps) {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        color={palette.sodium}
+        color={color}
         size={0.09}
         sizeAttenuation
         transparent
