@@ -176,7 +176,9 @@ export function generateSite(
   const craneHorizontal = craneSide === "+z" || craneSide === "-z";
   const craneSign = craneSide.startsWith("+") ? 1 : -1;
   const craneDistance = (craneHorizontal ? baseDepth : baseWidth) / 2 + rnd.range(3.5, 5);
-  const craneAlong = rnd.range(-2, 2);
+  // Cranes stand at a corner of the site, not in front of the building.
+  const craneCorner = rnd.chance(0.5) ? 1 : -1;
+  const craneAlong = craneCorner * ((craneHorizontal ? baseWidth : baseDepth) / 2 + rnd.range(0.5, 2));
   const cranePosition: Vec3 = craneHorizontal
     ? [craneAlong, 0, craneSign * craneDistance]
     : [craneSign * craneDistance, 0, craneAlong];
@@ -195,7 +197,12 @@ export function generateSite(
   // Look at the tower from an open face; the crane then sits to one side.
   const openSides = SIDES.filter((s) => !scaffoldSides.includes(s) && s !== craneSide);
   const viewSide = openSides.length ? rnd.pick(openSides) : craneSide;
-  const viewAngle = SIDE_ANGLE[viewSide];
+  // Nudge the view towards the corner away from the crane so the mast never
+  // splits the frame.
+  const craneAngle = Math.atan2(cranePosition[0], cranePosition[2]);
+  let away = SIDE_ANGLE[viewSide] - craneAngle;
+  away = Math.atan2(Math.sin(away), Math.cos(away));
+  const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? 0.4 : -0.4);
 
   return {
     seed,
