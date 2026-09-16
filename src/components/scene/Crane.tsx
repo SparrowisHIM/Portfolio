@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
@@ -138,20 +138,15 @@ function Pendant({
   from: [number, number, number];
   to: [number, number, number];
 }) {
-  const { mid, quaternion, length } = useMemo(() => {
-    const a = new THREE.Vector3(...from);
-    const b = new THREE.Vector3(...to);
-    const dir = b.clone().sub(a);
-    return {
-      mid: a.clone().add(b).multiplyScalar(0.5),
-      length: dir.length(),
-      quaternion: new THREE.Quaternion().setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0),
-        dir.clone().normalize(),
-      ),
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...from, ...to]);
+  const a = new THREE.Vector3(...from);
+  const b = new THREE.Vector3(...to);
+  const dir = b.clone().sub(a);
+  const mid = a.clone().add(b).multiplyScalar(0.5);
+  const length = dir.length();
+  const quaternion = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    dir.clone().normalize(),
+  );
 
   return (
     <mesh position={mid} quaternion={quaternion} material={steel}>
