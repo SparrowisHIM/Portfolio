@@ -22,6 +22,8 @@ type CameraRigProps = {
   progress: RefObject<number>;
   /** When false the camera snaps to its target instead of easing. */
   animate: boolean;
+  /** The intro fly-in waits until the loader is gone. */
+  started: boolean;
   /**
    * Fraction of the orbit radius to slide the camera sideways, so the tower
    * sits beside the text column instead of behind it.
@@ -73,6 +75,7 @@ export function CameraRig({
   site,
   progress,
   animate,
+  started,
   shiftX = 0,
   shiftY = 0,
 }: CameraRigProps) {
@@ -133,7 +136,7 @@ export function CameraRig({
 
     // Intro: start far and low, ease in to the ground-level shot.
     if (intro.current < 1) {
-      intro.current = Math.min(1, intro.current + delta / INTRO_SECONDS);
+      if (started) intro.current = Math.min(1, intro.current + delta / INTRO_SECONDS);
       const e = easeOutExpo(intro.current);
       target.radius = lerp(target.radius + 55, target.radius, e);
       target.rise = lerp(-1.5, target.rise, e);

@@ -5,14 +5,22 @@ import { projects } from "@/lib/projects";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-function Line({ children, delay }: { children: string; delay: number }) {
+function Line({
+  children,
+  delay,
+  started,
+}: {
+  children: string;
+  delay: number;
+  started: boolean;
+}) {
   const reduced = useReducedMotion();
   return (
     <span className="block overflow-hidden pb-[0.06em]">
       <motion.span
         className="block"
         initial={reduced ? false : { y: "110%" }}
-        animate={{ y: 0 }}
+        animate={{ y: started || reduced ? 0 : "110%" }}
         transition={{ duration: 1, ease, delay }}
       >
         {children}
@@ -23,7 +31,8 @@ function Line({ children, delay }: { children: string; delay: number }) {
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
-export function Hero() {
+/** Ground level. The reveal waits for the site to finish setting out. */
+export function Hero({ started }: { started: boolean }) {
   const reduced = useReducedMotion();
   const floors = WORDS[projects.length] ?? String(projects.length);
 
@@ -34,12 +43,16 @@ export function Hero() {
     >
       <div className="pointer-events-auto max-w-[34rem]">
         <h1 className="font-display text-[clamp(88px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">
-          <Line delay={1.3}>Build</Line>
-          <Line delay={1.42}>site</Line>
+          <Line delay={1.3} started={started}>
+            Build
+          </Line>
+          <Line delay={1.42} started={started}>
+            site
+          </Line>
         </h1>
         <motion.div
           initial={reduced ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: started || reduced ? 1 : 0 }}
           transition={{ duration: 0.8, delay: 1.9 }}
         >
           <p className="mt-6 max-w-[26rem] text-[17px] leading-relaxed text-chalk">

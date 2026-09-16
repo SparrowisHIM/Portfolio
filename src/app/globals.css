@@ -86,3 +86,33 @@ body {
     transform: translateY(0.75rem);
   }
 }
+
+/* Loader: the floor plan draws itself, the level bar sweeps. */
+@keyframes plan-draw {
+  from {
+    stroke-dashoffset: 400;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.plan-draw line,
+.plan-draw rect,
+.plan-draw circle {
+  stroke-dasharray: 400;
+  animation: plan-draw 2.4s var(--ease-out-expo) forwards;
+}
+
+@keyframes level-bar {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.level-bar {
+  animation: level-bar 1.4s ease-in-out infinite;
+}
