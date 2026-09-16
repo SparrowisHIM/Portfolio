@@ -2,6 +2,7 @@
 
 import { useMemo, type RefObject } from "react";
 import { Canvas } from "@react-three/fiber";
+import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import type { Site } from "@/lib/site-generator";
 import { palette } from "./materials";
 import { Ground } from "./Ground";
@@ -48,7 +49,7 @@ export function SiteScene({
     <Canvas
       dpr={[1, 1.75]}
       camera={{ position: [30, 12, 30], fov: 36, near: 0.5, far: 220 }}
-      gl={{ antialias: true, powerPreference: "high-performance", localClippingEnabled: true }}
+      gl={{ antialias: false, powerPreference: "high-performance", localClippingEnabled: true }}
       className="!absolute inset-0"
     >
       <color attach="background" args={[palette.night]} />
@@ -69,6 +70,11 @@ export function SiteScene({
         shiftX={shiftX}
         shiftY={shiftY}
       />
+      <EffectComposer multisampling={4}>
+        <Bloom luminanceThreshold={0.85} mipmapBlur intensity={0.7} radius={0.6} />
+        <Vignette offset={0.22} darkness={0.75} />
+        <Noise opacity={0.055} />
+      </EffectComposer>
     </Canvas>
   );
 }
