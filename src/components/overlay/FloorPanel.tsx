@@ -20,7 +20,7 @@ export function FloorPanel({ project, number, active }: FloorPanelProps) {
   return (
     <section
       id={project.slug}
-      className="flex h-screen items-end px-5 pb-20 md:items-center md:px-8 md:pb-0"
+      className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0"
       aria-label={`Floor ${number}: ${project.title}`}
     >
       <motion.div
@@ -33,7 +33,6 @@ export function FloorPanel({ project, number, active }: FloorPanelProps) {
             : { duration: 0.55, times: [0, 0.2, 0.35, 1], ease: "linear" }
         }
         style={{ pointerEvents: active ? "auto" : "none" }}
-        aria-hidden={!active}
       >
         <p className="flex items-baseline gap-3">
           <span className="font-display text-[84px] font-extrabold leading-none text-sodium">

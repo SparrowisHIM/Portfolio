@@ -18,6 +18,7 @@ type SiteSceneProps = {
   activeFloor: number;
   animate?: boolean;
   shiftX?: number;
+  shiftY?: number;
 };
 
 export function SiteScene({
@@ -26,6 +27,7 @@ export function SiteScene({
   activeFloor,
   animate = true,
   shiftX = 0,
+  shiftY = 0,
 }: SiteSceneProps) {
   return (
     <Canvas
@@ -35,7 +37,7 @@ export function SiteScene({
       className="!absolute inset-0"
     >
       <color attach="background" args={[palette.night]} />
-      <fog attach="fog" args={[palette.night, 28, 105]} />
+      <fog attach="fog" args={[palette.night, 34, 130]} />
       <hemisphereLight args={["#4a6f9e", "#05090f", 1.1]} />
       <directionalLight
         position={[-25, 40, -15]}
@@ -53,6 +55,7 @@ export function SiteScene({
         progress={progress}
         animate={animate}
         shiftX={shiftX}
+        shiftY={shiftY}
       />
     </Canvas>
   );

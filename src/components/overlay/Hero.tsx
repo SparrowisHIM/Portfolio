@@ -30,7 +30,7 @@ export function Hero() {
   return (
     <section
       id="ground"
-      className="flex h-screen items-end px-5 pb-16 md:items-center md:px-8 md:pb-0"
+      className="flex h-screen items-end px-5 pb-28 md:items-center md:px-8 md:pb-0"
     >
       <div className="max-w-[34rem]">
         <h1 className="font-display text-[clamp(88px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">

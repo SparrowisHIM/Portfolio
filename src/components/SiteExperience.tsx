@@ -43,6 +43,12 @@ export function SiteExperience() {
           activeFloor={section - 1}
           animate={!reduced}
           shiftX={wide ? 0.16 : 0}
+          shiftY={wide ? 0 : 0.14}
+        />
+        {/* On small screens the copy sits over the ground, so shade it. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-night via-night/75 to-transparent md:hidden"
         />
       </div>
 

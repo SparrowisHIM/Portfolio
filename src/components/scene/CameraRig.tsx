@@ -27,6 +27,8 @@ type CameraRigProps = {
    * sits beside the text column instead of behind it.
    */
   shiftX?: number;
+  /** Fraction of the orbit radius to slide the camera down, lifting the tower on screen. */
+  shiftY?: number;
 };
 
 const INTRO_SECONDS = 2.6;
@@ -66,7 +68,13 @@ export function buildKeyframes(site: Site): Keyframe[] {
   return frames;
 }
 
-export function CameraRig({ site, progress, animate, shiftX = 0 }: CameraRigProps) {
+export function CameraRig({
+  site,
+  progress,
+  animate,
+  shiftX = 0,
+  shiftY = 0,
+}: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const frames = useMemo(() => buildKeyframes(site), [site]);
   const intro = useRef(animate ? 0 : 1);
@@ -81,10 +89,13 @@ export function CameraRig({ site, progress, animate, shiftX = 0 }: CameraRigProp
     const t = f - i;
     const a = frames[i];
     const b = frames[i + 1];
+    // Portrait screens see a narrower slice, so back off to keep the tower in frame.
+    const aspect = state.size.width / state.size.height;
+    const fit = Math.min(1.4, aspect < 1.2 ? 1.2 / aspect : 1);
     const target: Keyframe = {
       lookY: lerp(a.lookY, b.lookY, t),
       rise: lerp(a.rise, b.rise, t),
-      radius: lerp(a.radius, b.radius, t),
+      radius: lerp(a.radius, b.radius, t) * fit,
       angle: lerp(a.angle, b.angle, t),
     };
 
@@ -117,8 +128,9 @@ export function CameraRig({ site, progress, animate, shiftX = 0 }: CameraRigProp
     );
     look.current.set(0, c.lookY, 0);
     camera.lookAt(look.current);
-    // Slide along the camera's own right axis; orientation stays the same.
+    // Slide along the camera's own axes; orientation stays the same.
     camera.translateX(-c.radius * shiftX);
+    camera.translateY(-c.radius * shiftY);
   });
 
   return null;
