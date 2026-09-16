@@ -7,6 +7,8 @@ import { Ground } from "./Ground";
 import { Floors } from "./Floors";
 import { Scaffold } from "./Scaffold";
 import { Crane } from "./Crane";
+import { Lamps } from "./Lamps";
+import { Dust } from "./Dust";
 
 type SiteSceneProps = {
   site: Site;
@@ -30,6 +32,8 @@ export function SiteScene({ site, animate = true }: SiteSceneProps) {
       <Floors site={site} />
       <Scaffold site={site} />
       <Crane site={site} animate={animate} />
+      <Lamps site={site} />
+      <Dust seed={site.seed} height={site.totalHeight} animate={animate} />
     </Canvas>
   );
 }
