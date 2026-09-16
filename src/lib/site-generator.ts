@@ -48,6 +48,8 @@ export type Site = {
   totalHeight: number;
   /** Orbit angle (radians) from which the tower face is clear of scaffolding. */
   viewAngle: number;
+  /** Which side of the crane the slab yard sits on, as seen from the crane. */
+  yardSide: 1 | -1;
 };
 
 const SIDE_ANGLE: Record<(typeof SIDES)[number], number> = {
@@ -215,5 +217,6 @@ export function generateSite(
     crane,
     totalHeight,
     viewAngle,
+    yardSide: craneCorner === 1 ? -1 : 1,
   };
 }
