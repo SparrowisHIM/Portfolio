@@ -5,6 +5,7 @@ import type { Site } from "@/lib/site-generator";
 import { palette } from "./materials";
 import { Ground } from "./Ground";
 import { Floors } from "./Floors";
+import { Scaffold } from "./Scaffold";
 
 type SiteSceneProps = {
   site: Site;
@@ -25,6 +26,7 @@ export function SiteScene({ site }: SiteSceneProps) {
       <directionalLight position={[-20, 40, -10]} intensity={0.35} color="#8fb3e6" />
       <Ground />
       <Floors site={site} />
+      <Scaffold site={site} />
     </Canvas>
   );
 }
