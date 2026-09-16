@@ -65,3 +65,24 @@ body {
   outline-offset: 3px;
   border-radius: 2px;
 }
+
+/* The "Climb" hint: a bead of light running up the line. */
+@keyframes climb {
+  from {
+    transform: translateY(2.5rem);
+  }
+  to {
+    transform: translateY(-1rem);
+  }
+}
+
+.climb-line {
+  animation: climb 1.6s var(--ease-out-expo) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .climb-line {
+    animation: none;
+    transform: translateY(0.75rem);
+  }
+}
