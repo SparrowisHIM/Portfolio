@@ -8,10 +8,12 @@ type FloorPanelProps = {
   /** Floor number as painted on the slab, counting up from the ground. */
   number: number;
   active: boolean;
+  /** Open the live project in place. */
+  onWalkIn?: (project: Project) => void;
 };
 
 /** One project per floor. The panel switches on like a work lamp. */
-export function FloorPanel({ project, number, active }: FloorPanelProps) {
+export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProps) {
   const reduced = useReducedMotion();
   const flicker = reduced
     ? { opacity: active ? 1 : 0 }
@@ -52,15 +54,14 @@ export function FloorPanel({ project, number, active }: FloorPanelProps) {
         </p>
         <div className="mt-6 flex gap-6 text-[14px]">
           {project.live && (
-            <a
-              href={project.live}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => onWalkIn?.(project)}
               className="text-chalk underline decoration-sodium decoration-1 underline-offset-[6px] transition-colors hover:text-sodium"
               tabIndex={active ? 0 : -1}
             >
-              Open project
-            </a>
+              Walk in
+            </button>
           )}
           <a
             href={project.repo}
