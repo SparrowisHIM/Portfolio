@@ -17,6 +17,7 @@ type SiteSceneProps = {
   progress: RefObject<number>;
   activeFloor: number;
   animate?: boolean;
+  shiftX?: number;
 };
 
 export function SiteScene({
@@ -24,6 +25,7 @@ export function SiteScene({
   progress,
   activeFloor,
   animate = true,
+  shiftX = 0,
 }: SiteSceneProps) {
   return (
     <Canvas
@@ -41,12 +43,17 @@ export function SiteScene({
         color="#8fb3e6"
       />
       <Ground />
-      <Floors site={site} activeFloor={activeFloor} />
+      <Floors key={site.seed} site={site} activeFloor={activeFloor} animate={animate} />
       <Scaffold site={site} />
       <Crane site={site} animate={animate} />
       <Lamps site={site} />
       <Dust seed={site.seed} height={site.totalHeight} animate={animate} />
-      <CameraRig site={site} progress={progress} animate={animate} />
+      <CameraRig
+        site={site}
+        progress={progress}
+        animate={animate}
+        shiftX={shiftX}
+      />
     </Canvas>
   );
 }

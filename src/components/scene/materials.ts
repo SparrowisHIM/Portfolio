@@ -41,15 +41,3 @@ export const plank = new THREE.MeshStandardMaterial({
   roughness: 0.9,
 });
 
-export function createGlass() {
-  return new THREE.MeshStandardMaterial({
-    color: palette.glass,
-    emissive: new THREE.Color(palette.sodium),
-    emissiveIntensity: 0,
-    roughness: 0.15,
-    metalness: 0.4,
-    transparent: true,
-    opacity: 0.55,
-    side: THREE.DoubleSide,
-  });
-}
