@@ -20,7 +20,7 @@ export function FloorPanel({ project, number, active }: FloorPanelProps) {
   return (
     <section
       id={project.slug}
-      className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0"
+      className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0 md:pt-24"
       aria-label={`Floor ${number}: ${project.title}`}
     >
       <motion.div

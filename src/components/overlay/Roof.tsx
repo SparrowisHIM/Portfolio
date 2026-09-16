@@ -8,7 +8,7 @@ export function Roof({ active }: { active: boolean }) {
   return (
     <section
       id="contact"
-      className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0"
+      className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0 md:pt-24"
     >
       <motion.div
         className="max-w-[28rem]"
