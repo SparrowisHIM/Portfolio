@@ -1,27 +1,48 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import * as THREE from "three";
 import type { Floor, Site } from "@/lib/site-generator";
 import { FLOOR_HEIGHT, SLAB_THICKNESS } from "@/lib/site-generator";
-import { concrete, concreteDark, createGlass, steel } from "./materials";
+import { concrete, concreteDark, createGlass, palette, steel } from "./materials";
 
 const COLUMN = 0.36;
 
-function FloorBlock({ floor }: { floor: Floor }) {
+type Face = {
+  key: string;
+  visible: boolean;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  size: [number, number];
+};
+
+function FloorBlock({ floor, active }: { floor: Floor; active: boolean }) {
   const glass = useMemo(() => createGlass(), []);
+  const light = useRef<THREE.PointLight>(null);
   const { width, depth, glazed, columns } = floor;
   const wallHeight = FLOOR_HEIGHT - SLAB_THICKNESS;
-  const faces: { key: string; visible: boolean; position: [number, number, number]; rotation: [number, number, number]; size: [number, number] }[] = [
+
+  const faces: Face[] = [
     { key: "+x", visible: glazed[0], position: [width / 2, wallHeight / 2, 0], rotation: [0, Math.PI / 2, 0], size: [depth, wallHeight] },
     { key: "-x", visible: glazed[1], position: [-width / 2, wallHeight / 2, 0], rotation: [0, -Math.PI / 2, 0], size: [depth, wallHeight] },
     { key: "+z", visible: glazed[2], position: [0, wallHeight / 2, depth / 2], rotation: [0, 0, 0], size: [width, wallHeight] },
     { key: "-z", visible: glazed[3], position: [0, wallHeight / 2, -depth / 2], rotation: [0, Math.PI, 0], size: [width, wallHeight] },
   ];
 
+  // The floor being read lights up: glazing glows and a lamp inside comes on.
+  useFrame((_, delta) => {
+    const target = active ? 0.55 : 0.04;
+    glass.emissiveIntensity = THREE.MathUtils.damp(glass.emissiveIntensity, target, 4, delta);
+    if (light.current) {
+      light.current.intensity = THREE.MathUtils.damp(light.current.intensity, active ? 40 : 0, 4, delta);
+    }
+  });
+
   return (
     <group position={[0, floor.y, 0]}>
       {/* Slab */}
-      <mesh position={[0, SLAB_THICKNESS / 2, 0]} material={concrete} castShadow receiveShadow>
+      <mesh position={[0, SLAB_THICKNESS / 2, 0]} material={concrete}>
         <boxGeometry args={[width, SLAB_THICKNESS, depth]} />
       </mesh>
       {/* Edge beam under the slab */}
@@ -34,7 +55,6 @@ function FloorBlock({ floor }: { floor: Floor }) {
           key={i}
           position={[x, SLAB_THICKNESS + wallHeight / 2, z]}
           material={floor.finished ? concrete : steel}
-          castShadow
         >
           <boxGeometry args={[COLUMN, wallHeight, COLUMN]} />
         </mesh>
@@ -52,6 +72,14 @@ function FloorBlock({ floor }: { floor: Floor }) {
             <planeGeometry args={f.size} />
           </mesh>
         ))}
+      <pointLight
+        ref={light}
+        position={[0, FLOOR_HEIGHT * 0.7, 0]}
+        color={palette.sodium}
+        intensity={0}
+        distance={14}
+        decay={2}
+      />
     </group>
   );
 }
@@ -80,11 +108,17 @@ function TopLevel({ site }: { site: Site }) {
   );
 }
 
-export function Floors({ site }: { site: Site }) {
+type FloorsProps = {
+  site: Site;
+  /** Index of the floor currently being read, or -1. */
+  activeFloor: number;
+};
+
+export function Floors({ site, activeFloor }: FloorsProps) {
   return (
     <group>
       {site.floors.map((floor) => (
-        <FloorBlock key={floor.index} floor={floor} />
+        <FloorBlock key={floor.index} floor={floor} active={floor.index === activeFloor} />
       ))}
       <TopLevel site={site} />
     </group>

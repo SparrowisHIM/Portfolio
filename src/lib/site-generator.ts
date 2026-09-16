@@ -46,6 +46,15 @@ export type Site = {
   lamps: Vec3[];
   crane: Crane;
   totalHeight: number;
+  /** Orbit angle (radians) from which the tower face is clear of scaffolding. */
+  viewAngle: number;
+};
+
+const SIDE_ANGLE: Record<(typeof SIDES)[number], number> = {
+  "+z": 0,
+  "+x": Math.PI / 2,
+  "-z": Math.PI,
+  "-x": -Math.PI / 2,
 };
 
 const SIDES = ["+x", "-x", "+z", "-z"] as const;
@@ -183,5 +192,21 @@ export function generateSite(
     hookDrop: rnd.range(3, 5),
   };
 
-  return { seed, floors, topLevel, poles, ledgers, planks, lamps, crane, totalHeight };
+  // Look at the tower from an open face; the crane then sits to one side.
+  const openSides = SIDES.filter((s) => !scaffoldSides.includes(s) && s !== craneSide);
+  const viewSide = openSides.length ? rnd.pick(openSides) : craneSide;
+  const viewAngle = SIDE_ANGLE[viewSide];
+
+  return {
+    seed,
+    floors,
+    topLevel,
+    poles,
+    ledgers,
+    planks,
+    lamps,
+    crane,
+    totalHeight,
+    viewAngle,
+  };
 }

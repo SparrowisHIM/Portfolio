@@ -15,10 +15,16 @@ import { CameraRig } from "./CameraRig";
 type SiteSceneProps = {
   site: Site;
   progress: RefObject<number>;
+  activeFloor: number;
   animate?: boolean;
 };
 
-export function SiteScene({ site, progress, animate = true }: SiteSceneProps) {
+export function SiteScene({
+  site,
+  progress,
+  activeFloor,
+  animate = true,
+}: SiteSceneProps) {
   return (
     <Canvas
       dpr={[1, 1.75]}
@@ -35,7 +41,7 @@ export function SiteScene({ site, progress, animate = true }: SiteSceneProps) {
         color="#8fb3e6"
       />
       <Ground />
-      <Floors site={site} />
+      <Floors site={site} activeFloor={activeFloor} />
       <Scaffold site={site} />
       <Crane site={site} animate={animate} />
       <Lamps site={site} />

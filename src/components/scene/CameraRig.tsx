@@ -35,25 +35,28 @@ function lerp(a: number, b: number, t: number) {
 }
 
 export function buildKeyframes(site: Site): Keyframe[] {
-  const start = Math.atan2(site.crane.position[0], site.crane.position[2]) + 0.9;
+  // Swing the orbit across the open face, never behind the scaffolding.
+  const sweep = 0.7;
+  const start = site.viewAngle - sweep / 2;
+  const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
     // Ground level: the whole site in view, camera low like a person on the road.
-    { lookY: site.totalHeight * 0.42, rise: 2.5, radius: 34, angle: start },
+    { lookY: site.totalHeight * 0.45, rise: 1.5, radius: 40, angle: start - 0.15 },
   ];
   site.floors.forEach((floor, i) => {
     frames.push({
       lookY: floor.y + FLOOR_HEIGHT * 0.55,
-      rise: 1.6,
-      radius: 17,
-      angle: start + 0.55 + i * 0.42,
+      rise: 1.8,
+      radius: 24,
+      angle: start + step * (i + 1),
     });
   });
-  // Roof: above the unfinished top level, looking slightly down at the crane's slab.
+  // Roof: above the unfinished top level, looking down at the slab on the hook.
   frames.push({
-    lookY: site.topLevel.y + 1.2,
-    rise: 4.5,
-    radius: 21,
-    angle: start + 0.55 + site.floors.length * 0.42 + 0.3,
+    lookY: site.topLevel.y + 0.8,
+    rise: 6,
+    radius: 26,
+    angle: start + sweep + 0.2,
   });
   return frames;
 }

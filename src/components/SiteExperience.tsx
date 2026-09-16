@@ -22,7 +22,11 @@ export function SiteExperience() {
   return (
     <div className="relative">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
-        <SiteScene site={site} progress={progress} />
+        <SiteScene
+          site={site}
+          progress={progress}
+          activeFloor={section - 1}
+        />
       </div>
 
       <div className="relative -mt-[100vh]" aria-live="off">
