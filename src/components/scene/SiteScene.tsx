@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { Canvas } from "@react-three/fiber";
 import type { Site } from "@/lib/site-generator";
 import { palette } from "./materials";
@@ -9,31 +10,37 @@ import { Scaffold } from "./Scaffold";
 import { Crane } from "./Crane";
 import { Lamps } from "./Lamps";
 import { Dust } from "./Dust";
+import { CameraRig } from "./CameraRig";
 
 type SiteSceneProps = {
   site: Site;
+  progress: RefObject<number>;
   animate?: boolean;
 };
 
-export function SiteScene({ site, animate = true }: SiteSceneProps) {
+export function SiteScene({ site, progress, animate = true }: SiteSceneProps) {
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [22, 12, 26], fov: 38, near: 0.5, far: 220 }}
+      camera={{ position: [30, 12, 30], fov: 36, near: 0.5, far: 220 }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      onCreated={({ camera }) => camera.lookAt(0, site.totalHeight / 2, 0)}
       className="!absolute inset-0"
     >
       <color attach="background" args={[palette.night]} />
-      <fog attach="fog" args={[palette.night, 30, 110]} />
-      <hemisphereLight args={["#3b5a86", "#04080f", 0.9]} />
-      <directionalLight position={[-20, 40, -10]} intensity={0.35} color="#8fb3e6" />
+      <fog attach="fog" args={[palette.night, 28, 105]} />
+      <hemisphereLight args={["#4a6f9e", "#05090f", 1.1]} />
+      <directionalLight
+        position={[-25, 40, -15]}
+        intensity={0.5}
+        color="#8fb3e6"
+      />
       <Ground />
       <Floors site={site} />
       <Scaffold site={site} />
       <Crane site={site} animate={animate} />
       <Lamps site={site} />
       <Dust seed={site.seed} height={site.totalHeight} animate={animate} />
+      <CameraRig site={site} progress={progress} animate={animate} />
     </Canvas>
   );
 }
