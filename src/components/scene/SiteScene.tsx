@@ -6,12 +6,14 @@ import { palette } from "./materials";
 import { Ground } from "./Ground";
 import { Floors } from "./Floors";
 import { Scaffold } from "./Scaffold";
+import { Crane } from "./Crane";
 
 type SiteSceneProps = {
   site: Site;
+  animate?: boolean;
 };
 
-export function SiteScene({ site }: SiteSceneProps) {
+export function SiteScene({ site, animate = true }: SiteSceneProps) {
   return (
     <Canvas
       dpr={[1, 1.75]}
@@ -27,6 +29,7 @@ export function SiteScene({ site }: SiteSceneProps) {
       <Ground />
       <Floors site={site} />
       <Scaffold site={site} />
+      <Crane site={site} animate={animate} />
     </Canvas>
   );
 }
