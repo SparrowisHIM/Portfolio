@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
@@ -48,8 +48,8 @@ export function buildKeyframes(site: Site): Keyframe[] {
   const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
     // Ground level: the whole site in view, camera low like a person on the road.
-    // Only the ground floor stands yet, so frame the yard, crane and slab stack.
-    { lookY: FLOOR_HEIGHT * 1.6, rise: 2.4, radius: 40, angle: start - 0.15 },
+    // Only the ground floor stands yet: frame the crane, the yard and the slab stack.
+    { lookY: 9.5, rise: 1.5, radius: 44, angle: start - 0.15 },
   ];
   site.floors.forEach((floor, i) => {
     frames.push({
@@ -77,11 +77,42 @@ export function CameraRig({
   shiftY = 0,
 }: CameraRigProps) {
   const camera = useThree((s) => s.camera);
+  const domElement = useThree((s) => s.gl.domElement);
   const frames = useMemo(() => buildKeyframes(site), [site]);
   const intro = useRef(animate ? 0 : 1);
   const pointer = useRef({ x: 0, y: 0 });
   const current = useRef<Keyframe | null>(null);
   const look = useRef(new THREE.Vector3());
+  const drag = useRef({ active: false, lastX: 0, target: 0, value: 0 });
+
+  // Drag sideways to walk around the site. Vertical movement stays with scroll.
+  useEffect(() => {
+    const state = drag.current;
+    const down = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      state.active = true;
+      state.lastX = e.clientX;
+    };
+    const move = (e: PointerEvent) => {
+      if (!state.active) return;
+      const dx = e.clientX - state.lastX;
+      state.lastX = e.clientX;
+      state.target = THREE.MathUtils.clamp(state.target - dx * 0.004, -0.9, 0.9);
+    };
+    const up = () => {
+      state.active = false;
+    };
+    domElement.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      domElement.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, [domElement]);
 
   useFrame((state, delta) => {
     const p = progress.current ?? 0;
@@ -121,7 +152,9 @@ export function CameraRig({
     c.angle = THREE.MathUtils.damp(c.angle, target.angle, smoothing, delta);
     current.current = c;
 
-    const angle = c.angle + pointer.current.x * 0.08;
+    const d = drag.current;
+    d.value = THREE.MathUtils.damp(d.value, d.target, animate ? 6 : 1000, delta);
+    const angle = c.angle + pointer.current.x * 0.08 + d.value;
     camera.position.set(
       Math.sin(angle) * c.radius,
       c.lookY + c.rise + pointer.current.y * 0.6,

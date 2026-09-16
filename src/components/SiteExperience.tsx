@@ -58,7 +58,8 @@ export function SiteExperience() {
         />
       </div>
 
-      <div className="relative z-10 -mt-[100vh]">
+      {/* Sections let pointer events through to the site; only their copy catches them. */}
+      <div className="pointer-events-none relative z-10 -mt-[100vh]">
         <Hero />
         {projects.map((project, i) => (
           <FloorPanel

@@ -11,6 +11,8 @@ import { Scaffold } from "./Scaffold";
 import { Crane } from "./Crane";
 import { Yard } from "./Yard";
 import { Lamps } from "./Lamps";
+import { Sparks } from "./Sparks";
+import { WorkLamp } from "./WorkLamp";
 import { Dust } from "./Dust";
 import { CameraRig } from "./CameraRig";
 
@@ -50,7 +52,11 @@ export function SiteScene({
       dpr={[1, 1.75]}
       camera={{ position: [30, 12, 30], fov: 36, near: 0.5, far: 220 }}
       gl={{ antialias: false, powerPreference: "high-performance", localClippingEnabled: true }}
-      className="!absolute inset-0"
+      onCreated={({ gl }) => {
+        // Let vertical touch drags scroll the page; horizontal ones orbit.
+        gl.domElement.style.touchAction = "pan-y";
+      }}
+      className="!absolute inset-0 cursor-grab active:cursor-grabbing"
     >
       <color attach="background" args={[palette.night]} />
       <fog attach="fog" args={[palette.night, 34, 130]} />
@@ -62,6 +68,8 @@ export function SiteScene({
       <Crane site={site} section={section} animate={animate} />
       <Yard site={site} section={section} />
       <Lamps site={site} />
+      <Sparks site={site} section={section} animate={animate} />
+      <WorkLamp site={site} animate={animate} />
       <Dust seed={site.seed} height={site.totalHeight} animate={animate} />
       <CameraRig
         site={site}
