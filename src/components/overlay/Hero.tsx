@@ -46,7 +46,7 @@ export function Hero() {
             A portfolio under construction.
           </p>
           <p className="mt-2 max-w-[26rem] text-[15px] leading-relaxed text-chalk-dim">
-            I&apos;m Efe, a frontend engineer. Scroll to climb: {floors} floors
+            I&apos;m Efe, a design engineer. Scroll to climb: {floors} floors
             of work are up and the crane is still running.
           </p>
           <a

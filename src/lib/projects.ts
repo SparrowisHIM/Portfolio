@@ -70,7 +70,7 @@ export const projects: Project[] = [
 
 export const owner = {
   name: "Efe Ebomwonyi",
-  role: "Frontend engineer",
+  role: "Design engineer",
   intro:
     "I build interfaces that move: component libraries, product showcases and the small interactions that make a screen feel finished.",
   github: "https://github.com/SparrowisHIM",

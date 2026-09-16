@@ -22,7 +22,7 @@ export default function OpenGraphImage() {
       >
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 26, color: "#9aa6b8" }}>
           <span>Efe Ebomwonyi</span>
-          <span>Frontend engineer</span>
+          <span>Design engineer</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 200, fontWeight: 800, lineHeight: 0.85, letterSpacing: -6 }}>

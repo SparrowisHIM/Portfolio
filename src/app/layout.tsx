@@ -17,7 +17,7 @@ const archivo = Archivo({
 export const metadata: Metadata = {
   title: "Build site",
   description:
-    "Efe Ebomwonyi's portfolio, under construction. A frontend engineer who builds animated interfaces, presented as a procedural night-shift construction site.",
+    "Efe Ebomwonyi's portfolio, under construction. A design engineer who builds animated interfaces, presented as a procedural night-shift construction site.",
 };
 
 export const viewport: Viewport = {
