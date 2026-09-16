@@ -48,7 +48,8 @@ export function buildKeyframes(site: Site): Keyframe[] {
   const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
     // Ground level: the whole site in view, camera low like a person on the road.
-    { lookY: site.totalHeight * 0.52, rise: 1.2, radius: 46, angle: start - 0.15 },
+    // Only the ground floor stands yet, so frame the yard, crane and slab stack.
+    { lookY: FLOOR_HEIGHT * 1.6, rise: 2.4, radius: 40, angle: start - 0.15 },
   ];
   site.floors.forEach((floor, i) => {
     frames.push({

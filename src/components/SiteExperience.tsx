@@ -40,7 +40,13 @@ export function SiteExperience() {
         <SiteScene
           site={site}
           progress={progress}
+          sectionCount={SECTION_COUNT}
           activeFloor={section - 1}
+          onSelectFloor={(index) => {
+            document.getElementById(projects[index].slug)?.scrollIntoView({
+              behavior: reduced ? "auto" : "smooth",
+            });
+          }}
           animate={!reduced}
           shiftX={wide ? 0.16 : 0}
           shiftY={wide ? 0 : 0.14}

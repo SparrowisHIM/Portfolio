@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Floor, Site } from "@/lib/site-generator";
 import { FLOOR_HEIGHT, SLAB_THICKNESS } from "@/lib/site-generator";
+import { PLACED_AT, floorProgress, lerp, smoothstep } from "@/lib/construction";
 import { concrete, concreteDark, palette, steel } from "./materials";
 
 const COLUMN = 0.36;
+const STUB = 0.18;
 
 const GLASS = {
   color: palette.glass,
@@ -28,86 +30,117 @@ type Face = {
   size: [number, number];
 };
 
-const DROP_SECONDS = 1.1;
-const DROP_STAGGER = 0.14;
-
-function easeOutCubic(t: number) {
-  return 1 - Math.pow(1 - t, 3);
-}
-
 type FloorBlockProps = {
   floor: Floor;
   active: boolean;
-  /** Lower the floor into place from above when it mounts. */
-  drop: boolean;
+  /** Section value from scroll: 0 ground, 1..N floors, N+1 roof. */
+  section: RefObject<number>;
+  onSelect?: (index: number) => void;
 };
 
-function FloorBlock({ floor, active, drop }: FloorBlockProps) {
+/**
+ * One floor, built in front of you. Column height, slab, glazing and lamp all
+ * follow the floor's construction progress, which follows page scroll.
+ */
+function FloorBlock({ floor, active, section, onSelect }: FloorBlockProps) {
   const glazing = useRef<THREE.MeshStandardMaterial[]>([]);
+  const glazingMeshes = useRef<THREE.Mesh[]>([]);
+  const columns = useRef<THREE.Mesh[]>([]);
+  const slab = useRef<THREE.Group>(null);
   const light = useRef<THREE.PointLight>(null);
-  const group = useRef<THREE.Group>(null);
-  const dropStart = useRef<number | null>(null);
-  const { width, depth, glazed, columns } = floor;
+  const { width, depth, glazed } = floor;
   const wallHeight = FLOOR_HEIGHT - SLAB_THICKNESS;
 
-  useFrame(({ clock }) => {
-    if (!drop || !group.current) return;
-    const now = clock.getElapsedTime();
-    if (dropStart.current === null) dropStart.current = now;
-    const t = Math.min(
-      1,
-      Math.max(0, (now - dropStart.current - floor.index * DROP_STAGGER) / DROP_SECONDS),
-    );
-    const lift = (1 - easeOutCubic(t)) * (10 + floor.index * 1.5);
-    group.current.position.y = floor.y + lift;
-    group.current.visible = t > 0;
-  });
-
   const faces: Face[] = [
-    { key: "+x", visible: glazed[0], position: [width / 2, wallHeight / 2, 0], rotation: [0, Math.PI / 2, 0], size: [depth, wallHeight] },
-    { key: "-x", visible: glazed[1], position: [-width / 2, wallHeight / 2, 0], rotation: [0, -Math.PI / 2, 0], size: [depth, wallHeight] },
-    { key: "+z", visible: glazed[2], position: [0, wallHeight / 2, depth / 2], rotation: [0, 0, 0], size: [width, wallHeight] },
-    { key: "-z", visible: glazed[3], position: [0, wallHeight / 2, -depth / 2], rotation: [0, Math.PI, 0], size: [width, wallHeight] },
+    { key: "+x", visible: glazed[0], position: [width / 2, 0, 0], rotation: [0, Math.PI / 2, 0], size: [depth, wallHeight] },
+    { key: "-x", visible: glazed[1], position: [-width / 2, 0, 0], rotation: [0, -Math.PI / 2, 0], size: [depth, wallHeight] },
+    { key: "+z", visible: glazed[2], position: [0, 0, depth / 2], rotation: [0, 0, 0], size: [width, wallHeight] },
+    { key: "-z", visible: glazed[3], position: [0, 0, -depth / 2], rotation: [0, Math.PI, 0], size: [width, wallHeight] },
   ];
 
-  // The floor being read lights up: glazing glows and a lamp inside comes on.
   useFrame((_, delta) => {
-    const target = active ? 0.55 : 0.04;
+    const f = section.current ?? 0;
+    const t = floorProgress(floor.index, f);
+    const below = floorProgress(floor.index - 1, f);
+
+    // Columns: a rebar stub appears once the floor below is placed, then rises.
+    const stub = floor.index === 0 || below >= PLACED_AT ? STUB : 0;
+    const rise = t === 0 ? stub : lerp(STUB, 1, smoothstep(0, 0.3, t));
+    for (const column of columns.current) {
+      column.scale.y = Math.max(rise, 0.0001);
+      column.position.y = (wallHeight * rise) / 2;
+      column.visible = rise > 0;
+    }
+
+    // Slab: lives on the crane until it is placed.
+    if (slab.current) slab.current.visible = t >= PLACED_AT;
+
+    // Glazing rises from the slab once it is down.
+    const glass = smoothstep(0.7, 0.9, t);
+    for (const mesh of glazingMeshes.current) {
+      mesh.scale.y = Math.max(glass, 0.0001);
+      mesh.position.y = SLAB_THICKNESS + (wallHeight * glass) / 2;
+      mesh.visible = glass > 0;
+    }
+
+    // Light: a dim lamp once the floor is closed, bright while being read.
+    const lit = t >= 0.9;
+    const glow = active ? 0.28 : lit ? 0.08 : 0.03;
     for (const material of glazing.current) {
-      material.emissiveIntensity = THREE.MathUtils.damp(material.emissiveIntensity, target, 4, delta);
+      material.emissiveIntensity = THREE.MathUtils.damp(material.emissiveIntensity, glow, 4, delta);
     }
     if (light.current) {
-      light.current.intensity = THREE.MathUtils.damp(light.current.intensity, active ? 40 : 0, 4, delta);
+      const target = active ? 40 : lit ? 6 : 0;
+      light.current.intensity = THREE.MathUtils.damp(light.current.intensity, target, 4, delta);
     }
   });
 
   return (
-    <group ref={group} position={[0, floor.y, 0]}>
-      {/* Slab */}
-      <mesh position={[0, SLAB_THICKNESS / 2, 0]} material={concrete}>
-        <boxGeometry args={[width, SLAB_THICKNESS, depth]} />
-      </mesh>
-      {/* Edge beam under the slab */}
-      <mesh position={[0, -0.12, 0]} material={concreteDark}>
-        <boxGeometry args={[width - 0.2, 0.24, depth - 0.2]} />
-      </mesh>
-      {/* Columns */}
-      {columns.map(([x, z], i) => (
-        <mesh
-          key={i}
-          position={[x, SLAB_THICKNESS + wallHeight / 2, z]}
-          material={floor.finished ? concrete : steel}
-        >
-          <boxGeometry args={[COLUMN, wallHeight, COLUMN]} />
+    <group
+      position={[0, floor.y, 0]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect?.(floor.index);
+      }}
+      onPointerOver={() => {
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = "";
+      }}
+    >
+      <group ref={slab}>
+        <mesh position={[0, SLAB_THICKNESS / 2, 0]} material={concrete}>
+          <boxGeometry args={[width, SLAB_THICKNESS, depth]} />
         </mesh>
-      ))}
-      {/* Glazing */}
+        <mesh position={[0, -0.12, 0]} material={concreteDark}>
+          <boxGeometry args={[width - 0.2, 0.24, depth - 0.2]} />
+        </mesh>
+      </group>
+      {/* Columns grow from the slab below (or the ground for floor 0). */}
+      <group position={[0, floor.index === 0 ? SLAB_THICKNESS : -wallHeight, 0]}>
+        {floor.columns.map(([x, z], i) => (
+          <mesh
+            key={i}
+            ref={(mesh) => {
+              if (mesh) columns.current[i] = mesh;
+            }}
+            position={[x, wallHeight / 2, z]}
+            material={floor.finished ? concrete : steel}
+          >
+            <boxGeometry args={[COLUMN, wallHeight, COLUMN]} />
+          </mesh>
+        ))}
+      </group>
       {faces
         .filter((f) => f.visible)
         .map((f, i) => (
           <mesh
             key={f.key}
-            position={[f.position[0], f.position[1] + SLAB_THICKNESS, f.position[2]]}
+            ref={(mesh) => {
+              if (mesh) glazingMeshes.current[i] = mesh;
+            }}
+            position={[f.position[0], SLAB_THICKNESS + wallHeight / 2, f.position[2]]}
             rotation={f.rotation}
           >
             <planeGeometry args={f.size} />
@@ -131,38 +164,15 @@ function FloorBlock({ floor, active, drop }: FloorBlockProps) {
   );
 }
 
-function TopLevel({ site }: { site: Site }) {
-  const { topLevel } = site;
-  const stubHeight = FLOOR_HEIGHT * 0.55;
-  return (
-    <group position={[0, topLevel.y, 0]}>
-      {topLevel.columns.map(([x, z], i) => (
-        <group key={i} position={[x, 0, z]}>
-          <mesh position={[0, stubHeight / 2, 0]} material={steel}>
-            <boxGeometry args={[COLUMN, stubHeight, COLUMN]} />
-          </mesh>
-          {/* Rebar poking out of the unfinished column */}
-          {[-0.1, 0.1].map((dx) =>
-            [-0.1, 0.1].map((dz) => (
-              <mesh key={`${dx}${dz}`} position={[dx, stubHeight + 0.45, dz]} material={steel}>
-                <boxGeometry args={[0.03, 0.9, 0.03]} />
-              </mesh>
-            )),
-          )}
-        </group>
-      ))}
-    </group>
-  );
-}
-
 type FloorsProps = {
   site: Site;
   /** Index of the floor currently being read, or -1. */
   activeFloor: number;
-  animate: boolean;
+  section: RefObject<number>;
+  onSelect?: (index: number) => void;
 };
 
-export function Floors({ site, activeFloor, animate }: FloorsProps) {
+export function Floors({ site, activeFloor, section, onSelect }: FloorsProps) {
   return (
     <group>
       {site.floors.map((floor) => (
@@ -170,10 +180,10 @@ export function Floors({ site, activeFloor, animate }: FloorsProps) {
           key={floor.index}
           floor={floor}
           active={floor.index === activeFloor}
-          drop={animate}
+          section={section}
+          onSelect={onSelect}
         />
       ))}
-      <TopLevel site={site} />
     </group>
   );
 }
