@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useReducedMotion } from "framer-motion";
-import { projects, type Project } from "@/lib/projects";
+import { owner, projects, type Project } from "@/lib/projects";
 import { randomSeed } from "@/lib/random";
-import { generateSite } from "@/lib/site-generator";
+import { HERO, generateSite } from "@/lib/site-generator";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SiteSign } from "./overlay/SiteSign";
@@ -15,6 +16,8 @@ import { Roof } from "./overlay/Roof";
 import { RebuildButton } from "./overlay/RebuildButton";
 import { Loader } from "./overlay/Loader";
 import { WalkIn } from "./overlay/WalkIn";
+import { NightShift } from "./overlay/NightShift";
+import { endGame, startGame } from "@/lib/stack-game";
 
 const SiteScene = dynamic(
   () => import("./scene/SiteScene").then((m) => m.SiteScene),
@@ -34,14 +37,55 @@ export function SiteExperience() {
   const reduced = useReducedMotion() ?? false;
   const wide = useMediaQuery("(min-width: 768px)");
 
-  const rebuild = useCallback(() => setSeed(randomSeed()), []);
+  const [playing, setPlaying] = useState(false);
+  // A rebuild during a shift ends it: the site is torn down.
+  const rebuild = useCallback(() => {
+    endGame();
+    setPlaying(false);
+    setSeed(randomSeed());
+  }, []);
+
+  // The night shift stacks on top of the tower as designed, so the whole
+  // thing is built first, then the page stops scrolling until you clock off.
+  const base = useMemo(
+    () => ({ x: 0, z: 0, width: site.topLevel.width * 0.92, depth: site.topLevel.depth * 0.92, y: site.topLevel.y }),
+    [site],
+  );
+  const clockOn = useCallback(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
+    startGame(base);
+    setPlaying(true);
+  }, [base]);
+  const clockOff = useCallback(() => {
+    endGame();
+    setPlaying(false);
+  }, []);
+  const again = useCallback(() => startGame(base), [base]);
+  useEffect(() => {
+    if (!playing) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [playing]);
+  const banner = useMemo(
+    () => [owner.name, owner.role, `site no. ${seed.toString(16).padStart(8, "0")}`],
+    [seed],
+  );
   const onReady = useCallback(() => setReady(true), []);
   const closeWalkIn = useCallback(() => setWalkIn(null), []);
 
   return (
     <div className="relative">
       <Loader ready={ready} />
-      <SiteSign />
+      <AnimatePresence>
+        {!playing && (
+          <motion.div key="chrome" initial={false} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+            <SiteSign />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <SiteScene
@@ -51,7 +95,9 @@ export function SiteExperience() {
           activeFloor={section - 1}
           animate={!reduced}
           started={ready}
-          shiftX={wide ? 0.16 : 0}
+          banner={banner}
+          rich={wide}
+          shiftX={wide ? HERO.shift : 0}
           shiftY={wide ? 0 : 0.14}
           onReady={onReady}
           onSelectFloor={(index) => {
@@ -59,6 +105,11 @@ export function SiteExperience() {
               behavior: reduced ? "auto" : "smooth",
             });
           }}
+        />
+        {/* Keep the copy column legible where the tower runs behind it. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] bg-gradient-to-r from-night/80 via-night/35 to-transparent md:block"
         />
         {/* On small screens the copy sits over the ground, so shade it. */}
         <div
@@ -68,7 +119,10 @@ export function SiteExperience() {
       </div>
 
       {/* Sections let pointer events through to the site; only their copy catches them. */}
-      <div className="pointer-events-none relative z-10 -mt-[100vh]">
+      <div
+        className={"pointer-events-none relative z-10 -mt-[100vh] transition-opacity duration-300" + (playing ? " opacity-0" : "")}
+        aria-hidden={playing}
+      >
         <Hero started={ready} />
         {projects.map((project, i) => (
           <FloorPanel
@@ -79,10 +133,11 @@ export function SiteExperience() {
             onWalkIn={setWalkIn}
           />
         ))}
-        <Roof active={section === SECTION_COUNT - 1} />
+        <Roof active={section === SECTION_COUNT - 1 && !playing} onPlay={clockOn} />
       </div>
 
-      <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} />
+      {!playing && <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} onPlay={clockOn} />}
+      <NightShift onAgain={again} onLeave={clockOff} />
       <WalkIn project={walkIn} onClose={closeWalkIn} />
     </div>
   );

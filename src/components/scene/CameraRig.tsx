@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { FLOOR_HEIGHT } from "@/lib/site-generator";
+import { FLOOR_HEIGHT, HERO } from "@/lib/site-generator";
+import { game, stackTop } from "@/lib/stack-game";
 
 type Keyframe = {
   /** Height the camera looks at. */
@@ -49,15 +50,15 @@ export function buildKeyframes(site: Site): Keyframe[] {
   const start = site.viewAngle - sweep / 2;
   const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
-    // Ground level: the whole site in view, camera low like a person on the road.
-    // Only the ground floor stands yet: frame the crane, the yard and the slab stack.
-    { lookY: 9.5, rise: 1.5, radius: 44, angle: start - 0.15 },
+    // Ground level: arriving at the gate. Eye height on the road outside the
+    // hoarding, the banner in the foreground, the tower and crane rising behind.
+    { lookY: 6.2, rise: -2.5, radius: HERO.radius, angle: site.viewAngle + HERO.angleOffset },
   ];
   site.floors.forEach((floor, i) => {
     frames.push({
       lookY: floor.y + FLOOR_HEIGHT * 0.55,
       rise: 1.8,
-      radius: 24,
+      radius: 26.5,
       angle: start + step * (i + 1),
     });
   });
@@ -92,7 +93,7 @@ export function CameraRig({
   useEffect(() => {
     const state = drag.current;
     const down = (e: PointerEvent) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || game.active) return;
       state.active = true;
       state.lastX = e.clientX;
     };
@@ -134,13 +135,22 @@ export function CameraRig({
       angle: lerp(a.angle, b.angle, t),
     };
 
+    // Night shift: hold on the top of the stack and drift slowly round it.
+    if (game.active) {
+      const roof = frames[frames.length - 1];
+      target.lookY = stackTop() - 0.6;
+      target.rise = 3.2;
+      target.radius = (20 + game.score * 0.25) * fit;
+      target.angle = roof.angle - 0.3 + Math.sin(game.time * 0.12) * 0.35;
+    }
+
     // Intro: start far and low, ease in to the ground-level shot.
     if (intro.current < 1) {
       if (started) intro.current = Math.min(1, intro.current + delta / INTRO_SECONDS);
       const e = easeOutExpo(intro.current);
-      target.radius = lerp(target.radius + 55, target.radius, e);
-      target.rise = lerp(-1.5, target.rise, e);
-      target.angle = lerp(target.angle - 0.7, target.angle, e);
+      target.radius = lerp(target.radius + 60, target.radius, e);
+      target.rise = lerp(target.rise + 6, target.rise, e);
+      target.angle = lerp(target.angle - 0.55, target.angle, e);
     }
 
     // Gentle pointer parallax.
@@ -166,8 +176,9 @@ export function CameraRig({
     look.current.set(0, c.lookY, 0);
     camera.lookAt(look.current);
     // Slide along the camera's own axes; orientation stays the same.
-    camera.translateX(-c.radius * shiftX);
-    camera.translateY(-c.radius * shiftY);
+    const shift = game.active ? 0 : 1;
+    camera.translateX(-c.radius * shiftX * shift);
+    camera.translateY(-c.radius * shiftY * shift);
   });
 
   return null;
