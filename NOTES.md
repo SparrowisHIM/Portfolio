@@ -32,7 +32,30 @@ not there.
 - Bash heredocs with backticks or apostrophes break on this machine. Write
   python patch scripts to the scratchpad and run them with `python`.
 
-## READ THIS FIRST — the current regression
+## Status: the regression was reverted in 91d9c35
+
+Efe confirmed from a recording that the structure looked better a few
+commits earlier. Cause identified and undone: the shaders are now back to
+their 35a6213 state — the frame he called "very good, almost there" — while
+keeping the blank-building fix (544251a), which only touched components.
+
+What was wrong, for when these ideas get retried:
+
+- **389cbf7 curtain wall + deck** pushed skin opacity far too high (plate
+  alpha 0.88, spandrel 0.95). The smoked glass became milky white plastic
+  and the lower floors turned into featureless pale slabs. The curtain wall
+  idea is good; the alphas need to be a fraction of that.
+- **044f748 cladding** hid most of the frame on finished floors. Efe's own
+  idea and still right, but stacked with the opacity above it subtracted
+  everything at once — frame gone *and* glass opaque leaves nothing to look
+  at. Retry it alone, gently, with the glass still dark.
+- Between them the active floor's columns also blew out to neon lemon
+  yellow instead of sodium orange.
+
+Lesson: these were two subtractive changes shipped back to back without
+being judged together. Change one thing that removes detail, then look.
+
+## Earlier notes on the same regression
 
 Efe says the building looks **worse now than it did a few commits ago**.
 Prime suspect, in order:
