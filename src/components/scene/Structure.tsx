@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
@@ -128,8 +128,10 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     [uniforms],
   );
 
-  // Instance matrices come straight from the packed arrays.
-  useEffect(() => {
+  // Instance matrices come straight from the packed arrays. This has to
+  // run again for anything that can hand us a fresh mesh, not just a new
+  // skeleton: a new geometry or material means a new empty instanceMatrix.
+  useLayoutEffect(() => {
     const set = (mesh: THREE.InstancedMesh | null, matrix: Float32Array) => {
       if (!mesh) return;
       (mesh.instanceMatrix.array as Float32Array).set(matrix);
@@ -140,7 +142,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     set(nodes.current, skeleton.nodes.matrix);
     set(panels.current, skeleton.panels.matrix);
     completed.current.fill(-1);
-  }, [skeleton]);
+  }, [skeleton, geometries, materials]);
 
   useEffect(() => () => {
     geometries.m.dispose();

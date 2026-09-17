@@ -36,7 +36,7 @@ export function Instances({ items, material, geometry, children, frustumCulled =
     mesh.count = items.length;
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
-  }, [items, dummy]);
+  }, [items, dummy, material, geometry]);
 
   if (items.length === 0) return null;
 
