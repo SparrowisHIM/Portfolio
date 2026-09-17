@@ -80,7 +80,7 @@ export function SiteScene({
   return (
     <Canvas
       dpr={[1, rich ? 1.75 : 1.5]}
-      camera={{ position: [30, 12, 30], fov: 36, near: 0.5, far: 220 }}
+      camera={{ position: [30, 12, 30], fov: 43, near: 0.4, far: 220 }}
       gl={{ antialias: true, powerPreference: "high-performance", localClippingEnabled: true }}
       onCreated={({ gl }) => {
         // Let vertical touch drags scroll the page; horizontal ones orbit.

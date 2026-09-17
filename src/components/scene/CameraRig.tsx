@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { FLOOR_HEIGHT, HERO } from "@/lib/site-generator";
+import { HERO } from "@/lib/site-generator";
 import { floorProgress, smoothstep } from "@/lib/construction";
 import { game, stackTop } from "@/lib/stack-game";
 
@@ -53,6 +53,13 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
+/**
+ * How far back each floor stands, 0 for right under the work and 1 for a
+ * pace back to take in the stack. A run of identical shots reads as one
+ * long shot; alternating gives the climb a rhythm.
+ */
+const RHYTHM = [0, 0.85, 0.3, 1, 0.15];
+
 export function buildKeyframes(site: Site): Keyframe[] {
   // Walk round the open face as the stack grows. The swing is wide enough
   // that the massing reads through parallax — setbacks, the cantilever and
@@ -61,26 +68,30 @@ export function buildKeyframes(site: Site): Keyframe[] {
   const start = site.viewAngle - sweep / 2;
   const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
-    // Ground level: low and close, the first lines large in the frame.
-    { lookY: 3.4, rise: 0.4, radius: HERO.radius, angle: site.viewAngle + HERO.angleOffset, fit: 0.85 },
+    // Arrival: standing on the ground at the hoarding, looking up at the
+    // first frame going in. Eye height, close enough that the site fills
+    // the view — you are on it, not looking at a model of it.
+    { lookY: 5.6, rise: -3.3, radius: 17, angle: site.viewAngle + HERO.angleOffset, fit: 0.8 },
   ];
-  // Floors: from about twenty degrees up at the bottom, flattening as the
-  // stack grows so the upper floors read in silhouette rather than plan.
+  // Floors: the camera climbs with the build and stays just under the slab
+  // being set, so the finished stack falls away out of the bottom of the
+  // frame. Being cropped is what makes the thing read as big.
   site.floors.forEach((floor, i) => {
+    const back = RHYTHM[i % RHYTHM.length];
     frames.push({
-      lookY: floor.y - FLOOR_HEIGHT * 0.45,
-      rise: 8.2 + i * 0.35,
-      radius: 25.5 + i * 1.9,
+      lookY: floor.y + lerp(1.1, -0.6, back),
+      rise: lerp(-2.4, 4.2, back) + i * 0.22,
+      radius: lerp(13.5, 21.5, back) + i * 0.9,
       angle: start + step * (i + 1),
       fit: 1,
     });
   });
-  // Roof: the whole thing at last. Back off far enough that the tower reads
-  // base to hook — the massing, the crane and the frame still on the line.
+  // Roof: the payoff is drama, not an elevation. Low, looking up the last
+  // columns at the slab still on the hook, the tower running out of frame.
   frames.push({
-    lookY: site.totalHeight * 0.62,
-    rise: 7,
-    radius: 52,
+    lookY: site.totalHeight * 0.98,
+    rise: -6.2,
+    radius: 21,
     angle: start + sweep + 0.15,
     fit: 1,
   });
