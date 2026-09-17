@@ -37,12 +37,12 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
         style={{ pointerEvents: active ? "auto" : "none" }}
       >
         <p className="flex items-baseline gap-3">
-          <span className="font-display text-[84px] font-extrabold leading-none text-sodium">
+          <span className="select-none font-display text-[84px] font-extrabold leading-none text-sodium">
             {number}
           </span>
           <span className="text-[14px] text-chalk-dim">Floor</span>
         </p>
-        <h2 className="mt-4 font-display text-[40px] font-bold uppercase leading-none tracking-wide text-chalk">
+        <h2 className="select-none mt-4 font-display text-[40px] font-bold uppercase leading-none tracking-wide text-chalk">
           {project.title}
         </h2>
         <p className="mt-4 text-[15px] leading-relaxed text-chalk-dim">
@@ -52,26 +52,30 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
           {project.stack.join(", ")}
           {project.finished ? "" : " (still in progress)"}
         </p>
-        <div className="mt-6 flex gap-6 text-[14px]">
-          {project.live && (
-            <button
-              type="button"
-              onClick={() => onWalkIn?.(project)}
-              className="text-chalk underline decoration-sodium decoration-1 underline-offset-[6px] transition-colors hover:text-sodium"
-              tabIndex={active ? 0 : -1}
-            >
-              Walk in
-            </button>
+        <div className="mt-6 flex flex-wrap gap-6 text-[14px]">
+          {project.live ? (
+            <>
+              <a
+                href={project.live}
+                target="_blank"
+                rel="noreferrer"
+                className="text-chalk underline decoration-sodium decoration-1 underline-offset-[6px] transition-colors hover:text-sodium"
+                tabIndex={active ? 0 : -1}
+              >
+                Visit the site
+              </a>
+              <button
+                type="button"
+                onClick={() => onWalkIn?.(project)}
+                className="text-chalk underline decoration-steel-dim decoration-1 underline-offset-[6px] transition-colors hover:text-sodium hover:decoration-sodium"
+                tabIndex={active ? 0 : -1}
+              >
+                Walk in
+              </button>
+            </>
+          ) : (
+            <span className="text-steel">Fit-out in progress. Opens soon.</span>
           )}
-          <a
-            href={project.repo}
-            target="_blank"
-            rel="noreferrer"
-            className="text-chalk underline decoration-steel-dim decoration-1 underline-offset-[6px] transition-colors hover:text-sodium hover:decoration-sodium"
-            tabIndex={active ? 0 : -1}
-          >
-            Source on GitHub
-          </a>
         </div>
       </motion.div>
     </section>

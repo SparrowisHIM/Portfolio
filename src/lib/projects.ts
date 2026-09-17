@@ -4,7 +4,7 @@ export type Project = {
   description: string;
   stack: string[];
   year: string;
-  repo: string;
+  /** The site itself. Floors without one are still being fitted out. */
   live?: string;
   /** Whether the floor reads as finished (glazed) or still raw structure. */
   finished: boolean;
@@ -22,7 +22,6 @@ export const projects: Project[] = [
       "A trust-first marketplace for graded collectibles. Inspect slabs up close, read market context, and route exceptional cards into specialist review.",
     stack: ["Next.js", "TypeScript", "Tailwind CSS"],
     year: "2026",
-    repo: "https://github.com/SparrowisHIM/Vault-market",
     live: "https://vault-market-seven.vercel.app",
     finished: true,
   },
@@ -33,7 +32,6 @@ export const projects: Project[] = [
       "A spinning globe with live network arcs between cities. Built directly on three.js to keep the whole thing under one frame budget.",
     stack: ["React", "three.js", "Vite"],
     year: "2026",
-    repo: "https://github.com/SparrowisHIM/Kinetic-Network-Globe",
     finished: true,
   },
   {
@@ -43,7 +41,6 @@ export const projects: Project[] = [
       "A wallet interface for holding and moving between currencies. Balances, conversions and transfers as a calm, tactile flow.",
     stack: ["React", "TypeScript", "Framer Motion"],
     year: "2026",
-    repo: "https://github.com/SparrowisHIM/Multi-currency-Wallet",
     finished: true,
   },
   {
@@ -53,7 +50,6 @@ export const projects: Project[] = [
       "A betslip that prints itself. Line-by-line receipt motion with thermal-printer timing, recreated from frame captures of the real thing.",
     stack: ["React", "Framer Motion", "Vite"],
     year: "2026",
-    repo: "https://github.com/SparrowisHIM/betslip-printer",
     finished: false,
   },
   {
@@ -63,7 +59,6 @@ export const projects: Project[] = [
       "An animated stack of character cards. Drag, flick and reshuffle with spring physics tuned so every card feels like it has weight.",
     stack: ["React", "Framer Motion", "Tailwind CSS"],
     year: "2026",
-    repo: "https://github.com/SparrowisHIM/cards-animation",
     finished: false,
   },
 ];
