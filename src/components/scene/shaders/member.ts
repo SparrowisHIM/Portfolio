@@ -161,7 +161,7 @@ void main() {
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
   // Hierarchy by weight: columns carry the resting light and run warm,
   // beams sit back, hairlines barely register until something lights them.
-  float w = mix(0.3, 1.0, vWeight * vWeight);
+  float w = mix(0.16, 1.0, vWeight * vWeight);
   // Heat: 1 on the floor being worked, falling away sharply below it. A
   // gentle falloff left half the building in a muddy in-between; a floor
   // should read as clearly warm or clearly cold.
@@ -175,7 +175,7 @@ void main() {
   float core = pow(max(dot(n, v), 0.0), 6.0);
   col += uBase * core * 0.5 * w;
   float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
-  col *= mix(vec3(0.90, 0.97, 1.10), vec3(1.10, 0.98, 0.90), drift);
+  col *= mix(vec3(0.94, 0.98, 1.06), vec3(1.06, 0.99, 0.94), drift);
 
   vec3 accent = mix(hue(vHue), site, 0.7);
   // Connection flash: bright for a moment after locking, then dark again.
@@ -209,7 +209,7 @@ void main() {
   }
 
   // Finished floors go quiet and blue; the level being built holds the lamp.
-  col *= mix(vec3(1.0), site * 1.2, 0.5) * (1.06 + 0.46 * heat);
+  col *= mix(vec3(1.0), site * 1.25, 0.72) * (1.06 + 0.46 * heat);
 
   gl_FragColor = vec4(col, vBuilt);
 }

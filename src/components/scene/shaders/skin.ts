@@ -34,7 +34,7 @@ void main() {
   float built = smoothstep(0.86, 1.0, uProgress[fi]);
   // Skin grows as construction moves on above: active floor bare, three
   // floors down finished.
-  float grow = smoothstep(0.0, 2.6, uActive - aFloor - 0.35);
+  float grow = smoothstep(0.0, 1.3, uActive - aFloor - 0.15);
   vSkin = built * grow * aMaxSkin;
   vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
   // The glass rides the same field as the skeleton.
@@ -92,7 +92,7 @@ void main() {
 
   // Smoked glass, near black, with a faint warm breath along the floor
   // line on finished floors only. Cooler and a little denser at the rim.
-  vec3 glass = mix(vec3(0.014, 0.018, 0.030), vec3(0.10, 0.13, 0.19), fresnel);
+  vec3 glass = mix(vec3(0.020, 0.026, 0.040), vec3(0.16, 0.20, 0.28), fresnel);
   float finished = smoothstep(0.5, 1.0, vMax);
   float warm = vPlate > 0.5 ? 0.12 : 0.5 * pow(1.0 - vUv.y, 2.0);
   vec3 col = glass + accent * warm * finished * (0.03 + 0.25 * uGlow);
