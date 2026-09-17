@@ -217,7 +217,10 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   const shiftSign = rnd.chance(0.5) ? 1 : -1;
   // A move only reads as a decision if it is big against the footprint. The
   // old slide was about a twelfth of the width, which looks like a mistake.
-  const shiftAmount = rnd.range(2.2, 3.0) * shiftSign;
+  // But it cannot be so big that the upper mass leaves the grid underneath
+  // it: the columns would stop and restart somewhere else, and the building
+  // reads as floating trays instead of one structure.
+  const shiftAmount = rnd.range(1.4, 1.9) * shiftSign;
   const drift = rnd.range(-0.3, 0.3);
   const shift: [number, number] = [lateral[0] * shiftAmount + normal[0] * drift, lateral[1] * shiftAmount + normal[1] * drift];
   const lateralBase = viewHorizontal ? baseWidth : baseDepth;
@@ -232,7 +235,8 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   // The void runs through two storeys so it reads as a slot cut through the
   // building rather than a gap in one line.
   const voidFloor = Math.max(1, cantileverFloor - 1);
-  const twist = rnd.range(0.09, 0.14) * (rnd.chance(0.5) ? 1 : -1);
+  // Compounding, so a gentle angle per plate still spirals by the top.
+  const twist = rnd.range(0.05, 0.08) * (rnd.chance(0.5) ? 1 : -1);
 
   // One slot, same place on both storeys, so it lines up into a hole.
   const voidAlong = rnd.range(-0.22, 0.22);
