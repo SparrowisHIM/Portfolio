@@ -30,7 +30,7 @@ function create() {
     steelDark: new THREE.MeshStandardMaterial({ color: palette.steelDark, roughness: 0.4, metalness: 0.75 }),
     galvanised: new THREE.MeshStandardMaterial({ color: "#4b5566", roughness: 0.35, metalness: 0.85 }),
     /** Crane structure: dark drawn lines with a trace of warmth, so the building stays the brightest thing. */
-    crane: new THREE.MeshStandardMaterial({ color: "#3b3323", emissive: "#f5b043", emissiveIntensity: 0.07, roughness: 0.5, metalness: 0.4 }),
+    crane: new THREE.MeshStandardMaterial({ color: "#2c2a24", emissive: "#c9a46e", emissiveIntensity: 0.085, roughness: 0.55, metalness: 0.35 }),
     /** Hoist rope and slings: a taut bright hairline, the one thing holding the load up. */
     cable: new THREE.MeshStandardMaterial({ color: "#6b7689", emissive: "#aebbd2", emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.8 }),
   };

@@ -58,7 +58,7 @@ export function Crane({ site, section, animate }: CraneProps) {
   const wasLoaded = useRef(false);
   /** The frame on the hook glows with the lamp: it is the subject, not scenery. */
   const loadMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: "#6b5730", emissive: site.lamp.color, emissiveIntensity: 0.42, roughness: 0.45, metalness: 0.4 }),
+    () => new THREE.MeshStandardMaterial({ color: "#6b5730", emissive: site.lamp.color, emissiveIntensity: 0.3, roughness: 0.45, metalness: 0.4 }),
     [site.lamp.color],
   );
 
