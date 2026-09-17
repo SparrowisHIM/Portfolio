@@ -53,7 +53,7 @@ export function emitBurst(x: number, y: number, z: number, hue: Hue = "amber", c
 
 /** Scene-wide dials. `glow` is how much the structure lights itself at rest, 0 to 1. */
 export const scene = {
-  glow: 0.26,
+  glow: 0.34,
   /** The lamp colour of this site: what every working event is lit with. */
   warm: [1.0, 0.7, 0.28] as RGB,
 };

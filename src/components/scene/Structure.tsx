@@ -22,8 +22,8 @@ type StructureProps = {
   onSelectFloor?: (index: number) => void;
 };
 
-const BASE = new THREE.Color("#5c6a86");
-const NODE_BASE = new THREE.Color("#7f8ca8");
+const BASE = new THREE.Color("#93a3c2");
+const NODE_BASE = new THREE.Color("#b0bcd2");
 /** Seconds of quiet before the building sends a pulse of its own. */
 const IDLE_PULSE = 7.5;
 
