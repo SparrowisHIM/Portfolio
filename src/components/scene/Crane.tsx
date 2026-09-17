@@ -14,8 +14,8 @@ import { materials } from "./materials";
 
 type CraneProps = {
   site: Site;
-  /** Section value from scroll: 0 ground, 1..N floors, N+1 roof. */
-  section: RefObject<number>;
+  /** Construction time: 0 ground, 1..N floors, N+1 roof. Stops at topping out. */
+  build: RefObject<number>;
   animate: boolean;
 };
 
@@ -44,7 +44,7 @@ function aim(mesh: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3, size: number,
  * wireframe module that sways, descends, overshoots and snaps, and sends a
  * pulse through the structure when it locks.
  */
-export function Crane({ site, section, animate }: CraneProps) {
+export function Crane({ site, build, animate }: CraneProps) {
   const { crane } = site;
   const m = materials();
   const slew = useRef<THREE.Group>(null);
@@ -133,7 +133,7 @@ export function Crane({ site, section, animate }: CraneProps) {
 
   useFrame(({ clock }, delta) => {
     const dt = Math.min(delta, 1 / 30);
-    let pose = cranePose(site, section.current ?? 0);
+    let pose = cranePose(site, build.current ?? 0);
     const playing = game.active && !!game.moving;
     if (playing && game.moving) {
       // On the night shift the hook goes wherever the game swings the slab.

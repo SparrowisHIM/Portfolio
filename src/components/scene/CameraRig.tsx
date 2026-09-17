@@ -29,6 +29,8 @@ type CameraRigProps = {
   site: Site;
   /** Smoothed section value: 0 ground, 1..N floors, N+1 roof. */
   section: RefObject<number>;
+  /** Construction time, which stops once the site tops out. */
+  build: RefObject<number>;
   sectionCount: number;
   /** When false the camera snaps to its target instead of easing. */
   animate: boolean;
@@ -106,7 +108,7 @@ export function buildKeyframes(site: Site): Keyframe[] {
  * round the open face, comes in on the floor being built and pulls back as
  * that floor completes. Drag adds a little orbit; the pointer adds parallax.
  */
-export function CameraRig({ site, section, sectionCount, animate, started, shiftX = 0, shiftY = 0 }: CameraRigProps) {
+export function CameraRig({ site, section, build, sectionCount, animate, started, shiftX = 0, shiftY = 0 }: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const domElement = useThree((s) => s.gl.domElement);
   const frames = useMemo(() => buildKeyframes(site), [site]);
@@ -169,10 +171,11 @@ export function CameraRig({ site, section, sectionCount, animate, started, shift
       fit,
     };
 
-    // Come in while a floor is being framed, pull back as it completes.
+    // Come in while a floor is being framed, pull back as it completes. On a
+    // topped-out site every floor reads as complete, so this is the long shot.
     const active = Math.round(f);
     if (active >= 1 && active < sectionCount - 1) {
-      const p = floorProgress(active, f);
+      const p = floorProgress(active, build.current ?? f);
       const framing = smoothstep(0.2, 0.62, p) * (1 - smoothstep(0.66, 0.95, p));
       const done = smoothstep(0.66, 0.98, p);
       target.radius *= 1 - 0.12 * framing + 0.16 * done;

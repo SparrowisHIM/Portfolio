@@ -38,10 +38,13 @@ export function SiteExperience() {
   const wide = useMediaQuery("(min-width: 768px)");
 
   const [playing, setPlaying] = useState(false);
-  // A rebuild during a shift ends it: the site is torn down.
+  // A rebuild during a shift ends it: the site is torn down. Back to the
+  // ground with it, too — a finished building stays up once it has topped
+  // out, so this is the only way to watch the next one go up.
   const rebuild = useCallback(() => {
     endGame();
     setPlaying(false);
+    window.scrollTo({ top: 0, behavior: "auto" });
     setSeed(randomSeed());
   }, []);
 

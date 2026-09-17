@@ -7,6 +7,7 @@ import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocess
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { buildStructure } from "@/lib/structure";
+import { toppedOutAt } from "@/lib/construction";
 import { palette } from "./materials";
 import { Ground } from "./Ground";
 import { Atmosphere } from "./Atmosphere";
@@ -66,12 +67,53 @@ function Ready({ onReady }: { onReady?: () => void }) {
  * Scroll is never applied raw. The section value everything reads is damped
  * toward the real one, so a fast scroll still builds in order and nothing
  * jumps. Runs before every other frame callback.
+ *
+ * It keeps two clocks. `section` follows the scroll both ways and says where
+ * the camera stands. `build` is construction time and only ever runs forward:
+ * the moment the last level is complete the site is topped out, and from then
+ * on `build` walks out to the end of the timeline and stays there. Scrolling
+ * back down after that moves the camera over a finished building instead of
+ * dismantling it. Only a rebuild starts the clock again.
+ *
+ * `below` is why a rebuild works. It drops the latch while the page is still
+ * scrolled to the top, so for a moment the new site would read as finished
+ * before the scroll has come back down. The latch stays open until the build
+ * has genuinely been under way again.
  */
-function Smoother({ progress, sectionCount, section, animate }: { progress: RefObject<number>; sectionCount: number; section: RefObject<number>; animate: boolean }) {
+function Smoother({
+  site,
+  progress,
+  sectionCount,
+  section,
+  build,
+  topped,
+  below,
+  animate,
+}: {
+  site: Site;
+  progress: RefObject<number>;
+  sectionCount: number;
+  section: RefObject<number>;
+  build: RefObject<number>;
+  topped: RefObject<boolean>;
+  below: RefObject<boolean>;
+  animate: boolean;
+}) {
+  const end = sectionCount - 1;
+  const toppedAt = useMemo(() => toppedOutAt(site), [site]);
   useFrame((_, delta) => {
-    const target = (progress.current ?? 0) * (sectionCount - 1);
+    const target = (progress.current ?? 0) * end;
     const current = section.current ?? target;
-    section.current = animate ? THREE.MathUtils.damp(current, target, 5.5, delta) : target;
+    const next = animate ? THREE.MathUtils.damp(current, target, 5.5, delta) : target;
+    section.current = next;
+    if (topped.current) {
+      // Finished. Run the last of the glazing in and hold there.
+      build.current = animate ? THREE.MathUtils.damp(build.current ?? end, end, 2.2, delta) : end;
+    } else {
+      build.current = next;
+      if (next < toppedAt) below.current = true;
+      else if (below.current) topped.current = true;
+    }
   }, -10);
   return null;
 }
@@ -93,7 +135,17 @@ export function SiteScene({
   // thing to go on a machine that cannot keep up.
   const [effects, setEffects] = useState(true);
   const section = useRef(0);
+  /** Construction time. Stops when the site tops out — see Smoother. */
+  const build = useRef(0);
+  const topped = useRef(false);
+  const below = useRef(false);
   const skeleton = useMemo(() => buildStructure(site), [site]);
+
+  // A rebuild is a different site, and the latch belongs to the old one.
+  useEffect(() => {
+    topped.current = false;
+    below.current = false;
+  }, [site]);
 
   return (
     <Canvas
@@ -110,18 +162,18 @@ export function SiteScene({
       <fog attach="fog" args={[palette.void, 26, 95]} />
       <hemisphereLight args={["#4a6390", "#0a0f1a", 1.2]} />
       <directionalLight position={[-20, 40, -10]} intensity={0.6} color="#9db8e6" />
-      <Smoother progress={progress} sectionCount={sectionCount} section={section} animate={animate} />
+      <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} />
       <Atmosphere animate={animate} />
       <Ground />
-      <WorkLights site={site} section={section} animate={animate} />
-      <Structure site={site} skeleton={skeleton} section={section} animate={animate} force={rich && animate} onSelectFloor={onSelectFloor} />
-      <Scaffold site={site} section={section} animate={animate} />
-      <Crane site={site} section={section} animate={animate} />
+      <WorkLights site={site} build={build} animate={animate} />
+      <Structure site={site} skeleton={skeleton} section={section} build={build} animate={animate} force={rich && animate} onSelectFloor={onSelectFloor} />
+      <Scaffold site={site} build={build} animate={animate} />
+      <Crane site={site} build={build} animate={animate} />
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <Bursts animate={animate} count={rich ? 480 : 200} />
       <Dust seed={site.seed} color={site.lamp.color} height={site.totalHeight} animate={animate} count={rich ? 260 : 100} />
-      <CameraRig site={site} section={section} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
+      <CameraRig site={site} section={section} build={build} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
       <PerformanceMonitor bounds={() => [40, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
         <AdaptiveDpr pixelated />
       </PerformanceMonitor>

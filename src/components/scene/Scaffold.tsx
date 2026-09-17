@@ -17,7 +17,8 @@ const WORKING_BAND = 5.5;
 
 type ScaffoldProps = {
   site: Site;
-  section: RefObject<number>;
+  /** Construction time, which stops once the site tops out. */
+  build: RefObject<number>;
   animate: boolean;
 };
 
@@ -63,7 +64,7 @@ function buildRun(run: ScaffoldRun): RunParts {
 }
 
 /** Scaffolding climbs with the building: everything above the built height is clipped. */
-export function Scaffold({ site, section }: ScaffoldProps) {
+export function Scaffold({ site, build }: ScaffoldProps) {
   const plane = useRef(new THREE.Plane(new THREE.Vector3(0, -1, 0), 4));
   const floorPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
   const mats = useMemo(() => {
@@ -75,7 +76,7 @@ export function Scaffold({ site, section }: ScaffoldProps) {
     };
   }, []);
   useFrame((_, delta) => {
-    const top = builtHeight(site, section.current ?? 0) - 0.9;
+    const top = builtHeight(site, build.current ?? 0) - 0.9;
     plane.current.constant = THREE.MathUtils.damp(plane.current.constant, top, 5, delta);
     // Keeps points above the floor of the working lift.
     floorPlane.current.constant = -Math.max(0, plane.current.constant - WORKING_BAND);

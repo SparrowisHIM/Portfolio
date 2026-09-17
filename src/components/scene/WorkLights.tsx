@@ -84,7 +84,7 @@ void main() {
 }
 `;
 
-export function WorkLights({ site, section, animate }: { site: Site; section: RefObject<number>; animate: boolean }) {
+export function WorkLights({ site, build, animate }: { site: Site; build: RefObject<number>; animate: boolean }) {
   const m = materials();
   const cones = useRef<THREE.Mesh[]>([]);
   const heads = useRef<THREE.Mesh[]>([]);
@@ -175,8 +175,9 @@ export function WorkLights({ site, section, animate }: { site: Site; section: Re
 
   useFrame(({ clock }, delta) => {
     const now = clock.getElapsedTime();
-    const s = section.current ?? 0;
+    const s = build.current ?? 0;
     // The lamps look at whatever is being built, easing up with the stack.
+    // Once the site is topped out that is the top, and they hold there.
     const wanted = builtHeight(site, s) + 1.2;
     level.current = animate ? THREE.MathUtils.damp(level.current, wanted, 3.5, Math.min(delta, 1 / 30)) : wanted;
     aim.current.set(0, level.current, 0);

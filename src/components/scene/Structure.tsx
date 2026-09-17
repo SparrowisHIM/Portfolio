@@ -16,6 +16,8 @@ type StructureProps = {
   skeleton: Skeleton;
   /** Smoothed section value: 0 ground, 1..N floors, N+1 roof. */
   section: RefObject<number>;
+  /** Construction time: the same value, until the site tops out and it stops. */
+  build: RefObject<number>;
   animate: boolean;
   /** Cursor force on the lines; off on weak devices. */
   force: boolean;
@@ -76,7 +78,7 @@ function sharedUniforms() {
  * shaders; the CPU only tracks the moment each member locks so it can flash
  * in real time and throw a few particles.
  */
-export function Structure({ site, skeleton, section, animate, force, onSelectFloor }: StructureProps) {
+export function Structure({ site, skeleton, section, build, animate, force, onSelectFloor }: StructureProps) {
   const members = useRef<THREE.InstancedMesh>(null);
   const nodes = useRef<THREE.InstancedMesh>(null);
   const panels = useRef<THREE.InstancedMesh>(null);
@@ -194,6 +196,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     const now = clock.getElapsedTime();
     events.time = now;
     const s = section.current ?? 0;
+    const b = build.current ?? s;
     const dt = Math.min(delta, 1 / 30);
 
     // The field. Scroll velocity becomes a shear the stack lags behind and
@@ -225,12 +228,13 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     shared.uTear.value = fd.tear;
     shared.uHeight.value = site.totalHeight;
     shared.uLife.value = animate ? 1 : 0;
-    // Where the warm band sits: the floor being built, sliding up with scroll.
+    // Where the warm band sits: the floor in shot. It keeps sliding with the
+    // scroll after the building itself has stopped going up.
     shared.uActiveFloor.value = s;
     const progress = uniforms.members.uProgress.value;
     let top = -1;
     for (let i = 0; i <= floorCount && i < MAX_FLOORS; i++) {
-      progress[i] = floorProgress(i, s);
+      progress[i] = floorProgress(i, b);
       // A floor is complete once its diagonals are in: one pulse round the outline.
       const done = progress[i] >= 0.92;
       if (done && completed.current[i] < 0) {
@@ -258,7 +262,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     uniforms.members.uCursorVel.value.set(cursor.vx, cursor.vy, cursor.vz);
     uniforms.members.uCursorOn.value = cursor.active;
     uniforms.members.uGlow.value = scene.glow;
-    uniforms.panels.uActive.value = s;
+    uniforms.panels.uActive.value = b;
     uniforms.panels.uXray.value = cursor.onBuilding * cursor.active;
     const pulses = uniforms.members.uPulses.value;
     const hues = uniforms.members.uPulseHue.value;

@@ -52,6 +52,14 @@ export function floorProgress(index: number, f: number) {
   return clamp01((f - start) / (end - start));
 }
 
+/**
+ * The section value at which the last level is complete and the site is
+ * topped out. Past it there is nothing left to build.
+ */
+export function toppedOutAt(site: Site) {
+  return window(site.floors.length).end;
+}
+
 /** Which level the crane is working on, and how far along it is. */
 export function craneJob(site: Site, f: number) {
   const count = site.floors.length;
