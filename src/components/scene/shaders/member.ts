@@ -17,6 +17,11 @@ uniform vec3 uCursor;
 uniform vec3 uCursorVel;
 uniform float uCursorOn;
 uniform float uForce;
+uniform vec3 uShear;
+uniform vec2 uWind;
+uniform float uTear;
+uniform float uHeight;
+uniform float uSection;
 
 attribute float aFloor;
 attribute float aStart;
@@ -67,14 +72,35 @@ void main() {
   // Fade in over the first part of the flight.
   vBuilt = smoothstep(0.0, 0.35, p);
 
-  // The cursor is a weak magnetic field: nearby geometry leans toward where
-  // it just was and lags behind its motion.
+  // The whole structure is one live field. Scroll shear: the stack lags
+  // the scroll and whips back, more the higher up it is, a tower flexing
+  // at its root. Wind leans on the top. A fast scroll tears the skeleton
+  // into a swarm that settles again when the page stops.
+  float h = clamp(world.y / uHeight, 0.0, 1.0);
+  float flex = h * h;
+  world.xyz += uShear * flex;
+  float sway = 0.5 + 0.5 * sin(uTime * 0.6 + aSeed * 6.2831);
+  world.xz += uWind * flex * (0.6 + 0.4 * sway);
+  if (uTear > 0.001) {
+    vec3 scatter = vec3(sin(aSeed * 91.7), 0.5 * cos(aSeed * 57.3), sin(aSeed * 33.1 + 1.0));
+    float loose = 0.4 + 1.2 * (1.0 - aWeight);
+    world.xyz += scatter * uTear * loose;
+    float tw = uTear * 0.5 * flex * (aSeed - 0.5);
+    float cs = cos(tw);
+    float sn = sin(tw);
+    world.xz = vec2(world.x * cs - world.z * sn, world.x * sn + world.z * cs);
+  }
+
+  // The cursor is a finger on silk: nearby lines are drawn toward it and
+  // lag its motion, and while it moves a ripple runs out through the lines.
   if (uForce > 0.5) {
     vec3 d = world.xyz - uCursor;
-    float r2 = dot(d, d);
-    float fall = exp(-r2 / 14.0) * uCursorOn;
-    vec3 dir = length(d) > 0.001 ? d / length(d) : vec3(0.0);
-    world.xyz += (dir * 0.08 - uCursorVel * 0.012) * fall * step(0.999, p);
+    float r = length(d);
+    float fall = exp(-r * r / 20.0) * uCursorOn;
+    vec3 dir = r > 0.001 ? d / r : vec3(0.0);
+    float moving = min(1.0, length(uCursorVel) * 0.4);
+    float ripple = sin(r * 1.8 - uTime * 6.0) * exp(-r / 7.0) * uCursorOn * moving * 0.06 * (0.3 + 0.7 * (1.0 - aWeight));
+    world.xyz += ((-dir * 0.22 - uCursorVel * 0.02) * fall + dir * ripple) * step(0.999, p);
   }
 
   vWorld = world.xyz;

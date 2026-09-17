@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { floorProgress } from "@/lib/construction";
+import { wind, windAt } from "@/lib/wind";
 import { MAX_FLOORS, type Packed, type Structure as Skeleton } from "@/lib/structure";
 import { MAX_PULSES, cursor, emitBurst, emitPulse, events, HUES, scene } from "@/lib/pulses";
 import { memberDefines, memberFragment, memberVertex } from "./shaders/member";
@@ -53,6 +54,12 @@ function sharedUniforms() {
     uPulses: { value: Array.from({ length: MAX_PULSES }, () => new THREE.Vector4(0, 0, 0, -1)) },
     uPulseHue: { value: Array.from({ length: MAX_PULSES }, () => new THREE.Vector3(1, 0.7, 0.3)) },
     uGlow: { value: scene.glow },
+    /** Whole-structure field: scroll shear, wind lean, tear amount, height scale, smoothed section. */
+    uShear: { value: new THREE.Vector3() },
+    uWind: { value: new THREE.Vector2() },
+    uTear: { value: 0 },
+    uHeight: { value: 1 },
+    uSection: { value: 0 },
   };
 }
 
@@ -67,6 +74,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
   const nodes = useRef<THREE.InstancedMesh>(null);
   const panels = useRef<THREE.InstancedMesh>(null);
   const completed = useRef(new Float32Array(MAX_FLOORS).fill(-1));
+  const field = useRef({ prev: -1, vel: 0, shear: new THREE.Vector3(), shearVel: new THREE.Vector3(), tear: 0, right: new THREE.Vector3() });
   const floorCount = site.floors.length;
 
   const box = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
@@ -152,10 +160,41 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     if (changed) lock.needsUpdate = true;
   };
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }, delta) => {
     const now = clock.getElapsedTime();
     events.time = now;
     const s = section.current ?? 0;
+    const dt = Math.min(delta, 1 / 30);
+
+    // The field. Scroll velocity becomes a shear the stack lags behind and
+    // springs back from; a hard scroll tears the skeleton loose; the wind
+    // leans on it. Everything else reads these through the shaders.
+    const fd = field.current;
+    if (fd.prev < 0) fd.prev = s;
+    const rawVel = (s - fd.prev) / Math.max(dt, 1e-3);
+    fd.prev = s;
+    fd.vel = THREE.MathUtils.damp(fd.vel, animate ? rawVel : 0, 8, dt);
+    fd.right.setFromMatrixColumn(camera.matrixWorld, 0);
+    const lag = THREE.MathUtils.clamp(-fd.vel * 0.45, -1.4, 1.4);
+    const tx = fd.right.x * lag;
+    const tz = fd.right.z * lag;
+    const ty = THREE.MathUtils.clamp(-fd.vel * 0.22, -0.8, 0.8);
+    const sv = fd.shearVel;
+    const sh = fd.shear;
+    sv.x += ((tx - sh.x) * 40 - sv.x * 5.5) * dt;
+    sv.y += ((ty - sh.y) * 40 - sv.y * 5.5) * dt;
+    sv.z += ((tz - sh.z) * 40 - sv.z * 5.5) * dt;
+    sh.addScaledVector(sv, dt);
+    const speed = Math.abs(fd.vel);
+    const tearTarget = animate ? THREE.MathUtils.smoothstep(speed, 1.6, 5) : 0;
+    fd.tear = THREE.MathUtils.damp(fd.tear, tearTarget, tearTarget > fd.tear ? 12 : 3, dt);
+    const shared = uniforms.members;
+    shared.uShear.value.copy(sh);
+    const gust = animate ? windAt(now) * 0.22 : 0;
+    shared.uWind.value.set(wind.dir[0] * gust, wind.dir[1] * gust);
+    shared.uTear.value = fd.tear;
+    shared.uHeight.value = site.totalHeight;
+    shared.uSection.value = s;
     const progress = uniforms.members.uProgress.value;
     for (let i = 0; i <= floorCount && i < MAX_FLOORS; i++) {
       progress[i] = floorProgress(i, s);

@@ -11,6 +11,9 @@ export const skinDefines = { MAX_FLOORS, MAX_PULSES };
 export const skinVertex = /* glsl */ `
 uniform float uProgress[MAX_FLOORS];
 uniform float uActive;
+uniform vec3 uShear;
+uniform vec2 uWind;
+uniform float uHeight;
 
 attribute float aFloor;
 attribute vec2 aPerimeter;
@@ -34,6 +37,11 @@ void main() {
   float grow = smoothstep(0.0, 2.6, uActive - aFloor - 0.35);
   vSkin = built * grow * aMaxSkin;
   vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
+  // The glass rides the same field as the skeleton.
+  float h = clamp(world.y / uHeight, 0.0, 1.0);
+  float flex = h * h;
+  world.xyz += uShear * flex;
+  world.xz += uWind * flex;
   vWorld = world.xyz;
   vNormalW = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
   vUv = uv;
@@ -54,6 +62,7 @@ uniform vec4 uPulses[MAX_PULSES];
 uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uAccent;
 uniform float uGlow;
+uniform float uTear;
 
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -118,6 +127,8 @@ void main() {
 
   // The skeleton showing through the hole: a faint glow where the skin is gone.
   col += uAccent * hole * 0.05;
+  // Torn open by a fast scroll: the glass goes first.
+  alpha *= 1.0 - uTear * 0.9;
 
   gl_FragColor = vec4(col, alpha);
 }
