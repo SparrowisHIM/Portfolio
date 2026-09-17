@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import type { Project } from "@/lib/projects";
 
 type FloorPanelProps = {
@@ -15,27 +16,42 @@ type FloorPanelProps = {
 /** One project per floor. The panel switches on like a work lamp. */
 export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProps) {
   const reduced = useReducedMotion();
+  const section = useRef<HTMLElement>(null);
+  // The copy is tied to where its own floor sits on screen, not to a
+  // rounded section index, so it is already dark by the time it would
+  // otherwise slide up through the wordmark.
+  const { scrollYProgress } = useScroll({
+    target: section,
+    offset: ["start end", "end start"],
+  });
+  const travel = useTransform(scrollYProgress, [0.24, 0.42, 0.58, 0.75], [0, 1, 1, 0]);
+  // Arriving on a floor switches the panel on like a work lamp.
   const flicker = reduced
-    ? { opacity: active ? 1 : 0 }
-    : { opacity: active ? [0, 0.7, 0.25, 1] : 0 };
+    ? { opacity: 1 }
+    : { opacity: active ? [0.35, 0.95, 0.5, 1] : 1 };
 
   return (
     <section
+      ref={section}
       id={project.slug}
       className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0 md:pt-24"
       aria-label={`Floor ${number}: ${project.title}`}
     >
+      {/* Pinned clear of the wordmark: the copy parks in its band and fades
+          out rather than sliding up through the header. */}
       <motion.div
-        className="max-w-[26rem]"
-        initial={false}
-        animate={flicker}
-        transition={
-          reduced
-            ? { duration: 0.2 }
-            : { duration: 0.55, times: [0, 0.2, 0.35, 1], ease: "linear" }
-        }
-        style={{ pointerEvents: active ? "auto" : "none" }}
+        className="sticky top-[34vh] max-w-[26rem] md:top-[22vh]"
+        style={{ opacity: travel, pointerEvents: active ? "auto" : "none" }}
       >
+        <motion.div
+          initial={false}
+          animate={flicker}
+          transition={
+            reduced
+              ? { duration: 0.2 }
+              : { duration: 0.55, times: [0, 0.2, 0.35, 1], ease: "linear" }
+          }
+        >
         <p className="flex items-baseline gap-3">
           <span className="select-none font-display text-[84px] font-extrabold leading-none text-sodium">
             {number}
@@ -76,7 +92,8 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
           ) : (
             <span className="text-steel">Fit-out in progress. Opens soon.</span>
           )}
-        </div>
+          </div>
+        </motion.div>
       </motion.div>
     </section>
   );
