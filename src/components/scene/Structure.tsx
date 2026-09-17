@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
@@ -128,21 +128,36 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     [uniforms],
   );
 
-  // Instance matrices come straight from the packed arrays. This has to
-  // run again for anything that can hand us a fresh mesh, not just a new
-  // skeleton: a new geometry or material means a new empty instanceMatrix.
-  useLayoutEffect(() => {
-    const set = (mesh: THREE.InstancedMesh | null, matrix: Float32Array) => {
-      if (!mesh) return;
-      (mesh.instanceMatrix.array as Float32Array).set(matrix);
+  /**
+   * Fill the instance matrices, and keep checking.
+   *
+   * Doing this from an effect was never safe: r3f rebuilds an instancedMesh
+   * whenever its `args` change, and the replacement arrives with an empty
+   * matrix that no effect is watching for. That is every blank building this
+   * session. Each mesh is stamped with the skeleton it was filled for and
+   * the stamp is checked every frame, so whatever hands us a new mesh, it is
+   * populated on its next frame.
+   */
+  const fill = useCallback(() => {
+    let filled = false;
+    const set = (mesh: THREE.InstancedMesh | null, packed: { matrix: Float32Array }) => {
+      if (!mesh || mesh.userData.filledFor === skeleton) return;
+      (mesh.instanceMatrix.array as Float32Array).set(packed.matrix);
       mesh.instanceMatrix.needsUpdate = true;
       mesh.computeBoundingSphere();
+      mesh.userData.filledFor = skeleton;
+      filled = true;
     };
-    set(members.current, skeleton.members.matrix);
-    set(nodes.current, skeleton.nodes.matrix);
-    set(panels.current, skeleton.panels.matrix);
+    set(members.current, skeleton.members);
+    set(nodes.current, skeleton.nodes);
+    set(panels.current, skeleton.panels);
+    return filled;
+  }, [skeleton]);
+
+  useLayoutEffect(() => {
+    fill();
     completed.current.fill(-1);
-  }, [skeleton, geometries, materials]);
+  }, [fill, geometries, materials]);
 
   useEffect(() => () => {
     geometries.m.dispose();
@@ -174,6 +189,8 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
   };
 
   useFrame(({ clock, camera }, delta) => {
+    // Cheap identity check; only does real work when a mesh is new.
+    if (fill()) completed.current.fill(-1);
     const now = clock.getElapsedTime();
     events.time = now;
     const s = section.current ?? 0;

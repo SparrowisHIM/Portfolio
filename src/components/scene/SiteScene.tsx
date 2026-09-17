@@ -37,11 +37,27 @@ type SiteSceneProps = {
   onReady?: () => void;
 };
 
-/** Reports the first committed frame. */
+/**
+ * Reports the first committed frame — or gives up waiting for one.
+ *
+ * A background tab does not run animation frames, so a loader gated purely
+ * on rAF can sit there for as long as the tab is hidden and the visitor
+ * comes back to a black page. The timer is the floor under that.
+ */
 function Ready({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
-    const id = requestAnimationFrame(() => onReady?.());
-    return () => cancelAnimationFrame(id);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      onReady?.();
+    };
+    const frame = requestAnimationFrame(finish);
+    const timer = window.setTimeout(finish, 2500);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [onReady]);
   return null;
 }
