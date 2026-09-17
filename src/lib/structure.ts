@@ -233,6 +233,41 @@ export function buildStructure(site: Site): Structure {
       nodes.push({ position: world(a[0], a[1], y0), floor: index, start: frameStart + frameDur, seed: rnd.next(), hue: pickHue(), size: 0.16 });
     }
 
+    // Corner columns and wall mullions: the lines that make it read as walls.
+    if (index > 0) {
+      for (const [cx, cz] of corners) {
+        const [bx, bz] = place(floor, cx, cz);
+        const start = rnd.range(0.02, 0.12);
+        push({ instance: strut([bx, y0 - wall, bz], [bx, y0, bz], COLUMN * 0.8), floor: index, start, dur: 0.2, origin: flyFrom([0, -1.4, 0], 0.5), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.4) });
+        nodes.push({ position: [bx, y0 - wall, bz], floor: index, start: start + 0.2, seed: rnd.next(), hue: HUE.white, size: 0.14 });
+      }
+    }
+    for (let f = 0; f < 4; f++) {
+      const a = corners[f];
+      const b = corners[(f + 1) % 4];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const bays = Math.max(2, Math.round(len / 1.5));
+      for (let k = 1; k < bays; k++) {
+        const s = k / bays;
+        const p = world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y0);
+        const q = world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y0 + wall);
+        push({ instance: strut(p, q, DIAG * 0.7), floor: index, start: 0.78 + rnd.range(0, 0.1), dur: 0.1, origin: flyFrom([0, 0.5, 0], 0.3), seed: rnd.next(), hue: HUE.white, loud: false });
+      }
+    }
+    // The core as a glass box, lit warm, on every floor.
+    {
+      const { core } = site;
+      const coreFaces: [number, number, number, number, number][] = [
+        [core.x + core.width / 2, core.z, Math.PI / 2, core.depth, 0],
+        [core.x - core.width / 2, core.z, -Math.PI / 2, core.depth, 0],
+        [core.x, core.z + core.depth / 2, 0, core.width, 0],
+        [core.x, core.z - core.depth / 2, Math.PI, core.width, 0],
+      ];
+      for (const [px, pz, ry, w] of coreFaces) {
+        panels.push({ position: [px, y0 + wall / 2, pz], rotationY: ry, width: w, height: wall, floor: index, p0: -1, p1: -1, maxSkin: 1, plate: false });
+      }
+    }
+
     // Beams across the plate between column lines, and secondaries.
     const zLines = [-e.zn, e.zp];
     const xLines = [-e.xn, 0, e.xp];
@@ -295,6 +330,21 @@ export function buildStructure(site: Site): Structure {
       }
       // One warning node per floor, on the spine.
       nodes.push({ position: [core.x, y0 + wall * 0.5, core.z + core.depth / 2], floor: index, start: 0.9, seed: rnd.next(), hue: HUE.red, size: 0.12 });
+    }
+  }
+
+  // Dotted setting-out lines: guides from the ground past the roof at each
+  // corner of the footprint, there from the start like survey marks.
+  const base = site.floors[0];
+  const eb = extents(base);
+  for (const [cx, cz] of [
+    [-eb.xn - 0.8, -eb.zn - 0.8],
+    [eb.xp + 0.8, -eb.zn - 0.8],
+    [eb.xp + 0.8, eb.zp + 0.8],
+    [-eb.xn - 0.8, eb.zp + 0.8],
+  ]) {
+    for (let y = 0; y < site.totalHeight + 3; y += 0.8) {
+      nodes.push({ position: [cx, y, cz], floor: 0, start: 0, seed: rnd.next(), hue: HUE.white, size: 0.05 });
     }
   }
 
