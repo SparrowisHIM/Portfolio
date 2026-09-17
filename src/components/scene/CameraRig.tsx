@@ -82,9 +82,9 @@ export function buildKeyframes(site: Site): Keyframe[] {
       // Close beats stand under the work; stand-back beats drop to the
       // middle of the stack and look level at it, so the whole tower is in
       // frame without retreating past the range where 4cm steel reads.
-      lookY: lerp(floor.y + 1.1, floor.y * 0.5, back),
+      lookY: lerp(floor.y + 1.1, floor.y * 0.62, back),
       rise: lerp(-2.4, 1.4, back) + i * 0.2,
-      radius: lerp(13.5, 15.5 + floor.y * 0.5, back) + i * 0.4,
+      radius: lerp(13.5, 16.5 + floor.y * 0.5, back) + i * 0.4,
       angle: start + step * (i + 1),
       fit: 1,
     });

@@ -209,7 +209,7 @@ void main() {
   }
 
   // Finished floors go quiet and blue; the level being built holds the lamp.
-  col *= mix(vec3(1.0), site * 1.2, 0.42) * (0.88 + 0.5 * heat);
+  col *= mix(vec3(1.0), site * 1.2, 0.34) * (1.06 + 0.46 * heat);
 
   gl_FragColor = vec4(col, vBuilt);
 }
