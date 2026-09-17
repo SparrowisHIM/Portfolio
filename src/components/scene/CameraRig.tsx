@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { FLOOR_HEIGHT, HERO } from "@/lib/site-generator";
+import { floorProgress, smoothstep } from "@/lib/construction";
 import { game, stackTop } from "@/lib/stack-game";
 
 type Keyframe = {
@@ -20,7 +21,9 @@ type Keyframe = {
 
 type CameraRigProps = {
   site: Site;
-  progress: RefObject<number>;
+  /** Smoothed section value: 0 ground, 1..N floors, N+1 roof. */
+  section: RefObject<number>;
+  sectionCount: number;
   /** When false the camera snaps to its target instead of easing. */
   animate: boolean;
   /** The intro fly-in waits until the loader is gone. */
@@ -46,40 +49,37 @@ function lerp(a: number, b: number, t: number) {
 
 export function buildKeyframes(site: Site): Keyframe[] {
   // Swing the orbit across the open face, never behind the scaffolding.
-  const sweep = 0.7;
+  const sweep = 0.75;
   const start = site.viewAngle - sweep / 2;
   const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
-    // Ground level: arriving at the gate. Eye height on the road outside the
-    // hoarding, the banner in the foreground, the tower and crane rising behind.
-    { lookY: 6.2, rise: -2.5, radius: HERO.radius, angle: site.viewAngle + HERO.angleOffset },
+    // Ground level: low and close, the first lines large in the frame.
+    { lookY: 3.4, rise: 0.4, radius: HERO.radius, angle: site.viewAngle + HERO.angleOffset },
   ];
   site.floors.forEach((floor, i) => {
     frames.push({
-      lookY: floor.y + FLOOR_HEIGHT * 0.55,
-      rise: 1.8,
-      radius: 26.5,
+      lookY: floor.y + FLOOR_HEIGHT * 0.5,
+      rise: 2.4,
+      radius: 26,
       angle: start + step * (i + 1),
     });
   });
-  // Roof: above the unfinished top level, looking down at the slab on the hook.
+  // Roof: above the unfinished top level, looking down at the frame on the hook.
   frames.push({
-    lookY: site.topLevel.y + 1.5,
-    rise: 7,
-    radius: 34,
+    lookY: site.topLevel.y + 1.2,
+    rise: 6,
+    radius: 30,
     angle: start + sweep + 0.2,
   });
   return frames;
 }
 
-export function CameraRig({
-  site,
-  progress,
-  animate,
-  started,
-  shiftX = 0,
-  shiftY = 0,
-}: CameraRigProps) {
+/**
+ * Scroll guides the camera: it starts low, rises with the build, drifts
+ * round the open face, comes in on the floor being built and pulls back as
+ * that floor completes. Drag adds a little orbit; the pointer adds parallax.
+ */
+export function CameraRig({ site, section, sectionCount, animate, started, shiftX = 0, shiftY = 0 }: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const domElement = useThree((s) => s.gl.domElement);
   const frames = useMemo(() => buildKeyframes(site), [site]);
@@ -89,7 +89,7 @@ export function CameraRig({
   const look = useRef(new THREE.Vector3());
   const drag = useRef({ active: false, lastX: 0, target: 0, value: 0 });
 
-  // Drag sideways to walk around the site. Vertical movement stays with scroll.
+  // Drag sideways to walk round the site a little. Vertical movement stays with scroll.
   useEffect(() => {
     const state = drag.current;
     const down = (e: PointerEvent) => {
@@ -101,7 +101,7 @@ export function CameraRig({
       if (!state.active) return;
       const dx = e.clientX - state.lastX;
       state.lastX = e.clientX;
-      state.target = THREE.MathUtils.clamp(state.target - dx * 0.004, -0.9, 0.9);
+      state.target = THREE.MathUtils.clamp(state.target - dx * 0.003, -0.45, 0.45);
     };
     const up = () => {
       state.active = false;
@@ -119,9 +119,8 @@ export function CameraRig({
   }, [domElement]);
 
   useFrame((state, delta) => {
-    const p = progress.current ?? 0;
-    const f = p * (frames.length - 1);
-    const i = Math.min(frames.length - 2, Math.floor(f));
+    const f = section.current ?? 0;
+    const i = Math.min(frames.length - 2, Math.max(0, Math.floor(f)));
     const t = f - i;
     const a = frames[i];
     const b = frames[i + 1];
@@ -134,6 +133,16 @@ export function CameraRig({
       radius: lerp(a.radius, b.radius, t) * fit,
       angle: lerp(a.angle, b.angle, t),
     };
+
+    // Come in while a floor is being framed, pull back as it completes.
+    const active = Math.round(f);
+    if (active >= 1 && active < sectionCount - 1) {
+      const p = floorProgress(active, f);
+      const framing = smoothstep(0.2, 0.62, p) * (1 - smoothstep(0.66, 0.95, p));
+      const done = smoothstep(0.66, 0.98, p);
+      target.radius *= 1 - 0.12 * framing + 0.16 * done;
+      target.rise += 0.6 * done;
+    }
 
     // Night shift: hold on the top of the stack and drift slowly round it.
     if (game.active) {
@@ -148,16 +157,16 @@ export function CameraRig({
     if (intro.current < 1) {
       if (started) intro.current = Math.min(1, intro.current + delta / INTRO_SECONDS);
       const e = easeOutExpo(intro.current);
-      target.radius = lerp(target.radius + 60, target.radius, e);
-      target.rise = lerp(target.rise + 6, target.rise, e);
-      target.angle = lerp(target.angle - 0.55, target.angle, e);
+      target.radius = lerp(target.radius + 40, target.radius, e);
+      target.rise = lerp(target.rise + 4, target.rise, e);
+      target.angle = lerp(target.angle - 0.5, target.angle, e);
     }
 
     // Gentle pointer parallax.
     pointer.current.x = THREE.MathUtils.damp(pointer.current.x, state.pointer.x, 3, delta);
     pointer.current.y = THREE.MathUtils.damp(pointer.current.y, state.pointer.y, 3, delta);
 
-    const smoothing = animate ? 4.5 : 1000;
+    const smoothing = animate ? 3.5 : 1000;
     const c = current.current ?? { ...target };
     c.lookY = THREE.MathUtils.damp(c.lookY, target.lookY, smoothing, delta);
     c.rise = THREE.MathUtils.damp(c.rise, target.rise, smoothing, delta);
@@ -167,12 +176,8 @@ export function CameraRig({
 
     const d = drag.current;
     d.value = THREE.MathUtils.damp(d.value, d.target, animate ? 6 : 1000, delta);
-    const angle = c.angle + pointer.current.x * 0.08 + d.value;
-    camera.position.set(
-      Math.sin(angle) * c.radius,
-      c.lookY + c.rise + pointer.current.y * 0.6,
-      Math.cos(angle) * c.radius,
-    );
+    const angle = c.angle + pointer.current.x * 0.06 + d.value;
+    camera.position.set(Math.sin(angle) * c.radius, c.lookY + c.rise + pointer.current.y * 0.5, Math.cos(angle) * c.radius);
     look.current.set(0, c.lookY, 0);
     camera.lookAt(look.current);
     // Slide along the camera's own axes; orientation stays the same.
