@@ -32,8 +32,8 @@
   --color-chalk-dim: var(--chalk-dim);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-display: var(--font-big-shoulders);
-  --font-sans: var(--font-archivo);
+  --font-display: "Big Shoulders Variable", "Big Shoulders", Impact, sans-serif;
+  --font-sans: "Archivo Variable", Archivo, system-ui, sans-serif;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -115,4 +115,62 @@ body {
 
 .level-bar {
   animation: level-bar 1.4s ease-in-out infinite;
+}
+
+/* Component yard: a faint setting-out grid behind each bay, and the sky. */
+.bay-grid {
+  background-image:
+    linear-gradient(to right, rgba(124, 135, 151, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(124, 135, 151, 0.09) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 78%);
+}
+
+.yard-backdrop {
+  background:
+    radial-gradient(60% 50% at 70% 0%, rgba(245, 176, 67, 0.08), transparent 70%),
+    radial-gradient(50% 40% at 10% 100%, rgba(74, 111, 158, 0.16), transparent 70%);
+}
+
+.bg-hazard {
+  background: repeating-linear-gradient(135deg, #f0c020 0 3px, #15171a 3px 6px);
+}
+
+/* Headline lines rise out of a clipped box. */
+@keyframes rise-in {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.rise-in {
+  animation: rise-in 1s var(--ease-out-expo) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.8s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
 }

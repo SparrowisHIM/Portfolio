@@ -1,18 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Big_Shoulders } from "next/font/google";
+import "@fontsource-variable/big-shoulders";
+import "@fontsource-variable/archivo";
 import "./globals.css";
-
-const bigShoulders = Big_Shoulders({
-  variable: "--font-big-shoulders",
-  subsets: ["latin"],
-  weight: ["500", "700", "800"],
-});
-
-const archivo = Archivo({
-  variable: "--font-archivo",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
 
 export const metadata: Metadata = {
   title: "Build site",
@@ -30,7 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bigShoulders.variable} ${archivo.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
