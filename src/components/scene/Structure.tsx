@@ -177,7 +177,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     fd.prev = s;
     fd.vel = THREE.MathUtils.damp(fd.vel, animate ? rawVel : 0, 8, dt);
     fd.right.setFromMatrixColumn(camera.matrixWorld, 0);
-    const lag = THREE.MathUtils.clamp(-fd.vel * 0.45, -1.4, 1.4);
+    const lag = THREE.MathUtils.clamp(-fd.vel * 0.62, -1.8, 1.8);
     const tx = fd.right.x * lag;
     const tz = fd.right.z * lag;
     const ty = THREE.MathUtils.clamp(-fd.vel * 0.22, -0.8, 0.8);
@@ -188,8 +188,8 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     sv.z += ((tz - sh.z) * 40 - sv.z * 5.5) * dt;
     sh.addScaledVector(sv, dt);
     const speed = Math.abs(fd.vel);
-    const tearTarget = animate ? THREE.MathUtils.smoothstep(speed, 1.6, 5) : 0;
-    fd.tear = THREE.MathUtils.damp(fd.tear, tearTarget, tearTarget > fd.tear ? 12 : 3, dt);
+    const tearTarget = animate ? THREE.MathUtils.smoothstep(speed, 0.7, 2.8) : 0;
+    fd.tear = THREE.MathUtils.damp(fd.tear, tearTarget, tearTarget > fd.tear ? 12 : 1.6, dt);
     const shared = uniforms.members;
     shared.uShear.value.copy(sh);
     const gust = animate ? windAt(now) * 0.22 : 0;
