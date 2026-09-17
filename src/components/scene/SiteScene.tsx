@@ -9,6 +9,8 @@ import type { Site } from "@/lib/site-generator";
 import { buildStructure } from "@/lib/structure";
 import { palette } from "./materials";
 import { Ground } from "./Ground";
+import { Atmosphere } from "./Atmosphere";
+import { WorkLights } from "./WorkLights";
 import { Structure } from "./Structure";
 import { Scaffold } from "./Scaffold";
 import { Crane } from "./Crane";
@@ -93,7 +95,9 @@ export function SiteScene({
       <hemisphereLight args={["#4a6390", "#0a0f1a", 1.2]} />
       <directionalLight position={[-20, 40, -10]} intensity={0.6} color="#9db8e6" />
       <Smoother progress={progress} sectionCount={sectionCount} section={section} animate={animate} />
+      <Atmosphere animate={animate} />
       <Ground />
+      <WorkLights site={site} section={section} animate={animate} />
       <Structure site={site} skeleton={skeleton} section={section} animate={animate} force={rich && animate} onSelectFloor={onSelectFloor} />
       <Scaffold site={site} section={section} animate={animate} />
       <Crane site={site} section={section} animate={animate} />
