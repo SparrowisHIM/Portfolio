@@ -9,12 +9,17 @@ import { FLOOR_HEIGHT, SLAB_THICKNESS, type Site, type Vec3 } from "./site-gener
  * 0..1 through these stages:
  *
  *   columns rise        0.00 - 0.30
+ *   beams set down      0.28 - 0.42
  *   slab lifted in yard 0.12 - 0.24
  *   slab swung over     0.24 - 0.50
  *   slab lowered        0.50 - 0.66  (placed at 0.66)
+ *   edge protection up  0.66 - 0.76
  *   hook rises, returns 0.66 - 0.95
  *   glazing rises       0.70 - 0.90
  *   lamp on             0.90 -
+ *
+ * The top level (index N) has columns only. They rise on the same schedule
+ * while the last floor is being read, and the crane holds its slab overhead.
  */
 
 export const PLACED_AT = 0.66;
@@ -44,10 +49,10 @@ export function floorProgress(index: number, f: number) {
   return clamp01((f - start) / (end - start));
 }
 
-/** Which floor the crane is working on, and how far along it is. */
+/** Which level the crane is working on, and how far along it is. */
 export function craneJob(site: Site, f: number) {
   const count = site.floors.length;
-  for (let i = 1; i < count; i++) {
+  for (let i = 1; i <= count; i++) {
     const t = floorProgress(i, f);
     if (t > 0 && t < 1) return { index: i, t };
   }
@@ -78,11 +83,7 @@ export function yardPosition(site: Site): Vec3 {
   const toTower = Math.atan2(-crane.position[0], -crane.position[2]);
   const angle = toTower + site.yardSide * 1.45;
   const r = Math.min(crane.jibLength - 1.5, 7.5);
-  return [
-    crane.position[0] + Math.sin(angle) * r,
-    0,
-    crane.position[2] + Math.cos(angle) * r,
-  ];
+  return [crane.position[0] + Math.sin(angle) * r, 0, crane.position[2] + Math.cos(angle) * r];
 }
 
 /** Where the crane is for a section value. */
@@ -102,7 +103,7 @@ export function cranePose(site: Site, f: number): CranePose {
   const floorY = overRoof ? site.totalHeight : floor.y;
   const restY = floorY + SLAB_THICKNESS + HOOK_ABOVE_SLAB;
   const hoistY = site.totalHeight + 4.5;
-  const yardHookY = SLAB_THICKNESS * (remainingSlabs(site, f) + 1) + HOOK_ABOVE_SLAB;
+  const yardHookY = 0.16 + SLAB_THICKNESS * (remainingSlabs(site, f) + 1) + HOOK_ABOVE_SLAB;
 
   let angle = toYard;
   let trolley = rYard;
@@ -146,11 +147,7 @@ export function cranePose(site: Site, f: number): CranePose {
   return {
     angle,
     trolley,
-    hook: [
-      crane.position[0] + Math.sin(angle) * trolley,
-      y,
-      crane.position[2] + Math.cos(angle) * trolley,
-    ],
+    hook: [crane.position[0] + Math.sin(angle) * trolley, y, crane.position[2] + Math.cos(angle) * trolley],
     loaded,
     slab: overRoof
       ? { width: floor.width * 0.92, depth: floor.depth * 0.92 }
@@ -174,4 +171,17 @@ export function builtHeight(site: Site, f: number) {
     if (floorProgress(i, f) >= PLACED_AT) top = site.floors[i].y + FLOOR_HEIGHT;
   }
   return top;
+}
+
+/** Height of the core, which runs a storey ahead of the frame. */
+export function coreHeight(site: Site, f: number) {
+  const count = site.floors.length;
+  let top = FLOOR_HEIGHT;
+  for (let i = 1; i <= count; i++) {
+    const t = floorProgress(i, f);
+    const y = i * FLOOR_HEIGHT;
+    if (t >= 1) top = y + FLOOR_HEIGHT;
+    else if (t > 0) top = y + FLOOR_HEIGHT * smoothstep(0, 0.5, t);
+  }
+  return Math.min(top, site.totalHeight + FLOOR_HEIGHT * 0.6);
 }
