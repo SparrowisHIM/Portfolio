@@ -21,7 +21,6 @@ uniform vec3 uShear;
 uniform vec2 uWind;
 uniform float uTear;
 uniform float uHeight;
-uniform float uSection;
 
 attribute float aFloor;
 attribute float aStart;
@@ -69,11 +68,9 @@ void main() {
   vec4 world = instanceMatrix * vec4(local, 1.0);
   world = modelMatrix * world;
   // Arrival. Frame members come straight down off the hook (a short
-  // origin). Everything else condenses out of a vortex: the next floor
-  // already exists as a faint swarm of lines circling high round the site,
-  // which unwinds onto the grid as each member is called.
+  // origin). Everything else condenses out of a vortex, unwinding from
+  // high and wide round the site onto the grid as each member is called.
   float u = clamp(1.0 - ease, 0.0, 1.0);
-  float pre = clamp((uSection - (aFloor - 1.5)) / 0.8, 0.0, 1.0);
   if (length(aOrigin) > 0.35) {
     float ang = u * u * 2.6 + u * uTime * 0.25 + aSeed * 0.5 * u;
     float rad = 1.0 + u * (1.2 + aSeed * 1.2);
@@ -85,8 +82,8 @@ void main() {
   } else {
     world.xyz += aOrigin * (1.0 - ease);
   }
-  // Fade in over the flight; the swarm before it is a ghost.
-  vBuilt = max(smoothstep(0.0, 0.5, p), pre * 0.16 * (1.0 - step(0.001, p)));
+  // Fade in over the flight.
+  vBuilt = smoothstep(0.0, 0.5, p);
 
   // The whole structure is one live field. Scroll shear: the stack lags
   // the scroll and whips back, more the higher up it is, a tower flexing

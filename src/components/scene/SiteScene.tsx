@@ -14,7 +14,6 @@ import { Scaffold } from "./Scaffold";
 import { Crane } from "./Crane";
 import { Pointer } from "./Pointer";
 import { Bursts } from "./Bursts";
-import { Fragments } from "./Fragments";
 import { Dust } from "./Dust";
 import { CameraRig } from "./CameraRig";
 import { StackGame } from "./StackGame";
@@ -99,7 +98,6 @@ export function SiteScene({
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <Bursts animate={animate} count={rich ? 480 : 200} />
-      <Fragments seed={site.seed} height={site.totalHeight} animate={animate} count={rich ? 48 : 18} />
       <Dust seed={site.seed} color={site.lamp.color} height={site.totalHeight} animate={animate} count={rich ? 260 : 100} />
       <CameraRig site={site} section={section} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
       <PerformanceMonitor bounds={() => [40, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>

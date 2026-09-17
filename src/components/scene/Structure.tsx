@@ -59,7 +59,6 @@ function sharedUniforms() {
     uWind: { value: new THREE.Vector2() },
     uTear: { value: 0 },
     uHeight: { value: 1 },
-    uSection: { value: 0 },
     /** The colour of each floor, and the colour the scene leans toward at this scroll position. */
     uFloorHue: { value: Array.from({ length: MAX_FLOORS }, (_, i) => new THREE.Vector3(...floorHue(i))) },
     uTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -204,7 +203,6 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     const a = floorHue(lo);
     const b = floorHue(hi);
     shared.uTint.value.set(a[0] + (b[0] - a[0]) * mixT, a[1] + (b[1] - a[1]) * mixT, a[2] + (b[2] - a[2]) * mixT);
-    shared.uSection.value = s;
     const progress = uniforms.members.uProgress.value;
     for (let i = 0; i <= floorCount && i < MAX_FLOORS; i++) {
       progress[i] = floorProgress(i, s);
