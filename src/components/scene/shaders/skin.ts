@@ -85,14 +85,14 @@ void main() {
   float facing = abs(dot(n, v));
   float fresnel = pow(1.0 - facing, 2.5);
 
-  // X-ray: a soft hole around the cursor.
-  float d2 = dot(vWorld - uCursor, vWorld - uCursor);
-  float hole = exp(-d2 / 7.0) * uXray;
+  // X-ray: the storey under the cursor opens, not a blob around it.
+  float lateral = dot(vWorld.xz - uCursor.xz, vWorld.xz - uCursor.xz);
+  float hole = exp(-pow((vWorld.y - uCursor.y) / 2.1, 2.0)) * exp(-lateral / 320.0) * uXray;
   float skin = vSkin * (1.0 - hole);
 
   // Smoked glass, near black, with a faint warm breath along the floor
   // line on finished floors only. Cooler and a little denser at the rim.
-  vec3 glass = mix(vec3(0.020, 0.026, 0.040), vec3(0.16, 0.20, 0.28), fresnel);
+  vec3 glass = mix(vec3(0.028, 0.036, 0.055), vec3(0.22, 0.27, 0.36), fresnel);
   float finished = smoothstep(0.5, 1.0, vMax);
   float warm = vPlate > 0.5 ? 0.12 : 0.5 * pow(1.0 - vUv.y, 2.0);
   vec3 col = glass + accent * warm * finished * (0.03 + 0.25 * uGlow);
