@@ -74,6 +74,51 @@ Both are in the skin/member shaders, so they are cheap to dial. Get a
 screen recording from Efe before and after — his recordings have been by
 far the most reliable signal in this project.
 
+## THE TARGET — read this before changing anything
+
+Efe supplied a reference (two panels, "Real-time assembly" and "Exploded
+view"; ask him to re-share it). Panel A is the front side we are building.
+His words: *"it is a beautiful structure and I am not talking about the
+luminosity but the structure."* So the gap is geometry and composition, not
+light. Stop tuning colour and glow — that part is close enough.
+
+What the reference has that we do not:
+
+1. **Density.** Theirs is a fine mesh. Every bay is subdivided, every face
+   is gridded, and the eye reads fabric rather than sticks. Ours is sparse:
+   a handful of beams per floor. This is the single biggest gap. More
+   elements at smaller scale, not thicker ones.
+2. **Nodes at every intersection.** Hundreds of small bright points where
+   members cross. A huge part of why theirs reads as precise engineering.
+   Ours has a few per floor.
+3. **Proportion.** Theirs is a tower — clearly taller than wide. Ours is
+   squat: five floors on a wide plate reads as a low box. Either more
+   floors, or a smaller footprint, or both.
+4. **Glass as discrete framed panels.** Theirs is a unitised curtain wall —
+   many individual rectangles, each with its own frame, stacked in a grid.
+   Ours is one big quad per bay. (The 389cbf7 attempt at this was right in
+   spirit and wrong in execution: it went opaque instead of staying a fine
+   frame on dark glass.)
+5. **An interior.** Theirs has partitions, rooms, stairs and furniture-scale
+   objects glowing inside the volume. Ours is completely hollow, which is
+   why it reads as a diagram. Even crude interior partitions would
+   transform the depth.
+6. **A glazed circulation core** running the full height as a distinct
+   shaft, separate from the plates. We have a core in the data but it does
+   not read.
+7. **Slab plates that overhang the glass**, with a grid drawn on the plate
+   surface, so each floor is a bright horizontal plane.
+8. **Construction-drawing annotation:** dotted leader lines running off the
+   structure into space, dimension lines, small callouts. Distinctive and
+   cheap — pure line work, no lighting.
+9. **A few detached panels floating near the building**, as if waiting to be
+   placed. We deleted the old floating fragments; the reference shows the
+   controlled version of that idea.
+
+Suggested order of attack: density and nodes first (biggest gap, contained
+to ), then proportion, then the interior, then annotation
+lines. The curtain wall and cladding retries come after those.
+
 ## How to actually see the site
 
 **Do not trust a single capture.** Hard-won:
