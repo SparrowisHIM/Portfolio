@@ -11,9 +11,9 @@ export type Vec3 = [number, number, number];
 export const HERO = {
   /** Orbit angle relative to the site's view angle. */
   angleOffset: -0.47,
-  radius: 33,
+  radius: 30,
   /** Fraction of the radius the camera slides left on wide screens. */
-  shift: 0.25,
+  shift: 0.22,
 } as const;
 
 export type Side = "+x" | "-x" | "+z" | "-z";
@@ -28,14 +28,20 @@ export const SIDE_ANGLE: Record<Side, number> = {
 
 export type Floor = {
   index: number;
-  /** Y of the slab's underside. */
+  /** Y of the floor plate's underside. */
   y: number;
   width: number;
   depth: number;
-  /** Column footprints, relative to tower centre. */
+  /** Plate offset from the tower axis: floors do not stack dead square. */
+  offset: [number, number];
+  /** Extension per face (+x, -x, +z, -z): positive cantilevers, negative sets back. */
+  extend: [number, number, number, number];
+  /** A missing bay on one face, or null. */
+  void: { face: 0 | 1 | 2 | 3; along: number; width: number } | null;
+  /** Small twist of the whole plate, radians. */
+  rotation: number;
+  /** Column footprints, relative to the plate centre. */
   columns: [number, number][];
-  /** Which faces are glazed: +x, -x, +z, -z. */
-  glazed: [boolean, boolean, boolean, boolean];
   finished: boolean;
 };
 
@@ -52,10 +58,6 @@ export type ScaffoldRun = {
   /** Top of the standards. */
   height: number;
   lifts: number;
-  /** Bay that carries the ladders. */
-  ladderBay: number;
-  /** Lifts that are fully boarded. */
-  boarded: number[];
   /** Debris netting hangs on the outer face. */
   netted: boolean;
 };
@@ -74,57 +76,31 @@ export type Crane = {
 
 export type Core = { x: number; z: number; width: number; depth: number };
 
-export type Hoarding = {
-  halfWidth: number;
-  halfDepth: number;
-  /** Panels are this wide. */
-  panel: number;
-  height: number;
-  /** Side with the gate. */
-  gateSide: Side;
-  /** Side facing the visitor, carrying the banner. */
-  bannerSide: Side;
-  /** Where along that side the banner hangs. */
-  bannerAlong: number;
-};
-
-export type Placed = { position: Vec3; rotationY: number };
-
 export type Site = {
   seed: number;
   floors: Floor[];
-  /** The unfinished top level: columns only, waiting for its slab. */
+  /** The unfinished top level: columns only, waiting for its frame. */
   topLevel: { y: number; columns: [number, number][]; width: number; depth: number };
   core: Core;
   scaffolds: ScaffoldRun[];
-  lamps: Vec3[];
   crane: Crane;
-  hoarding: Hoarding;
-  cabin: Placed;
-  generator: Placed;
-  skip: Placed;
-  rebar: Placed;
-  pallets: Placed[];
-  cones: Vec3[];
-  puddles: { position: Vec3; radius: number }[];
-  streetLights: Vec3[];
   totalHeight: number;
   /** Orbit angle (radians) from which the tower face is clear of scaffolding. */
   viewAngle: number;
   viewSide: Side;
-  /** Which side of the crane the slab yard sits on, as seen from the crane. */
+  /** Which side of the crane the yard sits on, as seen from the crane. */
   yardSide: 1 | -1;
-  /** The work lighting on this site. */
+  /** The accent light on this site. */
   lamp: Lamp;
 };
 
 export type Lamp = { name: string; color: string };
 
-/** Each rebuild may switch the lighting rig. */
+/** Each rebuild may switch the accent. */
 export const LAMPS: Lamp[] = [
-  { name: "sodium", color: "#f5b043" },
-  { name: "halogen", color: "#ffd2a1" },
-  { name: "led", color: "#d7e6ff" },
+  { name: "amber", color: "#f5b043" },
+  { name: "ember", color: "#ff8a3d" },
+  { name: "arc", color: "#7fb4ff" },
 ];
 
 function columnGrid(width: number, depth: number): [number, number][] {
@@ -158,25 +134,46 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   const rnd = createRandom(seed);
   const baseWidth = rnd.range(7.5, 9);
   const baseDepth = rnd.range(5.5, 7);
+  const count = floorFlags.length;
+
+  // Controlled irregularity: a twisted floor, a floor with a void bay, and
+  // cantilevers or setbacks on a few faces. Never more than one twist.
+  const twisted = rnd.chance(0.7) ? rnd.int(1, count - 1) : -1;
+  const voided = rnd.chance(0.75) ? rnd.int(1, count - 1) : -1;
 
   const floors: Floor[] = floorFlags.map((flag, index) => {
-    const shrink = index * rnd.range(0.05, 0.25);
-    const width = Math.max(5, baseWidth - shrink);
-    const depth = Math.max(4, baseDepth - shrink * 0.6);
-    const glazed = SIDES.map(() => flag.finished || rnd.chance(0.35)) as Floor["glazed"];
+    const shrink = index * rnd.range(0.02, 0.18);
+    const width = Math.max(5.5, baseWidth - shrink);
+    const depth = Math.max(4.2, baseDepth - shrink * 0.6);
+    const extend: Floor["extend"] = [0, 0, 0, 0];
+    if (index > 0 && rnd.chance(0.45)) {
+      const face = rnd.int(0, 3);
+      extend[face] = rnd.chance(0.65) ? rnd.range(1.0, 2.0) : -rnd.range(0.8, 1.4);
+    }
+    const voidBay =
+      index === voided
+        ? {
+            face: rnd.int(0, 3) as 0 | 1 | 2 | 3,
+            along: rnd.range(-0.3, 0.3),
+            width: rnd.range(1.6, 2.6),
+          }
+        : null;
     return {
       index,
       y: index * FLOOR_HEIGHT,
       width,
       depth,
+      offset: index === 0 ? [0, 0] : [rnd.range(-0.55, 0.55), rnd.range(-0.4, 0.4)],
+      extend,
+      void: voidBay,
+      rotation: index === twisted ? rnd.range(0.035, 0.07) * (rnd.chance(0.5) ? 1 : -1) : 0,
       columns: columnGrid(width, depth),
-      glazed,
       finished: flag.finished,
     };
   });
 
-  const topY = floors.length * FLOOR_HEIGHT;
-  const last = floors[floors.length - 1];
+  const topY = count * FLOOR_HEIGHT;
+  const last = floors[count - 1];
   const topLevel = {
     y: topY,
     columns: columnGrid(last.width, last.depth).filter(() => rnd.chance(0.75)),
@@ -185,9 +182,10 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   };
   const totalHeight = topY + FLOOR_HEIGHT;
 
-  // Scaffolding hugs one to three faces of the tower.
-  const scaffoldSides = SIDES.filter(() => rnd.chance(0.55));
+  // Scaffolding hugs one or two faces of the tower.
+  const scaffoldSides = SIDES.filter(() => rnd.chance(0.45));
   if (scaffoldSides.length === 0) scaffoldSides.push(rnd.pick(SIDES));
+  if (scaffoldSides.length > 2) scaffoldSides.length = 2;
 
   // Crane stands clear of the scaffolding.
   const free = SIDES.filter((s) => !scaffoldSides.includes(s));
@@ -220,16 +218,14 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   away = Math.atan2(Math.sin(away), Math.cos(away));
   const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? 0.4 : -0.4);
 
-  const gap = 0.75;
+  const gap = 0.9;
   const scaffolds: ScaffoldRun[] = scaffoldSides.map((side) => {
     const horizontal = side === "+z" || side === "-z";
-    const span = (horizontal ? baseWidth : baseDepth) + 1.6;
+    const span = (horizontal ? baseWidth : baseDepth) + 2.2;
     const offset = (horizontal ? baseDepth : baseWidth) / 2 + gap;
     const sign = side.startsWith("+") ? 1 : -1;
-    const bays = Math.max(3, Math.round(span / 1.8));
+    const bays = Math.max(3, Math.round(span / 2.1));
     const lifts = Math.max(3, Math.round((topY + rnd.range(-FLOOR_HEIGHT, FLOOR_HEIGHT * 0.5)) / LIFT));
-    const boarded: number[] = [];
-    for (let l = 1; l <= lifts; l++) if (l % 2 === 0 || rnd.chance(0.3)) boarded.push(l);
     return {
       side,
       horizontal,
@@ -239,92 +235,17 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
       bays,
       height: lifts * LIFT + 0.6,
       lifts,
-      ladderBay: rnd.int(0, bays - 1),
-      boarded,
-      netted: rnd.chance(0.8),
+      netted: rnd.chance(0.7),
     };
   });
 
-  // Work lamps: a few clamped to the scaffold, one on a stand by the yard.
-  const lamps: Vec3[] = [];
-  for (let i = 0; i < 3; i++) {
-    const run = rnd.pick(scaffolds);
-    const lift = rnd.int(2, Math.max(2, run.lifts - 1));
-    const along = -run.span / 2 + rnd.int(0, run.bays) * (run.span / run.bays);
-    lamps.push(onSide(run.side, along, run.offset + 1.05, lift * LIFT - 0.3));
-  }
-  lamps.push([rnd.range(-6, 6), 2.6, rnd.range(baseDepth / 2 + 4, baseDepth / 2 + 8)]);
-
-  // The lift and stair core rises inside the footprint, one storey ahead of the frame.
+  // The spine (lift core) rises inside the footprint, a storey ahead of the frame.
   const core: Core = {
     x: baseWidth * 0.2 * (rnd.chance(0.5) ? 1 : -1),
     z: -(baseDepth / 2 - 1.15) * (viewSide === "-z" ? -1 : 1),
-    width: 2.1,
-    depth: 1.9,
+    width: 2.0,
+    depth: 1.8,
   };
-
-  // Hoarding around the whole site, gate on the crane side, banner facing the visitor.
-  const hoarding: Hoarding = {
-    halfWidth: baseWidth / 2 + rnd.range(11, 13),
-    halfDepth: baseDepth / 2 + rnd.range(10, 12),
-    panel: 2.4,
-    height: 2.1,
-    gateSide: craneSide,
-    bannerSide: viewSide,
-    bannerAlong: 0,
-  };
-
-  // Site dressing lives away from the open viewing face so the tower stays clear.
-  const backSides = SIDES.filter((s) => s !== viewSide);
-  const cabinSide = rnd.pick(backSides.filter((s) => s !== craneSide));
-  const cabin: Placed = {
-    position: onSide(cabinSide, rnd.range(-3, 3), hoarding.halfDepth - 3.2),
-    rotationY: SIDE_ANGLE[cabinSide] + Math.PI,
-  };
-  const generator: Placed = {
-    position: [cranePosition[0] + rnd.range(-3, 3), 0, cranePosition[2] + rnd.range(2.5, 3.5) * craneSign],
-    rotationY: rnd.range(0, Math.PI),
-  };
-  const skip: Placed = {
-    position: onSide(viewSide, rnd.range(-7, -4) * (rnd.chance(0.5) ? 1 : -1), baseDepth / 2 + rnd.range(5, 7)),
-    rotationY: SIDE_ANGLE[viewSide] + rnd.range(-0.3, 0.3),
-  };
-  const rebar: Placed = {
-    position: onSide(viewSide, rnd.range(4, 7) * (skip.position[0] < 0 ? 1 : -1), baseDepth / 2 + rnd.range(3.5, 5.5)),
-    rotationY: SIDE_ANGLE[viewSide] + rnd.range(-0.4, 0.4),
-  };
-  const pallets: Placed[] = Array.from({ length: rnd.int(2, 4) }, () => ({
-    position: onSide(rnd.pick(backSides), rnd.range(-5, 5), baseDepth / 2 + rnd.range(3, 7)),
-    rotationY: rnd.range(0, Math.PI),
-  }));
-  const cones: Vec3[] = Array.from({ length: rnd.int(4, 7) }, () =>
-    onSide(rnd.pick(SIDES), rnd.range(-6, 6), baseDepth / 2 + rnd.range(2, 9)),
-  );
-  const puddles = Array.from({ length: rnd.int(2, 4) }, () => ({
-    position: onSide(rnd.pick(SIDES), rnd.range(-7, 7), baseDepth / 2 + rnd.range(3, 9), 0.015) as Vec3,
-    radius: rnd.range(1.4, 3),
-  }));
-  // Where the visitor's line of sight crosses the hoarding: the banner hangs
-  // there, a little right of centre, and the street lights stay out of the shot.
-  const viewHorizontal = viewSide === "+z" || viewSide === "-z";
-  const halfOut = viewHorizontal ? hoarding.halfDepth : hoarding.halfWidth;
-  const camAngle = viewAngle + HERO.angleOffset;
-  const cam: [number, number] = [Math.sin(camAngle) * HERO.radius, Math.cos(camAngle) * HERO.radius];
-  const right: [number, number] = [Math.cos(camAngle), -Math.sin(camAngle)];
-  // Camera slides left by radius * shift; the frame centre crosses the fence at:
-  const eye: [number, number] = [cam[0] - right[0] * HERO.radius * HERO.shift, cam[1] - right[1] * HERO.radius * HERO.shift];
-  const outAxis: [number, number] = viewSide === "+z" ? [0, 1] : viewSide === "-z" ? [0, -1] : viewSide === "+x" ? [1, 0] : [-1, 0];
-  const alongAxis: [number, number] = viewSide === "+z" ? [1, 0] : viewSide === "-z" ? [-1, 0] : viewSide === "+x" ? [0, -1] : [0, 1];
-  const eyeOut = eye[0] * outAxis[0] + eye[1] * outAxis[1];
-  const k = eyeOut > halfOut ? (eyeOut - halfOut) / eyeOut : 0;
-  const cross: [number, number] = [eye[0] * (1 - k) - right[0] * 0.8, eye[1] * (1 - k) - right[1] * 0.8];
-  const bannerAlong = cross[0] * alongAxis[0] + cross[1] * alongAxis[1];
-  const rightAlong = right[0] * alongAxis[0] + right[1] * alongAxis[1];
-  hoarding.bannerAlong = bannerAlong;
-  const streetLights: Vec3[] = [
-    onSide(viewSide, bannerAlong - Math.sign(rightAlong || 1) * 13, halfOut + 2.2),
-    onSide(viewSide, bannerAlong + Math.sign(rightAlong || 1) * 11, halfOut + 2.2),
-  ];
 
   return {
     seed,
@@ -332,21 +253,11 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     topLevel,
     core,
     scaffolds,
-    lamps,
     crane,
-    hoarding,
-    cabin,
-    generator,
-    skip,
-    rebar,
-    pallets,
-    cones,
-    puddles,
-    streetLights,
     totalHeight,
     viewAngle,
     viewSide,
     yardSide: craneCorner === 1 ? -1 : 1,
-    lamp: rnd.chance(0.55) ? LAMPS[0] : rnd.pick(LAMPS),
+    lamp: rnd.chance(0.6) ? LAMPS[0] : rnd.pick(LAMPS),
   };
 }
