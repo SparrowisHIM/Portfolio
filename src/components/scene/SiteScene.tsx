@@ -87,7 +87,7 @@ export function SiteScene({
       className="!absolute inset-0 cursor-grab active:cursor-grabbing"
     >
       <color attach="background" args={[palette.void]} />
-      <fog attach="fog" args={[palette.fog, 28, 110]} />
+      <fog attach="fog" args={[palette.void, 24, 78]} />
       <hemisphereLight args={["#4a6390", "#0a0f1a", 1.2]} />
       <directionalLight position={[-20, 40, -10]} intensity={0.6} color="#9db8e6" />
       <Smoother progress={progress} sectionCount={sectionCount} section={section} animate={animate} />
@@ -105,7 +105,7 @@ export function SiteScene({
       </PerformanceMonitor>
       {effects && (
         <EffectComposer multisampling={2}>
-          <Bloom luminanceThreshold={0.55} mipmapBlur intensity={0.9} radius={0.7} />
+          <Bloom luminanceThreshold={0.42} mipmapBlur intensity={1.15} radius={0.72} />
           <Vignette offset={0.25} darkness={0.7} />
           <Noise opacity={0.035} />
         </EffectComposer>

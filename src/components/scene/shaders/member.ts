@@ -204,7 +204,7 @@ void main() {
   }
 
   // The whole structure leans toward the colour of the floor in view.
-  col *= mix(vec3(1.0), uTint * 1.35, 0.3);
+  col *= mix(vec3(1.0), uTint * 1.35, 0.42);
 
   gl_FragColor = vec4(col, vBuilt);
 }
