@@ -177,7 +177,7 @@ void main() {
   float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
   col *= mix(vec3(0.94, 0.98, 1.06), vec3(1.06, 0.99, 0.94), drift);
 
-  vec3 accent = mix(hue(vHue), site, 0.7);
+  vec3 accent = vHue > 2.5 ? hue(vHue) : site;
   // Connection flash: bright for a moment after locking, then dark again.
   float since = uTime - vLock;
   float flash = vLock > 0.0 ? exp(-since * 3.2) : 0.0;
@@ -209,7 +209,7 @@ void main() {
   }
 
   // Finished floors go quiet and blue; the level being built holds the lamp.
-  col *= mix(vec3(1.0), site * 1.25, 0.72) * (1.06 + 0.46 * heat);
+  col *= mix(vec3(1.0), site * 1.25, 0.72) * (1.06 + 0.46 * heat) * (1.0 + 0.3 * smoothstep(0.75, 1.0, vWeight));
 
   gl_FragColor = vec4(col, vBuilt);
 }

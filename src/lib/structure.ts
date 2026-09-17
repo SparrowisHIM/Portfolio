@@ -79,6 +79,11 @@ export type Structure = {
 };
 
 const COLUMN = 0.085;
+/** Slab edge under the plate line, and the edge protection above it. */
+const FASCIA = 0.036;
+const RAIL = 0.016;
+/** Height of the handrail above a finished slab. */
+const RAIL_H = 1.05;
 /** The plate edge: the strongest horizontal line, so a floor reads as a plate. */
 const OUTLINE = 0.085;
 const BEAM = 0.032;
@@ -209,6 +214,27 @@ export function buildStructure(site: Site): Structure {
           hue: pickHue(),
           loud: rnd.chance(0.3),
         });
+        // The slab has a depth: a second line under the plate edge turns a
+        // drawn rectangle into something with a thickness.
+        const pf: Vec3 = [p[0], y0 - 0.16, p[2]];
+        const qf: Vec3 = [q[0], y0 - 0.16, q[2]];
+        push({ instance: strut(pf, qf, FASCIA), floor: index, start: frameStart + 0.02, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
+        // Edge protection goes up as a floor is finished. Nothing says
+        // working site like a handrail round an open slab.
+        if (index > 0) {
+          const pr: Vec3 = [p[0], y0 + RAIL_H, p[2]];
+          const qr: Vec3 = [q[0], y0 + RAIL_H, q[2]];
+          push({ instance: strut(pr, qr, RAIL), floor: index, start: 0.82, dur: 0.1, origin: flyFrom([0, 0.4, 0], 0.2), seed: rnd.next(), hue: pickHue(), loud: false });
+          push({ instance: strut([p[0], y0 + RAIL_H * 0.5, p[2]], [q[0], y0 + RAIL_H * 0.5, q[2]], RAIL * 0.75), floor: index, start: 0.85, dur: 0.1, origin: flyFrom([0, 0.4, 0], 0.2), seed: rnd.next(), hue: pickHue(), loud: false });
+          const runLen = Math.hypot(q[0] - p[0], q[2] - p[2]);
+          const posts = Math.max(1, Math.round(runLen / 2.4));
+          for (let n = 0; n <= posts; n++) {
+            const t = n / posts;
+            const px = p[0] + (q[0] - p[0]) * t;
+            const pz = p[2] + (q[2] - p[2]) * t;
+            push({ instance: strut([px, y0, pz], [px, y0 + RAIL_H, pz], RAIL), floor: index, start: 0.8, dur: 0.1, origin: flyFrom([0, 0.4, 0], 0.2), seed: rnd.next(), hue: pickHue(), loud: false });
+          }
+        }
       }
       // Skin panels on this face, one per bay, skipping the void.
       const bays = Math.max(2, Math.round(len / 1.5));
