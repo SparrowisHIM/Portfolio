@@ -139,6 +139,25 @@ lines. The curtain wall and cladding retries come after those.
 - A scratch CDP driver was used: launch Chrome with
   `--remote-debugging-port=9222` and drive it over a small pure-python
   WebSocket client. Screenshots are real GPU frames at any scroll position.
+- **Frame rate does not tell you the window is painting.** An occluded window
+  still reports 40-115fps from rAF while `Page.captureScreenshot` hands back a
+  blank frame — and underneath it the scene is in perfect health: camera
+  finite and in the right place, `uProgress` correct, draw calls flowing,
+  console clean. It reads exactly like a rendering bug and it is not one.
+  `Page.bringToFront` is not enough either; it raises the tab inside its
+  window, not the window above other apps. The only reliable test: take two
+  captures 1.2s apart and compare bytes. A live scene never repeats a frame,
+  so identical captures mean the frame is a lie — retry, do not believe it.
+  This cost a long detour here: Rebuild looked completely broken, blanking the
+  whole scene including the ground plane, and **Rebuild is fine**. Every black
+  frame was the capture.
+- `--headless=new` with `--enable-unsafe-swiftshader` looked like the way out
+  of that and is not: every capture came back identical and empty. Drive a
+  real window.
+- `location.reload()` restores the scroll position. Reload while parked at the
+  roof and the site tops out before you have looked at anything, so a "first
+  pass" capture is really a finished tower. Scroll to 0 and set
+  `history.scrollRestoration = 'manual'` before reloading.
 
 Measured load, on this machine:
 
@@ -185,11 +204,16 @@ Measured load, on this machine:
 
 ## Outstanding — Efe's list, his priority order
 
-1. **Latch the build at the top.** Scrolling back down currently
-   deconstructs the building. It should not. Once every floor is placed the
-   structure stays up; only the Rebuild button takes it apart. Needs a
-   "topped out" flag that freezes `floorProgress` at 1. Efe was clear this
-   actively hurts the experience.
+1. ~~Latch the build at the top.~~ **Done.** The smoothed scroll value is
+   two clocks now. `section` still follows the scroll both ways and drives
+   the camera; `build` drives construction and only runs forward, stopping
+   the moment the last level is complete (`toppedOutAt`, one frame past the
+   top level's window). Scrolling back down moves the camera over a finished
+   building instead of dismantling it. Rebuild drops the latch *and* sends
+   the page back to the ground, because once a site tops out that is the only
+   way to watch the next one go up. Camera, scroll shear and the warm band
+   still read `section`; the crane, scaffold, work lights, floor progress and
+   the glazing read `build`.
 2. **Free orbit once finished.** Drag is clamped to ±0.45 rad with no
    vertical control. After topping out it should unlock: full 360°, vertical
    tilt within limits, scroll-to-zoom.
