@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useReducedMotion } from "framer-motion";
-import { owner, projects, type Project } from "@/lib/projects";
+import { projects, type Project } from "@/lib/projects";
 import { randomSeed } from "@/lib/random";
 import { HERO, generateSite } from "@/lib/site-generator";
 import { useScrollProgress } from "@/hooks/useScrollProgress";
@@ -69,10 +69,6 @@ export function SiteExperience() {
       document.body.style.overflow = previous;
     };
   }, [playing]);
-  const banner = useMemo(
-    () => [owner.name, owner.role, `site no. ${seed.toString(16).padStart(8, "0")}`],
-    [seed],
-  );
   const onReady = useCallback(() => setReady(true), []);
   const closeWalkIn = useCallback(() => setWalkIn(null), []);
 
@@ -92,10 +88,8 @@ export function SiteExperience() {
           site={site}
           progress={progress}
           sectionCount={SECTION_COUNT}
-          activeFloor={section - 1}
           animate={!reduced}
           started={ready}
-          banner={banner}
           rich={wide}
           shiftX={wide ? HERO.shift : 0}
           shiftY={wide ? 0 : 0.14}
