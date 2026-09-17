@@ -1,64 +1,60 @@
 # Build site
 
-A portfolio under construction. A night-shift construction site, generated
-from a seed, where every project is a floor of a tower that goes up while you
-scroll. The site is alive: the crane swings the slabs in, a crew welds and
-walks the scaffold, the debris netting and the hoarding banner move in the
-wind, and the visitor carries a work lamp that stirs the air as it sweeps.
+A portfolio under construction. A building made of code, engineered live in
+a dark void while you scroll: thin graphite lines fly in, overshoot, snap and
+shiver; the crane lowers each floor's frame in on a cable; smoked, near-black
+skin grows over finished floors without ever hiding the skeleton. Nothing
+glows by default. Light is feedback: a connection flashes, a pulse runs
+through the beams, a finished floor sends one lap round its outline, then it
+all fades back to dark.
 
 Built by [Efe Ebomwonyi](https://github.com/SparrowisHIM), design engineer.
 
-## What is on site
+## What you are looking at
 
-**The tower.** Steel H-section columns rise from the slab below with starter
-bars at the top, beams are set down on them, the crane lands the slab, edge
-protection and orange netting go up, then the curtain wall (mullions,
-transoms, spandrels, glass) rises and the lights come on. Scroll back down and
-it all comes apart in reverse. A slip-formed lift core with a climbing
-formwork rig runs a storey ahead of the frame.
+**The skeleton.** `src/lib/structure.ts` turns a seeded site into columns,
+beams, outline segments, diagonals, a spine and connection nodes, each with
+the moment in its floor's window when it arrives, where it flies in from and
+a seed for its personality. The whole building is three instanced draws
+(`Structure.tsx`): members, nodes and skin panels, driven by custom shaders
+in `src/components/scene/shaders/`.
 
-**The crane.** A braced lattice mast with a ladder, slewing ring, A-frame
-tower top with pendant ties, a tapered truss jib, a counter-jib with concrete
-ballast and a winch, a hazard-striped trolley, twin hoist ropes, a hook block,
-a spreader beam and four slings to the slab corners. The load hangs as a
-damped pendulum and leans in the wind. Beacon on the apex, obstruction light
-on the tip, a lit cab.
+**The build.** Scroll is damped and mapped to a construction timeline
+(`src/lib/construction.ts`). Columns rise and lock, the crane brings the
+floor frame and snaps it down, diagonals arrive late, the floor completes.
+Scroll back and it comes apart in the same order.
 
-**Scaffolding.** Tube-and-coupler runs with base plates and sole boards,
-ledgers, transoms, couplers at every junction, face bracing, boarded lifts
-with toe boards and guardrails, ladders, and green debris netting that flaps.
-It climbs with the building; everything above the built height is clipped.
+**The skin.** The floor being built stays skeletal; one floor down is half
+skinned; three floors down is finished, at 65 to 90 percent opacity with faint
+lit edges. Floors still in progress never close fully.
 
-**The crew.** Seven hi-vis figures: a welder crouched at whichever column is
-being raised, a banksman on the top slab watching the load come in, walkers on
-the scaffold boards and people on the ground. They walk, bob and turn.
+**The cursor.** Hover a finished part and a soft hole x-rays the skin away to
+the skeleton; nearby nodes wake up; move away and it heals. Lines close to
+the cursor lean toward where it just was, a weak magnetic field, never jelly.
+A fast sweep is a gust of wind for the netting and the load on the hook.
 
-**The rest.** Plywood hoarding with a gate and a printed banner, a lit site
-cabin, a generator with a cable to the crane, a skip, rebar and steel laydown,
-pallets, cones, puddles that catch the lights, a road with a kerb and cool LED
-street lights against the warm sodium site.
+**The crane.** A thin dark lattice mast, an A-frame top, a tapered truss jib,
+cables, a few node lights, fading into the fog. Its load is a damped
+pendulum; the vertical spring is what gives the overshoot and snap.
 
-**Weather.** A steady breeze with gusts moves the netting, the banner, the
-dust and the load on the hook. Sweeping the pointer quickly is a gust.
+**The form.** Still a building: offset floor plates, a cantilever or a
+setback, a void bay, one twisted floor. **Rebuild** makes another.
+
+**The void.** Black to blue-black, thin fog, a faint grid, a few floating
+fragments and sparse dust. Nothing else.
 
 ## Interactions
 
-- **Scroll** builds the tower. `src/lib/construction.ts` maps scroll to a
-  build stage for every floor; the whole site is a function of that number.
-- **Move the pointer** and the work lamp follows. Pass it over the banner or
-  the netting and the sheet is pushed away; move fast and it ripples.
-- **Drag sideways** to walk around the site. Vertical drag still scrolls.
+- **Scroll** builds the tower and guides the camera: low at first, rising
+  with the build, coming in on the floor being framed and pulling back as it
+  completes. Drag sideways for a little orbit.
 - **Click a floor** to jump to its section. **Visit the site** opens the
   live project; **Walk in** opens it in place, over the site.
-- **Rebuild** tears the site down and puts it up from a new seed: footprint,
-  scaffolding, crane corner, dressing and lighting rig all change.
-- **Night shift** is the game. The crane swings the next slab back and forth
-  over the tower; click, tap or press space to land it. Whatever hangs over
-  the edge is cut off and falls. Dead-level drops flash; three in a row win
-  some slab back. Best shift is kept in local storage.
-- **Components** switches to the yard: the parts the site is built from, each
-  one live. Magnetic button, scrambled headline, card stack, segmented
-  control, rolling counter, a toast lowered in on a cable, hold to confirm.
+- **Night shift** is the stacking game: the crane swings the next slab over
+  the tower; click, tap or press space to land it. Overhang is cut off and
+  falls. Best shift is kept in local storage.
+- **Components** switches to the yard: the parts the site is built from,
+  each one live.
 
 ## Stack
 
@@ -69,10 +65,7 @@ dust and the load on the hook. Sweeping the pointer quickly is a gust.
 - Framer Motion for the HTML overlay and the component yard
 - Self-hosted variable fonts (Big Shoulders, Archivo) via Fontsource
 
-Everything in the scene is generated: geometry from `src/lib/geometry.ts`
-(struts, lattices, trusses, H-sections), textures drawn on canvases in
-`src/lib/textures.ts` (concrete, netting, hazard stripes, decking, hoarding,
-the banner). There are no models or images to download.
+Everything in the scene is generated. There are no models or images.
 
 ## Run it
 
@@ -87,17 +80,10 @@ Other scripts: `npm run build`, `npm run lint`.
 
 ## Add a floor
 
-Add a project to `src/lib/projects.ts`. Floors are ordered bottom to top, so
-the first entry is the ground floor and is finished before the visitor
-arrives. Set `live` to the URL of the site itself to enable **Visit the
-site** and **Walk in**. Set `finished: false` for work still in progress and
-that floor stays partly open, with edge protection instead of glass.
-
-## Add a part to the yard
-
-Drop a component into `src/components/yard/demos/` and give it a bay in
-`src/components/yard/ComponentYard.tsx`. Every demo should respect
-`useReducedMotion`.
+Add a project to `src/lib/projects.ts`. Floors are ordered bottom to top.
+Set `live` to the URL of the site itself to enable **Visit the site** and
+**Walk in**. Set `finished: false` for work still in progress and that floor
+never fully closes its skin.
 
 ## Credits
 
