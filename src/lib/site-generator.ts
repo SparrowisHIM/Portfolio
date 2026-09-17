@@ -267,7 +267,12 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
           ? { face: SIDE_FACE[sideFace], along: voidAlong, width: voidWidth }
           : null,
       rotation,
-      columns: columnsFor(grid, offset, rotation, width, depth),
+      // Columns are dead vertical and take the mass offset but not the
+      // twist: the grid runs straight through the stack and the plates turn
+      // around it. Rotating the columns too gave every floor its own corner
+      // posts, standing on nothing, which is what made the building read as
+      // a pile of floating trays.
+      columns: columnsFor(grid, offset, 0, width, depth),
       finished: flag.finished,
     };
   });
