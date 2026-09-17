@@ -162,21 +162,21 @@ void main() {
   // Hierarchy by weight: columns carry the resting light and run warm,
   // beams sit back, hairlines barely register until something lights them.
   float w = mix(0.3, 1.0, vWeight * vWeight);
+  // Heat: 1 on the floor being worked, falling away sharply below it. A
+  // gentle falloff left half the building in a muddy in-between; a floor
+  // should read as clearly warm or clearly cold.
+  float heat = exp(-pow(vFloor - uActiveFloor, 2.0) * 1.9);
+  vec3 site = mix(uCold, uWarm, heat);
   vec3 col = (uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow)) * w;
-  col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow);
+  col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow) * heat;
   if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow * w;
   // Hairline light: a bright core along the axis and a slow iridescent
   // drift along the length, cool white to warm, so a line reads as light.
   float core = pow(max(dot(n, v), 0.0), 6.0);
   col += uBase * core * 0.5 * w;
   float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
-  col *= mix(vec3(0.82, 0.94, 1.18), vec3(1.16, 0.96, 0.84), drift);
+  col *= mix(vec3(0.90, 0.97, 1.10), vec3(1.10, 0.98, 0.90), drift);
 
-  // Heat: 1 on the floor being worked, falling away below it. Work is warm
-  // sodium, finished steel is cold and quiet, and the warmth climbs the
-  // building with the scroll rather than every floor owning a colour.
-  float heat = exp(-pow(vFloor - uActiveFloor, 2.0) * 0.9);
-  vec3 site = mix(uCold, uWarm, heat);
   vec3 accent = mix(hue(vHue), site, 0.7);
   // Connection flash: bright for a moment after locking, then dark again.
   float since = uTime - vLock;
@@ -209,7 +209,7 @@ void main() {
   }
 
   // Finished floors go quiet and blue; the level being built holds the lamp.
-  col *= mix(vec3(1.0), site * 1.2, 0.34) * (1.06 + 0.46 * heat);
+  col *= mix(vec3(1.0), site * 1.2, 0.5) * (1.06 + 0.46 * heat);
 
   gl_FragColor = vec4(col, vBuilt);
 }

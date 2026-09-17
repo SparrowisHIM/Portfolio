@@ -92,11 +92,11 @@ void main() {
 
   // Smoked glass, near black, with a faint warm breath along the floor
   // line on finished floors only. Cooler and a little denser at the rim.
-  vec3 glass = mix(vec3(0.012, 0.016, 0.026), vec3(0.05, 0.065, 0.1), fresnel);
+  vec3 glass = mix(vec3(0.014, 0.018, 0.030), vec3(0.10, 0.13, 0.19), fresnel);
   float finished = smoothstep(0.5, 1.0, vMax);
   float warm = vPlate > 0.5 ? 0.12 : 0.5 * pow(1.0 - vUv.y, 2.0);
   vec3 col = glass + accent * warm * finished * (0.03 + 0.25 * uGlow);
-  float alpha = mix(0.6, 0.86, fresnel) * skin;
+  float alpha = mix(0.55, 0.92, fresnel) * skin;
   if (vPlate > 0.5) alpha = 0.55 * skin;
 
   // Only the plate lines draw: a thin edge where the floor meets the glass.

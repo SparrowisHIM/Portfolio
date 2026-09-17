@@ -22,7 +22,7 @@ export type RGB = [number, number, number];
  * Cold steel is finished: everything below the level being built goes
  * quiet and blue. Warmth climbs the building as you scroll.
  */
-export const COLD: RGB = [0.63, 0.71, 0.83];
+export const COLD: RGB = [0.56, 0.67, 0.86];
 
 /** The colour of work, set from the site lamp on each rebuild. */
 export function workHue(): RGB {

@@ -25,7 +25,7 @@ import { FLOOR_HEIGHT, SLAB_THICKNESS, type Floor, type Site, type Vec3 } from "
 export const PLACED_AT = 0.66;
 
 /** The frame hovers this far above its plate before it is released. */
-export const HOVER = 0.2;
+export const HOVER = 0.9;
 
 /** Floor `index` is under construction while f runs from start to end. */
 function window(index: number) {
