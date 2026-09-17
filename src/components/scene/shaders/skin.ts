@@ -51,6 +51,7 @@ uniform float uCompleted[MAX_FLOORS];
 uniform vec4 uPulses[MAX_PULSES];
 uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uAccent;
+uniform float uGlow;
 
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -72,16 +73,22 @@ void main() {
   float hole = exp(-d2 / 7.0) * uXray;
   float skin = vSkin * (1.0 - hole);
 
-  // Smoked glass: darker face-on, a little lighter at grazing angles.
-  vec3 col = mix(vec3(0.02, 0.03, 0.05), vec3(0.09, 0.12, 0.17), fresnel);
-  float alpha = mix(0.66, 0.9, fresnel) * skin;
-  if (vPlate > 0.5) alpha = 0.38 * skin;
+  // Glass with a warm interior: lit from the floor line, cooler at the rim.
+  vec3 glass = mix(vec3(0.05, 0.07, 0.11), vec3(0.16, 0.2, 0.28), fresnel);
+  float warm = vPlate > 0.5 ? 0.35 : 0.3 + 0.6 * (1.0 - vUv.y);
+  vec3 col = glass + uAccent * warm * (0.08 + 0.4 * uGlow);
+  float alpha = mix(0.42, 0.72, fresnel) * skin;
+  if (vPlate > 0.5) alpha = 0.34 * skin;
 
-  // Thin edge lines on each panel, faintly lit.
+  // Panel edges and an inner grid, drawn as light lines.
   vec2 e = min(vUv, 1.0 - vUv);
-  float edge = 1.0 - smoothstep(0.0, 0.03, min(e.x, e.y));
-  col += vec3(0.16, 0.19, 0.26) * edge * 0.6;
-  alpha = max(alpha, edge * 0.35 * skin);
+  float edge = 1.0 - smoothstep(0.0, 0.028, min(e.x, e.y));
+  vec2 cells = vPlate > 0.5 ? vec2(4.0, 3.0) : vec2(3.0, 2.0);
+  vec2 g = fract(vUv * cells);
+  g = min(g, 1.0 - g);
+  float grid = 1.0 - smoothstep(0.0, 0.02, min(g.x, g.y));
+  col += vec3(0.4, 0.46, 0.62) * (edge * 0.7 + grid * 0.25) * (0.6 + uGlow);
+  alpha = max(alpha, max(edge * 0.7, grid * 0.3) * skin);
 
   // When a floor completes, one pulse runs round its outline.
   if (vPerimeter.x >= 0.0) {

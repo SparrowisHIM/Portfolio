@@ -93,6 +93,7 @@ uniform vec4 uPulses[MAX_PULSES];
 uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uBase;
 uniform float uNode;
+uniform float uGlow;
 
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -113,10 +114,11 @@ void main() {
   if (vBuilt <= 0.001) discard;
   vec3 n = normalize(vNormalW);
   vec3 v = normalize(cameraPosition - vWorld);
-  // Graphite: a little top light, a faint rim so edges read in the dark.
+  // Drawn wire: self-lit so it reads against the void, brighter at the rim.
   float top = 0.5 + 0.5 * n.y;
-  float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-  vec3 col = uBase * (0.55 + 0.45 * top) + vec3(0.10, 0.12, 0.16) * rim;
+  float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
+  vec3 col = uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow);
+  if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow;
 
   vec3 accent = hue(vHue);
   // Connection flash: bright for a moment after locking, then dark again.

@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { floorProgress } from "@/lib/construction";
 import { MAX_FLOORS, type Packed, type Structure as Skeleton } from "@/lib/structure";
-import { MAX_PULSES, cursor, emitBurst, emitPulse, events, HUES } from "@/lib/pulses";
+import { MAX_PULSES, cursor, emitBurst, emitPulse, events, HUES, scene } from "@/lib/pulses";
 import { memberDefines, memberFragment, memberVertex } from "./shaders/member";
 import { skinDefines, skinFragment, skinVertex } from "./shaders/skin";
 
@@ -21,8 +21,8 @@ type StructureProps = {
   onSelectFloor?: (index: number) => void;
 };
 
-const BASE = new THREE.Color("#2a3140");
-const NODE_BASE = new THREE.Color("#1c2230");
+const BASE = new THREE.Color("#4e5a72");
+const NODE_BASE = new THREE.Color("#7f8ca8");
 
 function attr(array: Float32Array, size: number) {
   return new THREE.InstancedBufferAttribute(array, size);
@@ -51,6 +51,7 @@ function sharedUniforms() {
     uCursorOn: { value: 0 },
     uPulses: { value: Array.from({ length: MAX_PULSES }, () => new THREE.Vector4(0, 0, 0, -1)) },
     uPulseHue: { value: Array.from({ length: MAX_PULSES }, () => new THREE.Vector3(1, 0.7, 0.3)) },
+    uGlow: { value: scene.glow },
   };
 }
 
@@ -174,6 +175,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     uniforms.members.uCursor.value.set(cursor.x, cursor.y, cursor.z);
     uniforms.members.uCursorVel.value.set(cursor.vx, cursor.vy, cursor.vz);
     uniforms.members.uCursorOn.value = cursor.active;
+    uniforms.members.uGlow.value = scene.glow;
     uniforms.panels.uActive.value = s;
     uniforms.panels.uXray.value = cursor.onBuilding * cursor.active;
     const pulses = uniforms.members.uPulses.value;
