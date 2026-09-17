@@ -211,21 +211,6 @@ void main() {
   // Finished floors go quiet and blue; the level being built holds the lamp.
   col *= mix(vec3(1.0), site * 1.25, 0.72) * (1.06 + 0.46 * heat) * (1.0 + 0.3 * smoothstep(0.75, 1.0, vWeight));
 
-  // Cladding. A floor that has been left behind is a clad floor, and you do
-  // not see the steel inside a clad floor — you see glass. The frame is
-  // drawn five times over otherwise, and by the top of the building that is
-  // nothing but noise. What survives is what gives the volume its edges:
-  // columns, the plate line and the slab edge stay, faint; the beams,
-  // bracing, mullions and rails inside go.
-  float clad = smoothstep(0.7, 2.3, uActiveFloor - vFloor);
-  float bones = mix(0.05, 0.62, smoothstep(0.30, 0.88, vWeight));
-  float keep = mix(1.0, bones, clad);
-  // Hover is the x-ray: the storey under the cursor comes back to full
-  // skeleton, so pointing at a finished floor shows you what is inside it.
-  float reveal = exp(-pow((vWorld.y - uCursor.y) / 2.1, 2.0)) * uCursorOn;
-  keep = max(keep, reveal);
-  col *= keep;
-
-  gl_FragColor = vec4(col, vBuilt * mix(0.35, 1.0, keep));
+  gl_FragColor = vec4(col, vBuilt);
 }
 `;
