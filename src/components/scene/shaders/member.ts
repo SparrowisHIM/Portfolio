@@ -131,8 +131,9 @@ uniform vec3 uBase;
 uniform float uNode;
 uniform float uForce;
 uniform float uGlow;
-uniform vec3 uFloorHue[MAX_FLOORS];
-uniform vec3 uTint;
+uniform vec3 uWarm;
+uniform vec3 uCold;
+uniform float uActiveFloor;
 
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -171,8 +172,12 @@ void main() {
   float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
   col *= mix(vec3(0.82, 0.94, 1.18), vec3(1.16, 0.96, 0.84), drift);
 
-  // Events take the colour of their floor, with a trace of the member's own.
-  vec3 accent = mix(hue(vHue), uFloorHue[int(vFloor + 0.5)], 0.7);
+  // Heat: 1 on the floor being worked, falling away below it. Work is warm
+  // sodium, finished steel is cold and quiet, and the warmth climbs the
+  // building with the scroll rather than every floor owning a colour.
+  float heat = exp(-pow(vFloor - uActiveFloor, 2.0) * 0.9);
+  vec3 site = mix(uCold, uWarm, heat);
+  vec3 accent = mix(hue(vHue), site, 0.7);
   // Connection flash: bright for a moment after locking, then dark again.
   float since = uTime - vLock;
   float flash = vLock > 0.0 ? exp(-since * 3.2) : 0.0;
@@ -203,8 +208,8 @@ void main() {
     col += accent * breathe * 1.4;
   }
 
-  // The whole structure leans toward the colour of the floor in view.
-  col *= mix(vec3(1.0), uTint * 1.35, 0.42);
+  // Finished floors go quiet and blue; the level being built holds the lamp.
+  col *= mix(vec3(1.0), site * 1.4, 0.4) * (0.6 + 0.75 * heat);
 
   gl_FragColor = vec4(col, vBuilt);
 }

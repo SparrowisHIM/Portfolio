@@ -61,7 +61,9 @@ uniform float uCompleted[MAX_FLOORS];
 uniform vec4 uPulses[MAX_PULSES];
 uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uAccent;
-uniform vec3 uFloorHue[MAX_FLOORS];
+uniform vec3 uWarm;
+uniform vec3 uCold;
+uniform float uActiveFloor;
 uniform float uGlow;
 uniform float uTear;
 
@@ -77,7 +79,7 @@ varying float vMax;
 void main() {
   if (vSkin <= 0.002) discard;
   int fi = int(vFloor + 0.5);
-  vec3 accent = uFloorHue[fi];
+  vec3 accent = mix(uCold, uWarm, exp(-pow(vFloor - uActiveFloor, 2.0) * 0.9));
   vec3 n = normalize(vNormalW);
   vec3 v = normalize(cameraPosition - vWorld);
   float facing = abs(dot(n, v));

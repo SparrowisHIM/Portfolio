@@ -17,21 +17,16 @@ export const HUES: Record<Hue, [number, number, number]> = {
 export type RGB = [number, number, number];
 
 /**
- * Each floor carries its own colour. Events on a floor take it, the glass
- * breathes it, and the whole structure tints toward it as you climb past.
+ * The site runs on two colours, and which one you see means something.
+ * Warm sodium is work: the floor on the hook, a member locking, a pulse.
+ * Cold steel is finished: everything below the level being built goes
+ * quiet and blue. Warmth climbs the building as you scroll.
  */
-export const FLOOR_HUES: RGB[] = [
-  [1.0, 0.7, 0.28],
-  [0.5, 0.72, 1.0],
-  [0.55, 1.0, 0.8],
-  [1.0, 0.45, 0.7],
-  [0.72, 0.56, 1.0],
-  [1.0, 0.86, 0.5],
-];
+export const COLD: RGB = [0.5, 0.63, 0.85];
 
-export function floorHue(index: number): RGB {
-  const n = FLOOR_HUES.length;
-  return FLOOR_HUES[((Math.round(index) % n) + n) % n];
+/** The colour of work, set from the site lamp on each rebuild. */
+export function workHue(): RGB {
+  return scene.warm;
 }
 
 export type Pulse = { x: number; y: number; z: number; t0: number; hue: Hue | RGB };
@@ -59,6 +54,8 @@ export function emitBurst(x: number, y: number, z: number, hue: Hue = "amber", c
 /** Scene-wide dials. `glow` is how much the structure lights itself at rest, 0 to 1. */
 export const scene = {
   glow: 0.26,
+  /** The lamp colour of this site: what every working event is lit with. */
+  warm: [1.0, 0.7, 0.28] as RGB,
 };
 
 /** Where the visitor's cursor is in the world, and how fast it is moving. */

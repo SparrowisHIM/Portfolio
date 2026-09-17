@@ -7,7 +7,7 @@ import type { Site } from "@/lib/site-generator";
 import { floorProgress } from "@/lib/construction";
 import { wind, windAt } from "@/lib/wind";
 import { MAX_FLOORS, type Packed, type Structure as Skeleton } from "@/lib/structure";
-import { MAX_PULSES, cursor, emitBurst, emitPulse, events, floorHue, HUES, scene } from "@/lib/pulses";
+import { COLD, MAX_PULSES, cursor, emitBurst, emitPulse, events, HUES, scene, workHue } from "@/lib/pulses";
 import { memberDefines, memberFragment, memberVertex } from "./shaders/member";
 import { skinDefines, skinFragment, skinVertex } from "./shaders/skin";
 
@@ -63,9 +63,10 @@ function sharedUniforms() {
     uHeight: { value: 1 },
     /** How much the always-on structural shimmer runs. */
     uLife: { value: 0 },
-    /** The colour of each floor, and the colour the scene leans toward at this scroll position. */
-    uFloorHue: { value: Array.from({ length: MAX_FLOORS }, (_, i) => new THREE.Vector3(...floorHue(i))) },
-    uTint: { value: new THREE.Vector3(1, 1, 1) },
+    /** Work is warm, finished steel is cold, and this is where the line falls. */
+    uWarm: { value: new THREE.Vector3(1, 0.7, 0.28) },
+    uCold: { value: new THREE.Vector3(...COLD) },
+    uActiveFloor: { value: 0 },
   };
 }
 
@@ -103,6 +104,8 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
   const uniforms = useMemo(() => {
     const shared = sharedUniforms();
     const accent = new THREE.Color(site.lamp.color);
+    scene.warm = [accent.r, accent.g, accent.b];
+    shared.uWarm.value.set(accent.r, accent.g, accent.b);
     return {
       members: { ...shared, uBase: { value: BASE }, uNode: { value: 0 }, uForce: { value: force ? 1 : 0 } },
       nodes: { ...shared, uBase: { value: NODE_BASE }, uNode: { value: 1 }, uForce: { value: force ? 1 : 0 } },
@@ -203,13 +206,8 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     shared.uTear.value = fd.tear;
     shared.uHeight.value = site.totalHeight;
     shared.uLife.value = animate ? 1 : 0;
-    // The scene tints toward the floor you are on, crossfading between floors.
-    const lo = Math.max(0, Math.min(floorCount - 1, Math.floor(s)));
-    const hi = Math.min(floorCount - 1, lo + 1);
-    const mixT = THREE.MathUtils.clamp(s - lo, 0, 1);
-    const a = floorHue(lo);
-    const b = floorHue(hi);
-    shared.uTint.value.set(a[0] + (b[0] - a[0]) * mixT, a[1] + (b[1] - a[1]) * mixT, a[2] + (b[2] - a[2]) * mixT);
+    // Where the warm band sits: the floor being built, sliding up with scroll.
+    shared.uActiveFloor.value = s;
     const progress = uniforms.members.uProgress.value;
     let top = -1;
     for (let i = 0; i <= floorCount && i < MAX_FLOORS; i++) {
@@ -221,7 +219,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
         idle.current = now;
         if (i > 0 && animate) {
           const f = site.floors[i];
-          if (f) emitPulse(f.offset[0], f.y, f.offset[1], floorHue(i));
+          if (f) emitPulse(f.offset[0], f.y, f.offset[1], workHue());
         }
       } else if (!done && completed.current[i] >= 0) {
         completed.current[i] = -1;
@@ -233,7 +231,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     if (animate && top > 0 && now - idle.current > IDLE_PULSE) {
       idle.current = now;
       const f = site.floors[top];
-      if (f) emitPulse(f.offset[0], f.y, f.offset[1], floorHue(top));
+      if (f) emitPulse(f.offset[0], f.y, f.offset[1], workHue());
     }
     // The uniform arrays are shared between the three materials.
     uniforms.members.uTime.value = now;
