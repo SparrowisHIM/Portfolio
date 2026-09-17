@@ -174,7 +174,12 @@ export function Crane({ site, section, animate }: CraneProps) {
     }
     // The module hides the moment it locks; the structure takes over. That
     // moment sends a pulse through the building.
-    if (frame.current) frame.current.visible = pose.loaded && !playing;
+    if (frame.current) {
+      frame.current.visible = pose.loaded && !playing;
+      // The module is cut to the plate it is carrying, offsets and cantilevers included.
+      frame.current.scale.set(pose.slab.width / parts.module.w, 1, pose.slab.depth / parts.module.d);
+      frame.current.rotation.y = pose.rotation ?? 0;
+    }
     if (spreader.current) spreader.current.visible = pose.loaded;
     if (wasLoaded.current && !pose.loaded && animate && !playing) {
       emitPulse(pos.x, pos.y - HOOK_ABOVE_SLAB, pos.z, "amber");
@@ -197,8 +202,8 @@ export function Crane({ site, section, animate }: CraneProps) {
 
     // Slings from the spreader to the module corners.
     if (pose.loaded) {
-      const w = (playing ? pose.slab.width : parts.module.w) * 0.46;
-      const d = (playing ? pose.slab.depth : parts.module.d) * 0.46;
+      const w = pose.slab.width * 0.46;
+      const d = pose.slab.depth * 0.46;
       const corners = [
         [-w, -d],
         [w, -d],

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Floor, Site } from "./site-generator";
 import { FLOOR_HEIGHT } from "./site-generator";
-import { PLACED_AT } from "./construction";
+import { HOVER, PLACED_AT } from "./construction";
 import { createRandom } from "./random";
 import { strut, box, type Instance, type Vec3 } from "./geometry";
 
@@ -172,10 +172,11 @@ export function buildStructure(site: Site): Structure {
       return [wx, y, wz];
     };
 
-    // The frame arrives on the crane and snaps down as one piece.
-    const frameStart = index === 0 ? 0 : PLACED_AT - 0.02;
-    const frameDur = 0.06;
-    const frameOrigin = (): Vec3 => flyFrom([0, 0.9, 0], 0.15);
+    // The frame arrives on the crane, hovers, and snaps down as one piece the
+    // moment the hook releases it.
+    const frameStart = index === 0 ? 0 : PLACED_AT;
+    const frameDur = 0.03;
+    const frameOrigin = (): Vec3 => flyFrom([0, HOVER, 0], 0.03);
 
     // Outline: the perimeter of the plate, split at corners and around the void.
     const perimeter = 2 * (e.xp + e.xn) + 2 * (e.zp + e.zn);
