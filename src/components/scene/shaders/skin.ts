@@ -61,6 +61,7 @@ uniform float uCompleted[MAX_FLOORS];
 uniform vec4 uPulses[MAX_PULSES];
 uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uAccent;
+uniform vec3 uFloorHue[MAX_FLOORS];
 uniform float uGlow;
 uniform float uTear;
 
@@ -75,6 +76,8 @@ varying float vMax;
 
 void main() {
   if (vSkin <= 0.002) discard;
+  int fi = int(vFloor + 0.5);
+  vec3 accent = uFloorHue[fi];
   vec3 n = normalize(vNormalW);
   vec3 v = normalize(cameraPosition - vWorld);
   float facing = abs(dot(n, v));
@@ -90,7 +93,7 @@ void main() {
   vec3 glass = mix(vec3(0.012, 0.016, 0.026), vec3(0.05, 0.065, 0.1), fresnel);
   float finished = smoothstep(0.5, 1.0, vMax);
   float warm = vPlate > 0.5 ? 0.12 : 0.5 * pow(1.0 - vUv.y, 2.0);
-  vec3 col = glass + uAccent * warm * finished * (0.03 + 0.25 * uGlow);
+  vec3 col = glass + accent * warm * finished * (0.03 + 0.25 * uGlow);
   float alpha = mix(0.6, 0.86, fresnel) * skin;
   if (vPlate > 0.5) alpha = 0.55 * skin;
 
@@ -103,14 +106,13 @@ void main() {
 
   // When a floor completes, one pulse runs round its outline.
   if (vPerimeter.x >= 0.0) {
-    int fi = int(vFloor + 0.5);
     float since = uTime - uCompleted[fi];
     if (uCompleted[fi] > 0.0 && since < 3.0) {
       float here = mix(vPerimeter.x, vPerimeter.y, vUv.x);
       float head = fract(since * 0.55);
       float dist = min(abs(here - head), 1.0 - abs(here - head));
       float run = exp(-dist * 40.0) * exp(-since * 0.9);
-      col += uAccent * run * edge * 3.0;
+      col += accent * run * edge * 3.0;
       alpha = max(alpha, run * edge);
     }
   }
@@ -126,7 +128,7 @@ void main() {
   }
 
   // The skeleton showing through the hole: a faint glow where the skin is gone.
-  col += uAccent * hole * 0.05;
+  col += accent * hole * 0.05;
   // Torn open by a fast scroll: the glass goes first.
   alpha *= 1.0 - uTear * 0.9;
 

@@ -14,7 +14,27 @@ export const HUES: Record<Hue, [number, number, number]> = {
   red: [1.0, 0.28, 0.22],
 };
 
-export type Pulse = { x: number; y: number; z: number; t0: number; hue: Hue };
+export type RGB = [number, number, number];
+
+/**
+ * Each floor carries its own colour. Events on a floor take it, the glass
+ * breathes it, and the whole structure tints toward it as you climb past.
+ */
+export const FLOOR_HUES: RGB[] = [
+  [1.0, 0.7, 0.28],
+  [0.5, 0.72, 1.0],
+  [0.55, 1.0, 0.8],
+  [1.0, 0.45, 0.7],
+  [0.72, 0.56, 1.0],
+  [1.0, 0.86, 0.5],
+];
+
+export function floorHue(index: number): RGB {
+  const n = FLOOR_HUES.length;
+  return FLOOR_HUES[((Math.round(index) % n) + n) % n];
+}
+
+export type Pulse = { x: number; y: number; z: number; t0: number; hue: Hue | RGB };
 export type Burst = { x: number; y: number; z: number; t0: number; hue: Hue; count: number };
 
 export const MAX_PULSES = 8;
@@ -26,7 +46,7 @@ export const events = {
   bursts: [] as Burst[],
 };
 
-export function emitPulse(x: number, y: number, z: number, hue: Hue = "amber") {
+export function emitPulse(x: number, y: number, z: number, hue: Hue | RGB = "amber") {
   events.pulses.push({ x, y, z, t0: events.time, hue });
   if (events.pulses.length > MAX_PULSES) events.pulses.shift();
 }

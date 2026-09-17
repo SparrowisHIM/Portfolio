@@ -40,6 +40,7 @@ varying float vHue;
 varying float vLock;
 varying float vAxis;
 varying float vWeight;
+varying float vFloor;
 
 // Overshoot on arrival, then settle.
 float backOut(float t) {
@@ -125,6 +126,7 @@ void main() {
   vLock = aLock;
   vAxis = position.y;
   vWeight = aWeight;
+  vFloor = aFloor;
   gl_Position = projectionMatrix * viewMatrix * world;
 }
 `;
@@ -138,6 +140,8 @@ uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uBase;
 uniform float uNode;
 uniform float uGlow;
+uniform vec3 uFloorHue[MAX_FLOORS];
+uniform vec3 uTint;
 
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -147,6 +151,7 @@ varying float vHue;
 varying float vLock;
 varying float vAxis;
 varying float vWeight;
+varying float vFloor;
 
 vec3 hue(float h) {
   if (h < 0.5) return vec3(1.0, 0.70, 0.28);
@@ -175,7 +180,8 @@ void main() {
   float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
   col *= mix(vec3(0.82, 0.94, 1.18), vec3(1.16, 0.96, 0.84), drift);
 
-  vec3 accent = hue(vHue);
+  // Events take the colour of their floor, with a trace of the member's own.
+  vec3 accent = mix(hue(vHue), uFloorHue[int(vFloor + 0.5)], 0.7);
   // Connection flash: bright for a moment after locking, then dark again.
   float since = uTime - vLock;
   float flash = vLock > 0.0 ? exp(-since * 3.2) : 0.0;
@@ -199,6 +205,9 @@ void main() {
     float breathe = pow(0.5 + 0.5 * sin(uTime * 1.6 + vSeed * 6.0), 6.0);
     col += accent * breathe * 1.4;
   }
+
+  // The whole structure leans toward the colour of the floor in view.
+  col *= mix(vec3(1.0), uTint * 1.35, 0.3);
 
   gl_FragColor = vec4(col, vBuilt);
 }

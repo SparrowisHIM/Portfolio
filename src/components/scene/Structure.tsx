@@ -7,7 +7,7 @@ import type { Site } from "@/lib/site-generator";
 import { floorProgress } from "@/lib/construction";
 import { wind, windAt } from "@/lib/wind";
 import { MAX_FLOORS, type Packed, type Structure as Skeleton } from "@/lib/structure";
-import { MAX_PULSES, cursor, emitBurst, emitPulse, events, HUES, scene } from "@/lib/pulses";
+import { MAX_PULSES, cursor, emitBurst, emitPulse, events, floorHue, HUES, scene } from "@/lib/pulses";
 import { memberDefines, memberFragment, memberVertex } from "./shaders/member";
 import { skinDefines, skinFragment, skinVertex } from "./shaders/skin";
 
@@ -60,6 +60,9 @@ function sharedUniforms() {
     uTear: { value: 0 },
     uHeight: { value: 1 },
     uSection: { value: 0 },
+    /** The colour of each floor, and the colour the scene leans toward at this scroll position. */
+    uFloorHue: { value: Array.from({ length: MAX_FLOORS }, (_, i) => new THREE.Vector3(...floorHue(i))) },
+    uTint: { value: new THREE.Vector3(1, 1, 1) },
   };
 }
 
@@ -194,6 +197,13 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     shared.uWind.value.set(wind.dir[0] * gust, wind.dir[1] * gust);
     shared.uTear.value = fd.tear;
     shared.uHeight.value = site.totalHeight;
+    // The scene tints toward the floor you are on, crossfading between floors.
+    const lo = Math.max(0, Math.min(floorCount - 1, Math.floor(s)));
+    const hi = Math.min(floorCount - 1, lo + 1);
+    const mixT = THREE.MathUtils.clamp(s - lo, 0, 1);
+    const a = floorHue(lo);
+    const b = floorHue(hi);
+    shared.uTint.value.set(a[0] + (b[0] - a[0]) * mixT, a[1] + (b[1] - a[1]) * mixT, a[2] + (b[2] - a[2]) * mixT);
     shared.uSection.value = s;
     const progress = uniforms.members.uProgress.value;
     for (let i = 0; i <= floorCount && i < MAX_FLOORS; i++) {
@@ -204,7 +214,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
         completed.current[i] = now;
         if (i > 0 && animate) {
           const f = site.floors[i];
-          if (f) emitPulse(f.offset[0], f.y, f.offset[1], i % 3 === 2 ? "blue" : "amber");
+          if (f) emitPulse(f.offset[0], f.y, f.offset[1], floorHue(i));
         }
       } else if (!done && completed.current[i] >= 0) {
         completed.current[i] = -1;
@@ -224,7 +234,7 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
       const p = events.pulses[i];
       if (p && now - p.t0 < 4) {
         pulses[i].set(p.x, p.y, p.z, p.t0);
-        const h = HUES[p.hue];
+        const h = Array.isArray(p.hue) ? p.hue : HUES[p.hue];
         hues[i].set(h[0], h[1], h[2]);
       } else {
         pulses[i].w = -1;

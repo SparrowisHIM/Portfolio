@@ -4,11 +4,11 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { cranePose } from "@/lib/construction";
+import { craneJob, cranePose } from "@/lib/construction";
 import { box, lattice, strut, truss, type Instance, type Vec3 } from "@/lib/geometry";
 import { wind } from "@/lib/wind";
 import { game } from "@/lib/stack-game";
-import { emitBurst, emitPulse } from "@/lib/pulses";
+import { emitBurst, emitPulse, floorHue } from "@/lib/pulses";
 import { Instances } from "./Instances";
 import { materials } from "./materials";
 
@@ -182,7 +182,7 @@ export function Crane({ site, section, animate }: CraneProps) {
     }
     if (spreader.current) spreader.current.visible = pose.loaded;
     if (wasLoaded.current && !pose.loaded && animate && !playing) {
-      emitPulse(pos.x, pos.y - HOOK_ABOVE_SLAB, pos.z, "amber");
+      emitPulse(pos.x, pos.y - HOOK_ABOVE_SLAB, pos.z, floorHue(craneJob(site, section.current ?? 0).index));
       emitBurst(pos.x, pos.y - HOOK_ABOVE_SLAB, pos.z, "amber", 16);
     }
     wasLoaded.current = pose.loaded;
