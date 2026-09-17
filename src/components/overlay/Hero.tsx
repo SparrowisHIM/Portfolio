@@ -42,7 +42,7 @@ export function Hero({ started }: { started: boolean }) {
       className="flex h-screen items-end px-5 pb-28 md:items-center md:px-8 md:pb-0 md:pt-24"
     >
       <div className="pointer-events-auto max-w-[34rem]">
-        <h1 className="font-display text-[clamp(88px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">
+        <h1 className="select-none font-display text-[clamp(88px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">
           <Line delay={1.3} started={started}>
             Build
           </Line>

@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { owner } from "@/lib/projects";
 
-export function Roof({ active }: { active: boolean }) {
+export function Roof({ active, onPlay }: { active: boolean; onPlay: () => void }) {
   const reduced = useReducedMotion();
   return (
     <section
@@ -17,7 +17,7 @@ export function Roof({ active }: { active: boolean }) {
         transition={{ duration: reduced ? 0.2 : 0.6 }}
         style={{ pointerEvents: active ? "auto" : "none" }}
       >
-        <h2 className="font-display text-[clamp(56px,8vw,96px)] font-extrabold uppercase leading-[0.9] tracking-tight text-chalk">
+        <h2 className="select-none font-display text-[clamp(56px,8vw,96px)] font-extrabold uppercase leading-[0.9] tracking-tight text-chalk">
           Next floor
           <br />
           is yours
@@ -27,7 +27,16 @@ export function Roof({ active }: { active: boolean }) {
         </p>
         <p className="mt-3 text-[15px] leading-relaxed text-chalk-dim">
           The slab is on the hook. If you are building something that needs
-          to move, write to me.
+          to move, write to me. Or{" "}
+          <button
+            type="button"
+            onClick={onPlay}
+            className="text-chalk underline decoration-sodium decoration-1 underline-offset-[6px] transition-colors hover:text-sodium"
+            tabIndex={active ? 0 : -1}
+          >
+            clock on for a night shift
+          </button>{" "}
+          and stack the next floors yourself.
         </p>
         <div className="mt-8 flex flex-wrap gap-6 text-[15px]">
           <a
