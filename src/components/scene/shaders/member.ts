@@ -161,14 +161,14 @@ void main() {
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
   // Hierarchy by weight: columns carry the resting light and run warm,
   // beams sit back, hairlines barely register until something lights them.
-  float w = mix(0.38, 1.0, vWeight * vWeight);
+  float w = mix(0.3, 1.0, vWeight * vWeight);
   vec3 col = (uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow)) * w;
   col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow);
   if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow * w;
   // Hairline light: a bright core along the axis and a slow iridescent
   // drift along the length, cool white to warm, so a line reads as light.
-  float core = pow(max(dot(n, v), 0.0), 3.0);
-  col += uBase * core * 0.6 * w;
+  float core = pow(max(dot(n, v), 0.0), 6.0);
+  col += uBase * core * 0.5 * w;
   float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
   col *= mix(vec3(0.82, 0.94, 1.18), vec3(1.16, 0.96, 0.84), drift);
 
@@ -209,7 +209,7 @@ void main() {
   }
 
   // Finished floors go quiet and blue; the level being built holds the lamp.
-  col *= mix(vec3(1.0), site * 1.4, 0.4) * (0.6 + 0.75 * heat);
+  col *= mix(vec3(1.0), site * 1.2, 0.42) * (0.88 + 0.5 * heat);
 
   gl_FragColor = vec4(col, vBuilt);
 }

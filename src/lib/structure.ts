@@ -78,10 +78,11 @@ export type Structure = {
   };
 };
 
-const COLUMN = 0.11;
-const BEAM = 0.075;
-const OUTLINE = 0.05;
-const DIAG = 0.036;
+const COLUMN = 0.075;
+/** The plate edge: the strongest horizontal line, so a floor reads as a plate. */
+const OUTLINE = 0.065;
+const BEAM = 0.042;
+const DIAG = 0.026;
 
 type Face = { key: 0 | 1 | 2 | 3; nx: number; nz: number; rotationY: number };
 const FACES: Face[] = [
