@@ -32,7 +32,7 @@ export type Member = {
   loud: boolean;
 };
 
-export type Node = { position: Vec3; floor: number; start: number; seed: number; hue: number; size: number };
+export type Node = { position: Vec3; floor: number; start: number; seed: number; hue: number; size: number; origin?: Vec3 };
 
 export type Panel = {
   position: Vec3;
@@ -364,7 +364,7 @@ export function buildStructure(site: Site): Structure {
   ]) {
     for (let y = 0; y < site.totalHeight + 1.6; y += 0.8) {
       const floor = Math.min(site.floors.length, Math.max(0, Math.ceil((y - 0.4) / FLOOR_HEIGHT)));
-      nodes.push({ position: [cx, y, cz], floor, start: 0, seed: rnd.next(), hue: HUE.white, size: 0.04 });
+      nodes.push({ position: [cx, y, cz], floor, start: 0, seed: rnd.next(), hue: HUE.white, size: 0.04, origin: [0, 0, 0] });
     }
   }
 
@@ -415,7 +415,7 @@ function packNodes(list: Node[]): Packed & { size: Float32Array } {
     floor: n.floor,
     start: n.start,
     dur: 0.05,
-    origin: [0, 0, 0],
+    origin: n.origin ?? [0, 0.6, 0],
     seed: n.seed,
     hue: n.hue,
     loud: false,
