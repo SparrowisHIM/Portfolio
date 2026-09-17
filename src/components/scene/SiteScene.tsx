@@ -70,8 +70,10 @@ export function SiteScene({
   onSelectFloor,
   onReady,
 }: SiteSceneProps) {
-  // Post-processing is the first thing to go on a machine that cannot keep up.
-  const [effects, setEffects] = useState(rich);
+  // Bloom is what makes the lines read as light, so a narrow screen keeps
+  // it and drops the grain and the vignette instead. It is still the first
+  // thing to go on a machine that cannot keep up.
+  const [effects, setEffects] = useState(true);
   const section = useRef(0);
   const skeleton = useMemo(() => buildStructure(site), [site]);
 
@@ -87,7 +89,7 @@ export function SiteScene({
       className="!absolute inset-0 cursor-grab active:cursor-grabbing"
     >
       <color attach="background" args={[palette.void]} />
-      <fog attach="fog" args={[palette.void, 24, 78]} />
+      <fog attach="fog" args={[palette.void, 26, 95]} />
       <hemisphereLight args={["#4a6390", "#0a0f1a", 1.2]} />
       <directionalLight position={[-20, 40, -10]} intensity={0.6} color="#9db8e6" />
       <Smoother progress={progress} sectionCount={sectionCount} section={section} animate={animate} />
@@ -104,10 +106,10 @@ export function SiteScene({
         <AdaptiveDpr pixelated />
       </PerformanceMonitor>
       {effects && (
-        <EffectComposer multisampling={2}>
-          <Bloom luminanceThreshold={0.42} mipmapBlur intensity={1.15} radius={0.72} />
-          <Vignette offset={0.25} darkness={0.7} />
-          <Noise opacity={0.035} />
+        <EffectComposer multisampling={rich ? 2 : 0}>
+          <Bloom luminanceThreshold={0.42} mipmapBlur intensity={rich ? 1.15 : 1.3} radius={0.72} />
+          <Vignette offset={0.25} darkness={rich ? 0.7 : 0.45} />
+          {rich ? <Noise opacity={0.035} /> : <></>}
         </EffectComposer>
       )}
       <Ready onReady={onReady} />

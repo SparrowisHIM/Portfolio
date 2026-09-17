@@ -92,7 +92,7 @@ export function SiteExperience() {
           started={ready}
           rich={wide}
           shiftX={wide ? HERO.shift : 0}
-          shiftY={wide ? 0 : 0.14}
+          shiftY={wide ? 0 : 0.18}
           onReady={onReady}
           onSelectFloor={(index) => {
             document.getElementById(projects[index].slug)?.scrollIntoView({
@@ -103,12 +103,12 @@ export function SiteExperience() {
         {/* Keep the copy column legible where the tower runs behind it. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] bg-gradient-to-r from-night/80 via-night/35 to-transparent md:block"
+          className="pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] bg-gradient-to-r from-background/85 via-background/40 to-transparent md:block"
         />
         {/* On small screens the copy sits over the ground, so shade it. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-night via-night/75 to-transparent md:hidden"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[54%] bg-gradient-to-t from-background via-background/80 to-transparent md:hidden"
         />
       </div>
 
