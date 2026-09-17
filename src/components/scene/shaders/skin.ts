@@ -24,6 +24,7 @@ varying float vSkin;
 varying vec2 vPerimeter;
 varying float vPlate;
 varying float vFloor;
+varying float vMax;
 
 void main() {
   int fi = int(aFloor + 0.5);
@@ -39,6 +40,7 @@ void main() {
   vPerimeter = aPerimeter;
   vPlate = aPlate;
   vFloor = aFloor;
+  vMax = aMaxSkin;
   gl_Position = projectionMatrix * viewMatrix * world;
 }
 `;
@@ -60,6 +62,7 @@ varying float vSkin;
 varying vec2 vPerimeter;
 varying float vPlate;
 varying float vFloor;
+varying float vMax;
 
 void main() {
   if (vSkin <= 0.002) discard;
@@ -73,22 +76,21 @@ void main() {
   float hole = exp(-d2 / 7.0) * uXray;
   float skin = vSkin * (1.0 - hole);
 
-  // Glass with a warm interior: lit from the floor line, cooler at the rim.
-  vec3 glass = mix(vec3(0.05, 0.07, 0.11), vec3(0.16, 0.2, 0.28), fresnel);
-  float warm = vPlate > 0.5 ? 0.35 : 0.3 + 0.6 * (1.0 - vUv.y);
-  vec3 col = glass + uAccent * warm * (0.08 + 0.4 * uGlow);
-  float alpha = mix(0.42, 0.72, fresnel) * skin;
-  if (vPlate > 0.5) alpha = 0.34 * skin;
+  // Smoked glass, near black, with a faint warm breath along the floor
+  // line on finished floors only. Cooler and a little denser at the rim.
+  vec3 glass = mix(vec3(0.012, 0.016, 0.026), vec3(0.05, 0.065, 0.1), fresnel);
+  float finished = smoothstep(0.5, 1.0, vMax);
+  float warm = vPlate > 0.5 ? 0.12 : 0.5 * pow(1.0 - vUv.y, 2.0);
+  vec3 col = glass + uAccent * warm * finished * (0.03 + 0.25 * uGlow);
+  float alpha = mix(0.6, 0.86, fresnel) * skin;
+  if (vPlate > 0.5) alpha = 0.55 * skin;
 
-  // Panel edges and an inner grid, drawn as light lines.
+  // Only the plate lines draw: a thin edge where the floor meets the glass.
   vec2 e = min(vUv, 1.0 - vUv);
   float edge = 1.0 - smoothstep(0.0, 0.028, min(e.x, e.y));
-  vec2 cells = vPlate > 0.5 ? vec2(4.0, 3.0) : vec2(3.0, 2.0);
-  vec2 g = fract(vUv * cells);
-  g = min(g, 1.0 - g);
-  float grid = 1.0 - smoothstep(0.0, 0.02, min(g.x, g.y));
-  col += vec3(0.4, 0.46, 0.62) * (edge * 0.7 + grid * 0.25) * (0.6 + uGlow);
-  alpha = max(alpha, max(edge * 0.7, grid * 0.3) * skin);
+  float plateLine = vPlate > 0.5 ? edge : (1.0 - smoothstep(0.0, 0.03, e.y));
+  col += vec3(0.3, 0.34, 0.46) * plateLine * (0.25 + 0.4 * uGlow);
+  alpha = max(alpha, plateLine * 0.5 * skin);
 
   // When a floor completes, one pulse runs round its outline.
   if (vPerimeter.x >= 0.0) {
