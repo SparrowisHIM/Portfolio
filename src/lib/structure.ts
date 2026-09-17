@@ -147,7 +147,7 @@ export function buildStructure(site: Site): Structure {
     // grid runs straight through the stack and the plates move around it.
     if (index > 0) {
       for (const [bx, bz] of floor.columns) {
-        const start = rnd.range(0, 0.1);
+        const start = 0.16 + rnd.range(0, 0.08);
         push({
           instance: strut([bx, y0 - wall, bz], [bx, y0, bz], COLUMN),
           floor: index,
@@ -254,7 +254,7 @@ export function buildStructure(site: Site): Structure {
       ];
       for (const [ext, foot, tip] of tips) {
         if (ext < 0.3) continue;
-        push({ instance: strut(world(foot[0], foot[1], y0 - wall), world(tip[0], tip[1], y0), DIAG * 1.3), floor: index, start: 0.7 + rnd.range(0, 0.04), dur: 0.12, origin: flyFrom([0, -0.8, 0], 0.4), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.5) });
+        push({ instance: strut(world(foot[0], foot[1], y0 - wall), world(tip[0], tip[1], y0), DIAG * 1.0), floor: index, start: 0.7 + rnd.range(0, 0.04), dur: 0.12, origin: flyFrom([0, -0.8, 0], 0.4), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.5) });
       }
     }
     // Wall mullions: hairlines every other bay that arrive with the glazing,
@@ -291,6 +291,13 @@ export function buildStructure(site: Site): Structure {
     for (const x of xLines) {
       push({ instance: strut(world(x, -e.zn, y0), world(x, e.zp, y0), BEAM), floor: index, start: frameStart, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
     }
+    push({ instance: strut(world(-e.xn, 0, y0), world(e.xp, 0, y0), BEAM), floor: index, start: frameStart, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
+    const crossing = Math.max(2, Math.round((e.zp + e.zn) / 2.6));
+    for (let k = 1; k < crossing; k++) {
+      const z = -e.zn + (k * (e.zp + e.zn)) / crossing;
+      if (Math.abs(z) < 0.4) continue;
+      push({ instance: strut(world(-e.xn, z, y0 + 0.02), world(e.xp, z, y0 + 0.02), BEAM * 0.7), floor: index, start: frameStart + 0.015, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
+    }
     const secondaries = Math.max(2, Math.round((e.xp + e.xn) / 1.6));
     for (let k = 1; k < secondaries; k++) {
       const x = -e.xn + (k * (e.xp + e.xn)) / secondaries;
@@ -326,10 +333,6 @@ export function buildStructure(site: Site): Structure {
       };
       const { bracedBay } = site;
       brace(FACE_TO_EDGE[bracedBay.face], bracedBay.s0, bracedBay.s1, true);
-      if (rnd.chance(0.4)) {
-        const s0 = rnd.range(0.1, 0.5);
-        brace(rnd.int(0, 3), s0, Math.min(0.95, s0 + rnd.range(0.25, 0.4)), false);
-      }
       const { core } = site;
       for (const [dx, dz] of [
         [-1, -1],
@@ -338,7 +341,7 @@ export function buildStructure(site: Site): Structure {
         [-1, 1],
       ]) {
         push({
-          instance: strut([core.x + (dx * core.width) / 2, y0 - wall, core.z + (dz * core.depth) / 2], [core.x + (dx * core.width) / 2, y0 + wall * 0.5, core.z + (dz * core.depth) / 2], DIAG * 1.4),
+          instance: strut([core.x + (dx * core.width) / 2, y0 - wall, core.z + (dz * core.depth) / 2], [core.x + (dx * core.width) / 2, y0 + 0.35, core.z + (dz * core.depth) / 2], DIAG * 1.4),
           floor: index,
           start: 0.72,
           dur: 0.18,

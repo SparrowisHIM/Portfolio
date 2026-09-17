@@ -342,8 +342,8 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   };
 
   // The braced bay sits on the side face, off centre, on every floor.
-  const bracedBay = { face: SIDE_FACE[sideFace], s0: rnd.range(0.12, 0.3), s1: 0 };
-  bracedBay.s1 = bracedBay.s0 + rnd.range(0.26, 0.34);
+  const bracedBay = { face: SIDE_FACE[sideFace], s0: rnd.range(0.18, 0.46), s1: 0 };
+  bracedBay.s1 = bracedBay.s0 + rnd.range(0.14, 0.19);
 
   return {
     seed,
