@@ -80,10 +80,10 @@ export function Dust({ seed, color, height, animate, count = 700 }: DustProps) {
       </bufferGeometry>
       <pointsMaterial
         color={color}
-        size={0.09}
+        size={0.07}
         sizeAttenuation
         transparent
-        opacity={0.55}
+        opacity={0.32}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
