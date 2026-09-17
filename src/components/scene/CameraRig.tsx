@@ -67,12 +67,12 @@ export function buildKeyframes(site: Site): Keyframe[] {
       angle: start + step * (i + 1),
     });
   });
-  // Roof: well above the unfinished top level, looking down onto the plan
-  // and the frame on the hook.
+  // Roof: the whole thing at last. Back off far enough that the tower reads
+  // base to hook — the massing, the crane and the frame still on the line.
   frames.push({
-    lookY: site.topLevel.y - 2.4,
-    rise: 17,
-    radius: 32,
+    lookY: site.totalHeight * 0.62,
+    rise: 7,
+    radius: 52,
     angle: start + sweep + 0.15,
   });
   return frames;
