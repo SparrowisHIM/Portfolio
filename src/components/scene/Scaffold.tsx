@@ -40,12 +40,17 @@ function buildRun(run: ScaffoldRun): RunParts {
   for (let i = 0; i <= bays; i++) {
     for (const out of rows) tubes.push(post(at(along(i), out, 0), height - (i % 3 === 1 ? 0.4 : 0), STANDARD));
   }
+  // Density is hierarchy, not uniformity. The outer row carries a ledger at
+  // every lift because that face is what reads as scaffold; the inner row
+  // and the transoms are thinned so you can see the frame through the run,
+  // which matters now the camera stands close enough to look through it.
   for (let l = 1; l <= lifts; l++) {
     const y = l * LIFT;
-    for (const out of rows) tubes.push(strut(at(-span / 2 - 0.15, out, y), at(span / 2 + 0.15, out, y), LEDGER));
-    for (let i = 0; i <= bays; i++) {
+    tubes.push(strut(at(-span / 2 - 0.15, rows[1], y), at(span / 2 + 0.15, rows[1], y), LEDGER));
+    if (l % 2 === 0) tubes.push(strut(at(-span / 2 - 0.15, rows[0], y), at(span / 2 + 0.15, rows[0], y), LEDGER));
+    for (let i = 0; i <= bays; i += 2) {
       tubes.push(strut(at(along(i), offset - 0.1, y), at(along(i), offset + ROW + 0.1, y), LEDGER));
-      for (const out of rows) joints.push(box(at(along(i), out, y), [0.09, 0.09, 0.09]));
+      if (l % 2 === 1) joints.push(box(at(along(i), rows[1], y), [0.09, 0.09, 0.09]));
     }
     for (let i = 0; i < bays; i += 2) {
       const flip = (i / 2 + l) % 2 === 0;
@@ -99,7 +104,7 @@ export function Scaffold({ site, section, animate }: ScaffoldProps) {
   );
 
   useFrame((_, delta) => {
-    const top = builtHeight(site, section.current ?? 0) + 1.6;
+    const top = builtHeight(site, section.current ?? 0) - 0.9;
     plane.current.constant = THREE.MathUtils.damp(plane.current.constant, top, 5, delta);
     clipTop.current = plane.current.constant;
   });
