@@ -89,6 +89,9 @@ const FACES: Face[] = [
   { key: 3, nx: 0, nz: -1, rotationY: Math.PI },
 ];
 
+/** Edge index (corner f to f+1) that lies on each face key. */
+const FACE_TO_EDGE = [1, 3, 2, 0] as const;
+
 /** Half extents of a floor plate after its extensions. */
 function extents(floor: Floor) {
   return {
@@ -231,25 +234,38 @@ export function buildStructure(site: Site): Structure {
       nodes.push({ position: world(a[0], a[1], y0), floor: index, start: frameStart + frameDur, seed: rnd.next(), hue: pickHue(), size: 0.16 });
     }
 
-    // Corner columns and wall mullions: the lines that make it read as walls.
+    // A cantilever hangs off the column line: two brackets from the column
+    // feet on the floor below out to the tip, arriving with the diagonals.
     if (index > 0) {
-      for (const [cx, cz] of corners) {
-        const [bx, bz] = place(floor, cx, cz);
-        const start = rnd.range(0.02, 0.12);
-        push({ instance: strut([bx, y0 - wall, bz], [bx, y0, bz], COLUMN * 0.8), floor: index, start, dur: 0.2, origin: flyFrom([0, -1.4, 0], 0.5), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.4) });
-        nodes.push({ position: [bx, y0 - wall, bz], floor: index, start: start + 0.2, seed: rnd.next(), hue: HUE.white, size: 0.14 });
+      const hx = floor.width / 2 - 0.35;
+      const hz = floor.depth / 2 - 0.35;
+      const tips: [number, [number, number], [number, number]][] = [
+        [floor.extend[0], [hx, -hz], [e.xp, -e.zn]],
+        [floor.extend[0], [hx, hz], [e.xp, e.zp]],
+        [floor.extend[1], [-hx, -hz], [-e.xn, -e.zn]],
+        [floor.extend[1], [-hx, hz], [-e.xn, e.zp]],
+        [floor.extend[2], [-hx, hz], [-e.xn, e.zp]],
+        [floor.extend[2], [hx, hz], [e.xp, e.zp]],
+        [floor.extend[3], [-hx, -hz], [-e.xn, -e.zn]],
+        [floor.extend[3], [hx, -hz], [e.xp, -e.zn]],
+      ];
+      for (const [ext, foot, tip] of tips) {
+        if (ext < 0.3) continue;
+        push({ instance: strut(world(foot[0], foot[1], y0 - wall), world(tip[0], tip[1], y0), DIAG * 1.3), floor: index, start: 0.7 + rnd.range(0, 0.04), dur: 0.12, origin: flyFrom([0, -0.8, 0], 0.4), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.5) });
       }
     }
+    // Wall mullions: hairlines every other bay that arrive with the glazing,
+    // so the walls read as walls without competing with the columns.
     for (let f = 0; f < 4; f++) {
       const a = corners[f];
       const b = corners[(f + 1) % 4];
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       const bays = Math.max(2, Math.round(len / 1.5));
-      for (let k = 1; k < bays; k++) {
+      for (let k = 1; k < bays; k += 2) {
         const s = k / bays;
         const p = world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y0);
         const q = world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y0 + wall);
-        push({ instance: strut(p, q, DIAG * 0.7), floor: index, start: 0.78 + rnd.range(0, 0.1), dur: 0.1, origin: flyFrom([0, 0.5, 0], 0.3), seed: rnd.next(), hue: HUE.white, loud: false });
+        push({ instance: strut(p, q, DIAG * 0.5), floor: index, start: 0.8 + rnd.range(0, 0.08), dur: 0.1, origin: flyFrom([0, 0.5, 0], 0.3), seed: rnd.next(), hue: pickHue(), loud: false });
       }
     }
     // The core as a glass box, lit warm, on every floor.
@@ -295,18 +311,21 @@ export function buildStructure(site: Site): Structure {
       });
     }
 
-    // Diagonals: a brace in two bays per floor, arriving late, plus the spine.
+    // Diagonals: a cross brace in the same bay on every floor, so the bracing
+    // reads as one line up the building, an odd extra brace, and the spine.
     if (index > 0) {
-      const braces = rnd.int(1, 3);
-      for (let k = 0; k < braces; k++) {
-        const f = rnd.int(0, 3);
+      const brace = (f: number, s0: number, s1: number, cross: boolean) => {
         const a = corners[f];
         const b = corners[(f + 1) % 4];
+        const at = (s: number, y: number) => world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y);
+        push({ instance: strut(at(s0, y0 - wall), at(s1, y0), DIAG), floor: index, start: rnd.range(0.7, 0.76), dur: 0.12, origin: flyFrom([0, -0.6, 0], 0.6), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.4) });
+        if (cross) push({ instance: strut(at(s1, y0 - wall), at(s0, y0), DIAG), floor: index, start: rnd.range(0.74, 0.8), dur: 0.12, origin: flyFrom([0, -0.6, 0], 0.6), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.4) });
+      };
+      const { bracedBay } = site;
+      brace(FACE_TO_EDGE[bracedBay.face], bracedBay.s0, bracedBay.s1, true);
+      if (rnd.chance(0.4)) {
         const s0 = rnd.range(0.1, 0.5);
-        const s1 = Math.min(0.95, s0 + rnd.range(0.25, 0.4));
-        const p = world(a[0] + (b[0] - a[0]) * s0, a[1] + (b[1] - a[1]) * s0, y0 - wall);
-        const q = world(a[0] + (b[0] - a[0]) * s1, a[1] + (b[1] - a[1]) * s1, y0);
-        push({ instance: strut(p, q, DIAG), floor: index, start: rnd.range(0.7, 0.8), dur: 0.12, origin: flyFrom([0, -0.6, 0], 0.8), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.4) });
+        brace(rnd.int(0, 3), s0, Math.min(0.95, s0 + rnd.range(0.25, 0.4)), false);
       }
       const { core } = site;
       for (const [dx, dz] of [
