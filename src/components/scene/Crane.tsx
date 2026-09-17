@@ -109,17 +109,17 @@ export function Crane({ site, section, animate }: CraneProps) {
     }
     const y = -HOOK_ABOVE_SLAB;
     const frame: Instance[] = [
-      strut([-w / 2, y, -d / 2], [w / 2, y, -d / 2], 0.07),
-      strut([-w / 2, y, d / 2], [w / 2, y, d / 2], 0.07),
-      strut([-w / 2, y, -d / 2], [-w / 2, y, d / 2], 0.07),
-      strut([w / 2, y, -d / 2], [w / 2, y, d / 2], 0.07),
-      strut([0, y, -d / 2], [0, y, d / 2], 0.06),
+      strut([-w / 2, y, -d / 2], [w / 2, y, -d / 2], 0.05),
+      strut([-w / 2, y, d / 2], [w / 2, y, d / 2], 0.05),
+      strut([-w / 2, y, -d / 2], [-w / 2, y, d / 2], 0.05),
+      strut([w / 2, y, -d / 2], [w / 2, y, d / 2], 0.05),
+      strut([0, y, -d / 2], [0, y, d / 2], 0.045),
     ];
     const secondaries = Math.max(2, Math.round(w / 1.6));
     for (let k = 1; k < secondaries; k++) {
       const x = -w / 2 + (k * w) / secondaries;
       if (Math.abs(x) < 0.4) continue;
-      frame.push(strut([x, y + 0.02, -d / 2], [x, y + 0.02, d / 2], 0.05));
+      frame.push(strut([x, y + 0.02, -d / 2], [x, y + 0.02, d / 2], 0.035));
     }
     return { mast: [...mast.chords, ...mast.braces], base, towerTop: [...towerTop, ...jib.chords, ...jib.braces, ...counter.chords, ...counter.braces], pendants, ballast, lights, frame, module: { w, d } };
   }, [crane, site.floors]);

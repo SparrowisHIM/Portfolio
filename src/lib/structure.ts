@@ -78,10 +78,10 @@ export type Structure = {
   };
 };
 
-const COLUMN = 0.16;
-const BEAM = 0.11;
-const OUTLINE = 0.07;
-const DIAG = 0.05;
+const COLUMN = 0.11;
+const BEAM = 0.075;
+const OUTLINE = 0.05;
+const DIAG = 0.036;
 
 type Face = { key: 0 | 1 | 2 | 3; nx: number; nz: number; rotationY: number };
 const FACES: Face[] = [
@@ -157,7 +157,7 @@ export function buildStructure(site: Site): Structure {
           hue: pickHue(),
           loud: rnd.chance(0.5),
         });
-        nodes.push({ position: [bx, y0, bz], floor: index, start: start + 0.2, seed: rnd.next(), hue: pickHue(), size: 0.22 });
+        nodes.push({ position: [bx, y0, bz], floor: index, start: start + 0.2, seed: rnd.next(), hue: pickHue(), size: 0.17 });
       }
     }
     if (columnsOnly) continue;
@@ -233,7 +233,7 @@ export function buildStructure(site: Site): Structure {
         });
       }
       along += len;
-      nodes.push({ position: world(a[0], a[1], y0), floor: index, start: frameStart + frameDur, seed: rnd.next(), hue: pickHue(), size: 0.16 });
+      nodes.push({ position: world(a[0], a[1], y0), floor: index, start: frameStart + frameDur, seed: rnd.next(), hue: pickHue(), size: 0.13 });
     }
 
     // A cantilever hangs off the column line: two brackets from the column
@@ -420,7 +420,7 @@ function packNodes(list: Node[]): Packed & { size: Float32Array } {
     hue: n.hue,
     loud: false,
   }));
-  return { ...pack(members, 0.2), size: Float32Array.from(list.map((n) => n.size)) };
+  return { ...pack(members, 0.17), size: Float32Array.from(list.map((n) => n.size)) };
 }
 
 function packPanels(list: Panel[]): Structure["panels"] {

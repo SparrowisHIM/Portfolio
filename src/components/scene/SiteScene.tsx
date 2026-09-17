@@ -107,7 +107,7 @@ export function SiteScene({
       </PerformanceMonitor>
       {effects && (
         <EffectComposer multisampling={2}>
-          <Bloom luminanceThreshold={0.95} mipmapBlur intensity={0.4} radius={0.55} />
+          <Bloom luminanceThreshold={0.55} mipmapBlur intensity={0.9} radius={0.7} />
           <Vignette offset={0.25} darkness={0.7} />
           <Noise opacity={0.035} />
         </EffectComposer>

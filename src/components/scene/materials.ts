@@ -4,8 +4,8 @@ import { concreteTexture, deckTexture } from "@/lib/textures";
 export const palette = {
   night: "#0d1b2e",
   nightDeep: "#071120",
-  void: "#05080f",
-  fog: "#070c16",
+  void: "#040609",
+  fog: "#050710",
   graphite: "#2a3140",
   steel: "#3a4352",
   steelDark: "#1e2430",

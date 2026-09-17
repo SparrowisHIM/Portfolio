@@ -168,6 +168,12 @@ void main() {
   vec3 col = (uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow)) * w;
   col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow);
   if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow * w;
+  // Hairline light: a bright core along the axis and a slow iridescent
+  // drift along the length, cool white to warm, so a line reads as light.
+  float core = pow(max(dot(n, v), 0.0), 3.0);
+  col += uBase * core * 0.6 * w;
+  float drift = 0.5 + 0.5 * sin(vAxis * 4.0 + vSeed * 6.2831 + uTime * 0.35);
+  col *= mix(vec3(0.82, 0.94, 1.18), vec3(1.16, 0.96, 0.84), drift);
 
   vec3 accent = hue(vHue);
   // Connection flash: bright for a moment after locking, then dark again.

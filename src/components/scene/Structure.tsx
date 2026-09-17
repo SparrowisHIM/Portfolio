@@ -22,7 +22,7 @@ type StructureProps = {
   onSelectFloor?: (index: number) => void;
 };
 
-const BASE = new THREE.Color("#4e5a72");
+const BASE = new THREE.Color("#5c6a86");
 const NODE_BASE = new THREE.Color("#7f8ca8");
 
 function attr(array: Float32Array, size: number) {
