@@ -201,8 +201,11 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   //             top of them cantilevers toward the camera; one loses a bay
   //   upper     floors upperFrom..count-1   a narrower mass set to one side, the
   //             topmost plate twisted
-  const podiumTop = Math.max(0, Math.round(count * 0.3) - 1);
-  const upperFrom = Math.max(podiumTop + 2, count - Math.max(1, Math.floor(count * 0.25)));
+  // Two masses, not three. Five storeys cannot carry three zones — you get
+  // one floor each and none of them reads. A wide lower mass and a clearly
+  // narrower upper one set to a single edge is a silhouette you can name.
+  const podiumTop = 0;
+  const upperFrom = Math.max(2, count - 2);
   const viewHorizontal = viewSide === "+z" || viewSide === "-z";
   // The camera stands to one side of the open face; that side face is in shot.
   const camX = Math.sin(viewAngle);
@@ -212,20 +215,28 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   const lateral: [number, number] = viewHorizontal ? [1, 0] : [0, 1];
   const normal: [number, number] = viewHorizontal ? [0, 1] : [1, 0];
   const shiftSign = rnd.chance(0.5) ? 1 : -1;
-  const shiftAmount = rnd.range(0.9, 1.3) * shiftSign;
+  // A move only reads as a decision if it is big against the footprint. The
+  // old slide was about a twelfth of the width, which looks like a mistake.
+  const shiftAmount = rnd.range(2.2, 3.0) * shiftSign;
   const drift = rnd.range(-0.3, 0.3);
   const shift: [number, number] = [lateral[0] * shiftAmount + normal[0] * drift, lateral[1] * shiftAmount + normal[1] * drift];
   const lateralBase = viewHorizontal ? baseWidth : baseDepth;
-  const upperScale = rnd.range(0.58, 0.68);
+  const upperScale = rnd.range(0.48, 0.58);
   const upperLateral = lateralBase * upperScale;
-  // The upper mass sits flush with one edge of the block below it.
-  const flush = (rnd.chance(0.5) ? 1 : -1) * ((lateralBase - upperLateral) / 2);
+  // The upper mass goes flush with the edge the block already slid toward,
+  // so the slide and the setback are one gesture rather than two.
+  const flush = shiftSign * ((lateralBase - upperLateral) / 2);
   const upperOffset: [number, number] = [shift[0] + lateral[0] * flush, shift[1] + lateral[1] * flush];
   const cantileverFloor = upperFrom - 1;
-  const cantilever = rnd.range(1.4, 2.2);
-  const voidFloor = podiumTop + 1 < cantileverFloor ? podiumTop + 1 : cantileverFloor;
-  const twistFloor = count - 1 >= upperFrom ? count - 1 : -1;
-  const twist = rnd.range(0.035, 0.07) * (rnd.chance(0.5) ? 1 : -1);
+  const cantilever = rnd.range(3.2, 4.4);
+  // The void runs through two storeys so it reads as a slot cut through the
+  // building rather than a gap in one line.
+  const voidFloor = Math.max(1, cantileverFloor - 1);
+  const twist = rnd.range(0.09, 0.14) * (rnd.chance(0.5) ? 1 : -1);
+
+  // One slot, same place on both storeys, so it lines up into a hole.
+  const voidAlong = rnd.range(-0.22, 0.22);
+  const voidWidth = rnd.range(3.0, 4.2);
 
   const grid = columnGrid(baseWidth, baseDepth);
 
@@ -237,7 +248,9 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     const offset: [number, number] = upper ? upperOffset : mid ? shift : [0, 0];
     const extend: Floor["extend"] = [0, 0, 0, 0];
     if (index === cantileverFloor) extend[SIDE_FACE[viewSide]] = cantilever;
-    const rotation = index === twistFloor ? twist : 0;
+    // The upper mass turns a little more with every plate, so the corners
+    // spiral instead of one storey sitting askew.
+    const rotation = upper ? twist * (index - upperFrom + 1) : 0;
     return {
       index,
       y: index * FLOOR_HEIGHT,
@@ -246,8 +259,8 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
       offset,
       extend,
       void:
-        index === voidFloor
-          ? { face: SIDE_FACE[sideFace], along: rnd.range(-0.25, 0.25), width: rnd.range(1.6, 2.4) }
+        index === voidFloor || index === voidFloor + 1
+          ? { face: SIDE_FACE[sideFace], along: voidAlong, width: voidWidth }
           : null,
       rotation,
       columns: columnsFor(grid, offset, rotation, width, depth),
