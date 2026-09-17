@@ -56,6 +56,11 @@ export function Crane({ site, section, animate }: CraneProps) {
   const slings = useRef<THREE.Mesh[]>([]);
   const beacon = useRef<THREE.MeshStandardMaterial>(null);
   const wasLoaded = useRef(false);
+  /** The frame on the hook glows with the lamp: it is the subject, not scenery. */
+  const loadMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#6b5730", emissive: site.lamp.color, emissiveIntensity: 0.42, roughness: 0.45, metalness: 0.4 }),
+    [site.lamp.color],
+  );
 
   const loadPos = useRef(new THREE.Vector3());
   const loadVel = useRef(new THREE.Vector3());
@@ -64,6 +69,8 @@ export function Crane({ site, section, animate }: CraneProps) {
   const tmpB = useRef(new THREE.Vector3());
   const tmpC = useRef(new THREE.Vector3());
   const tmpQ = useRef(new THREE.Quaternion());
+  /** Where the trolley is in the world, kept clear of the scratch vectors. */
+  const hookTop = useRef(new THREE.Vector3());
 
   const parts = useMemo(() => {
     const mast = lattice({ x: 0, z: 0, y0: 0.4, y1: crane.mastHeight, width: MAST, panel: PANEL, chord: 0.06, brace: 0.028 });
@@ -168,8 +175,9 @@ export function Crane({ site, section, animate }: CraneProps) {
 
     if (load.current) {
       load.current.position.copy(pos);
-      load.current.rotation.z = -vel.x * 0.02;
-      load.current.rotation.x = vel.z * 0.02;
+      const tilt = 0.055;
+      load.current.rotation.z = THREE.MathUtils.clamp(-vel.x * 0.007, -tilt, tilt);
+      load.current.rotation.x = THREE.MathUtils.clamp(vel.z * 0.007, -tilt, tilt);
       load.current.rotation.y = THREE.MathUtils.damp(load.current.rotation.y, 0, 2, dt);
     }
     // The module hides the moment it locks; the structure takes over. That
@@ -187,16 +195,18 @@ export function Crane({ site, section, animate }: CraneProps) {
     }
     wasLoaded.current = pose.loaded;
 
-    // Hoist ropes: two falls from the trolley down to the hook block.
+    // Hoist ropes: two falls from the trolley down to the hook block. The
+    // trolley position is kept in its own vector — aim() uses its scratch
+    // argument as working space and would otherwise overwrite it.
     if (trolley.current) {
-      const top = trolley.current.getWorldPosition(tmpB.current);
+      const top = trolley.current.getWorldPosition(hookTop.current);
       for (let i = 0; i < 2; i++) {
         const rope = ropes.current[i];
         if (!rope) continue;
         const off = (i === 0 ? -1 : 1) * 0.1;
         tmpC.current.set(pos.x + off, pos.y + 0.2, pos.z);
         const from = tmpA.current.set(top.x + off, top.y - 0.2, top.z);
-        aim(rope, from, tmpC.current, 0.016, tmpB.current, tmpQ.current);
+        aim(rope, from, tmpC.current, 0.026, tmpB.current, tmpQ.current);
       }
     }
 
@@ -216,7 +226,7 @@ export function Crane({ site, section, animate }: CraneProps) {
         sling.visible = true;
         tmpA.current.set(Math.sign(cx) * 0.8, -0.5, 0);
         tmpB.current.set(cx, -HOOK_ABOVE_SLAB, cz);
-        aim(sling, tmpA.current, tmpB.current, 0.02, tmpC.current, tmpQ.current);
+        aim(sling, tmpA.current, tmpB.current, 0.026, tmpC.current, tmpQ.current);
       });
     } else {
       for (const sling of slings.current) if (sling) sling.visible = false;
@@ -283,7 +293,7 @@ export function Crane({ site, section, animate }: CraneProps) {
           ref={(mesh) => {
             if (mesh) ropes.current[i] = mesh;
           }}
-          material={m.galvanised}
+          material={m.cable}
         >
           <boxGeometry args={[1, 1, 1]} />
         </mesh>
@@ -296,7 +306,7 @@ export function Crane({ site, section, animate }: CraneProps) {
           <cylinderGeometry args={[0.035, 0.035, 0.2, 8]} />
         </mesh>
         <group ref={spreader}>
-          <mesh position={[0, -0.5, 0]} material={m.crane}>
+          <mesh position={[0, -0.5, 0]} material={loadMaterial}>
             <boxGeometry args={[1.8, 0.07, 0.09]} />
           </mesh>
           {[0, 1, 2, 3].map((i) => (
@@ -305,14 +315,14 @@ export function Crane({ site, section, animate }: CraneProps) {
               ref={(mesh) => {
                 if (mesh) slings.current[i] = mesh;
               }}
-              material={m.galvanised}
+              material={m.cable}
             >
               <boxGeometry args={[1, 1, 1]} />
             </mesh>
           ))}
         </group>
         <group ref={frame}>
-          <Instances items={parts.frame} material={m.crane} frustumCulled={false} />
+          <Instances items={parts.frame} material={loadMaterial} frustumCulled={false} />
         </group>
       </group>
     </group>
