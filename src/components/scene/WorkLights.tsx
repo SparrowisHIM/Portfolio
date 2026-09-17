@@ -21,11 +21,11 @@ import { materials } from "./materials";
  */
 
 /** Three towers at different heights, so one is always above the work. */
-const MASTS = [15.5, 9.2, 19];
+const MASTS = [12.5, 8.4, 15.5];
 /** The cone geometry runs from its apex down its own -Y. */
 const DOWN = new THREE.Vector3(0, -1, 0);
 /** Half-angle of the beam. */
-const SPREAD = 0.15;
+const SPREAD = 0.105;
 
 const coneVertex = /* glsl */ `
 varying float vT;
@@ -51,10 +51,13 @@ varying vec3 vWorld;
 void main() {
   // Brightest at the lamp, thinning down the throw.
   float a = pow(1.0 - vT, 2.5);
-  // Soften the silhouette so the beam is a volume, not a paper wedge.
+  // A shell only reads as a volume if it fades out at its own silhouette;
+  // giving it a floor was what made it look like a sheet of brown paper.
   vec3 n = normalize(vNormalW);
   vec3 v = normalize(cameraPosition - vWorld);
-  a *= 0.55 + 0.45 * pow(max(dot(n, v), 0.0), 0.7);
+  a *= smoothstep(0.02, 0.5, max(dot(n, v), 0.0));
+  // And it must not smear across the lens when the camera is inside it.
+  a *= smoothstep(2.5, 13.0, distance(cameraPosition, vWorld));
   // Dust crossing the beam.
   a *= 0.86 + 0.14 * sin(uTime * 1.7 + vT * 9.0 + vWorld.y * 0.6);
   gl_FragColor = vec4(uColor, a * uIntensity);
@@ -76,7 +79,7 @@ uniform float uRadius;
 varying vec2 vXy;
 void main() {
   float d = length(vXy) / uRadius;
-  float a = pow(max(0.0, 1.0 - d), 2.4) * uIntensity;
+  float a = pow(max(0.0, 1.0 - d), 3.2) * uIntensity;
   gl_FragColor = vec4(uColor, a);
 }
 `;
@@ -93,7 +96,7 @@ export function WorkLights({ site, section, animate }: { site: Site; section: Re
   // frame rather than stand in front of it.
   const placed = useMemo(() => {
     const reach = Math.max(site.floors[0].width, site.floors[0].depth) * 0.5 + 7.5;
-    return [-1.05, 0.62, 2.3].map((offset) => {
+    return [-1.55, 1.15, 2.85].map((offset) => {
       const a = site.viewAngle + offset;
       return [Math.sin(a) * reach, 0, Math.cos(a) * reach] as [number, number, number];
     });
@@ -150,8 +153,8 @@ export function WorkLights({ site, section, animate }: { site: Site; section: Re
             fragmentShader: poolFragment,
             uniforms: {
               uColor: { value: new THREE.Color(site.lamp.color) },
-              uIntensity: { value: 0.5 },
-              uRadius: { value: 7 },
+              uIntensity: { value: 0.95 },
+              uRadius: { value: 4.2 },
             },
             transparent: true,
             depthWrite: false,
@@ -192,7 +195,7 @@ export function WorkLights({ site, section, animate }: { site: Site; section: Re
       u.uTime.value = now;
       // A lamp flickers awake rather than snapping on.
       const warm = THREE.MathUtils.clamp(level.current / 3, 0, 1);
-      u.uIntensity.value = 0.34 * warm * (0.92 + 0.08 * Math.sin(now * 1.3 + i * 2.1));
+      u.uIntensity.value = 0.24 * warm * (0.92 + 0.08 * Math.sin(now * 1.3 + i * 2.1));
 
       const lamp = heads.current[i];
       if (lamp) {
@@ -222,11 +225,11 @@ export function WorkLights({ site, section, animate }: { site: Site; section: Re
               if (mesh) heads.current[i] = mesh;
             }}
           >
-            <boxGeometry args={[0.46, 0.28, 0.14]} />
-            <meshStandardMaterial color="#1b1e26" emissive={site.lamp.color} emissiveIntensity={2.4} toneMapped={false} />
+            <boxGeometry args={[0.34, 0.2, 0.1]} />
+            <meshStandardMaterial color="#1b1e26" emissive={site.lamp.color} emissiveIntensity={1.7} toneMapped={false} />
           </mesh>
           <mesh position={[p[0], 0.03, p[2]]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-1} material={pools[i]}>
-            <circleGeometry args={[7, 40]} />
+            <circleGeometry args={[4.2, 40]} />
           </mesh>
         </group>
       ))}
