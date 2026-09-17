@@ -24,6 +24,8 @@ type StructureProps = {
 
 const BASE = new THREE.Color("#5c6a86");
 const NODE_BASE = new THREE.Color("#7f8ca8");
+/** Seconds of quiet before the building sends a pulse of its own. */
+const IDLE_PULSE = 7.5;
 
 function attr(array: Float32Array, size: number) {
   return new THREE.InstancedBufferAttribute(array, size);
@@ -59,6 +61,8 @@ function sharedUniforms() {
     uWind: { value: new THREE.Vector2() },
     uTear: { value: 0 },
     uHeight: { value: 1 },
+    /** How much the always-on structural shimmer runs. */
+    uLife: { value: 0 },
     /** The colour of each floor, and the colour the scene leans toward at this scroll position. */
     uFloorHue: { value: Array.from({ length: MAX_FLOORS }, (_, i) => new THREE.Vector3(...floorHue(i))) },
     uTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -77,6 +81,8 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
   const panels = useRef<THREE.InstancedMesh>(null);
   const completed = useRef(new Float32Array(MAX_FLOORS).fill(-1));
   const field = useRef({ prev: -1, vel: 0, shear: new THREE.Vector3(), shearVel: new THREE.Vector3(), tear: 0, right: new THREE.Vector3() });
+  /** When the structure last lit up, so a quiet site can send its own pulse. */
+  const idle = useRef(0);
   const floorCount = site.floors.length;
 
   const box = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
@@ -192,10 +198,11 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     fd.tear = THREE.MathUtils.damp(fd.tear, tearTarget, tearTarget > fd.tear ? 12 : 1.6, dt);
     const shared = uniforms.members;
     shared.uShear.value.copy(sh);
-    const gust = animate ? windAt(now) * 0.22 : 0;
+    const gust = animate ? windAt(now) * 0.3 : 0;
     shared.uWind.value.set(wind.dir[0] * gust, wind.dir[1] * gust);
     shared.uTear.value = fd.tear;
     shared.uHeight.value = site.totalHeight;
+    shared.uLife.value = animate ? 1 : 0;
     // The scene tints toward the floor you are on, crossfading between floors.
     const lo = Math.max(0, Math.min(floorCount - 1, Math.floor(s)));
     const hi = Math.min(floorCount - 1, lo + 1);
@@ -204,12 +211,14 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
     const b = floorHue(hi);
     shared.uTint.value.set(a[0] + (b[0] - a[0]) * mixT, a[1] + (b[1] - a[1]) * mixT, a[2] + (b[2] - a[2]) * mixT);
     const progress = uniforms.members.uProgress.value;
+    let top = -1;
     for (let i = 0; i <= floorCount && i < MAX_FLOORS; i++) {
       progress[i] = floorProgress(i, s);
       // A floor is complete once its diagonals are in: one pulse round the outline.
       const done = progress[i] >= 0.92;
       if (done && completed.current[i] < 0) {
         completed.current[i] = now;
+        idle.current = now;
         if (i > 0 && animate) {
           const f = site.floors[i];
           if (f) emitPulse(f.offset[0], f.y, f.offset[1], floorHue(i));
@@ -217,6 +226,14 @@ export function Structure({ site, skeleton, section, animate, force, onSelectFlo
       } else if (!done && completed.current[i] >= 0) {
         completed.current[i] = -1;
       }
+      if (done) top = i;
+    }
+    // Nothing happening for a while: the highest finished floor sends one
+    // slow pulse down the stack, so the site never reads as switched off.
+    if (animate && top > 0 && now - idle.current > IDLE_PULSE) {
+      idle.current = now;
+      const f = site.floors[top];
+      if (f) emitPulse(f.offset[0], f.y, f.offset[1], floorHue(top));
     }
     // The uniform arrays are shared between the three materials.
     uniforms.members.uTime.value = now;

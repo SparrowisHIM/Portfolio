@@ -13,14 +13,11 @@ export const memberDefines = { MAX_FLOORS, MAX_PULSES };
 export const memberVertex = /* glsl */ `
 uniform float uProgress[MAX_FLOORS];
 uniform float uTime;
-uniform vec3 uCursor;
-uniform vec3 uCursorVel;
-uniform float uCursorOn;
-uniform float uForce;
 uniform vec3 uShear;
 uniform vec2 uWind;
 uniform float uTear;
 uniform float uHeight;
+uniform float uLife;
 
 attribute float aFloor;
 attribute float aStart;
@@ -104,17 +101,13 @@ void main() {
     world.xz = vec2(world.x * cs - world.z * sn, world.x * sn + world.z * cs);
   }
 
-  // The cursor is a finger on silk: nearby lines are drawn toward it and
-  // lag its motion, and while it moves a ripple runs out through the lines.
-  if (uForce > 0.5) {
-    vec3 d = world.xyz - uCursor;
-    float r = length(d);
-    float fall = exp(-r * r / 20.0) * uCursorOn;
-    vec3 dir = r > 0.001 ? d / r : vec3(0.0);
-    float moving = min(1.0, length(uCursorVel) * 0.4);
-    float ripple = sin(r * 1.8 - uTime * 6.0) * exp(-r / 7.0) * uCursorOn * moving * 0.06 * (0.3 + 0.7 * (1.0 - aWeight));
-    world.xyz += ((-dir * 0.22 - uCursorVel * 0.02) * fall + dir * ripple) * step(0.999, p);
-  }
+  // Steel is never completely still. A shimmer the size of a temperature
+  // change runs through the frame, least at the base, most at the top, so
+  // the building reads as a live object even with nothing happening.
+  float life = uLife * (0.35 + 0.65 * flex) * step(0.999, p);
+  world.x += sin(uTime * 0.9 + aSeed * 12.0) * 0.018 * life;
+  world.y += sin(uTime * 1.3 + aSeed * 21.0) * 0.010 * life;
+  world.z += cos(uTime * 1.1 + aSeed * 17.0) * 0.018 * life;
 
   vWorld = world.xyz;
   vNormalW = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * normal);
@@ -136,6 +129,7 @@ uniform vec4 uPulses[MAX_PULSES];
 uniform vec3 uPulseHue[MAX_PULSES];
 uniform vec3 uBase;
 uniform float uNode;
+uniform float uForce;
 uniform float uGlow;
 uniform vec3 uFloorHue[MAX_FLOORS];
 uniform vec3 uTint;
@@ -166,7 +160,7 @@ void main() {
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
   // Hierarchy by weight: columns carry the resting light and run warm,
   // beams sit back, hairlines barely register until something lights them.
-  float w = mix(0.26, 1.0, vWeight * vWeight);
+  float w = mix(0.38, 1.0, vWeight * vWeight);
   vec3 col = (uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow)) * w;
   col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow);
   if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow * w;
@@ -195,9 +189,15 @@ void main() {
     col += uPulseHue[i] * wave * 1.6;
   }
 
-  // Nodes wake up near the cursor; a warning node breathes red on its own.
-  float near = exp(-dot(vWorld - uCursor, vWorld - uCursor) / 9.0) * uCursorOn;
+  // Inspection, not deformation: the frame does not move when you point at
+  // it. Nodes wake up under the cursor and a survey ring runs out from it
+  // through the steel, lighting what it crosses.
+  float dc = distance(vWorld, uCursor);
+  float near = exp(-dc * dc / 9.0) * uCursorOn;
   col += accent * near * (0.35 + 0.9 * uNode);
+  float sweep = fract(uTime * 0.5);
+  float ring = exp(-pow(dc - sweep * 11.0, 2.0) * 0.7) * (1.0 - sweep) * uCursorOn * uForce;
+  col += accent * ring * (0.5 + 0.9 * vWeight);
   if (uNode > 0.5 && vHue > 2.5) {
     float breathe = pow(0.5 + 0.5 * sin(uTime * 1.6 + vSeed * 6.0), 6.0);
     col += accent * breathe * 1.4;
