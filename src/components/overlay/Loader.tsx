@@ -15,7 +15,7 @@ export function Loader({ ready }: LoaderProps) {
       {!ready && (
         <motion.div
           key="loader"
-          className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-night"
+          className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-background"
           initial={false}
           exit={{ opacity: 0 }}
           transition={{ duration: reduced ? 0.15 : 0.6, ease: "easeOut" }}
