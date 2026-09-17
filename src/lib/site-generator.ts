@@ -26,13 +26,16 @@ export const SIDE_ANGLE: Record<Side, number> = {
   "-x": -Math.PI / 2,
 };
 
+/** Face index (+x, -x, +z, -z) for a side, as used by `extend` and `void`. */
+export const SIDE_FACE: Record<Side, 0 | 1 | 2 | 3> = { "+x": 0, "-x": 1, "+z": 2, "-z": 3 };
+
 export type Floor = {
   index: number;
   /** Y of the floor plate's underside. */
   y: number;
   width: number;
   depth: number;
-  /** Plate offset from the tower axis: floors do not stack dead square. */
+  /** Plate offset from the tower axis: the masses do not stack dead square. */
   offset: [number, number];
   /** Extension per face (+x, -x, +z, -z): positive cantilevers, negative sets back. */
   extend: [number, number, number, number];
@@ -40,7 +43,7 @@ export type Floor = {
   void: { face: 0 | 1 | 2 | 3; along: number; width: number } | null;
   /** Small twist of the whole plate, radians. */
   rotation: number;
-  /** Column footprints, relative to the plate centre. */
+  /** Column footprints in world x/z. Columns run straight up through the stack. */
   columns: [number, number][];
   finished: boolean;
 };
@@ -92,6 +95,8 @@ export type Site = {
   yardSide: 1 | -1;
   /** The accent light on this site. */
   lamp: Lamp;
+  /** The one bay that carries a cross brace on every floor: face and range along it. */
+  bracedBay: { face: 0 | 1 | 2 | 3; s0: number; s1: number };
 };
 
 export type Lamp = { name: string; color: string };
@@ -103,6 +108,7 @@ export const LAMPS: Lamp[] = [
   { name: "arc", color: "#7fb4ff" },
 ];
 
+/** The column grid of the whole building: four corners and a mid column on the long faces. */
 function columnGrid(width: number, depth: number): [number, number][] {
   const hx = width / 2 - 0.35;
   const hz = depth / 2 - 0.35;
@@ -130,57 +136,37 @@ export function onSide(side: Side, along: number, out: number, y = 0): Vec3 {
   }
 }
 
+/** The grid columns that fall inside a plate, plus the plate's own corners where the grid does not reach. */
+function columnsFor(grid: [number, number][], offset: [number, number], rotation: number, width: number, depth: number): [number, number][] {
+  const c = Math.cos(rotation);
+  const s = Math.sin(rotation);
+  const inside: [number, number][] = grid.filter(([x, z]) => {
+    const dx = x - offset[0];
+    const dz = z - offset[1];
+    const lx = dx * c + dz * s;
+    const lz = -dx * s + dz * c;
+    return Math.abs(lx) <= width / 2 - 0.1 && Math.abs(lz) <= depth / 2 - 0.1;
+  });
+  const hx = width / 2 - 0.35;
+  const hz = depth / 2 - 0.35;
+  for (const [lx, lz] of [
+    [-hx, -hz],
+    [hx, -hz],
+    [-hx, hz],
+    [hx, hz],
+  ]) {
+    const wx = offset[0] + lx * c - lz * s;
+    const wz = offset[1] + lx * s + lz * c;
+    if (inside.every(([x, z]) => Math.hypot(x - wx, z - wz) > 0.9)) inside.push([wx, wz]);
+  }
+  return inside;
+}
+
 export function generateSite(seed: number, floorFlags: { finished: boolean }[]): Site {
   const rnd = createRandom(seed);
   const baseWidth = rnd.range(7.5, 9);
   const baseDepth = rnd.range(5.5, 7);
   const count = floorFlags.length;
-
-  // Controlled irregularity: a twisted floor, a floor with a void bay, and
-  // cantilevers or setbacks on a few faces. Never more than one twist.
-  const twisted = rnd.chance(0.7) ? rnd.int(1, count - 1) : -1;
-  const voided = rnd.chance(0.75) ? rnd.int(1, count - 1) : -1;
-
-  const floors: Floor[] = floorFlags.map((flag, index) => {
-    const shrink = index * rnd.range(0.02, 0.18);
-    const width = Math.max(5.5, baseWidth - shrink);
-    const depth = Math.max(4.2, baseDepth - shrink * 0.6);
-    const extend: Floor["extend"] = [0, 0, 0, 0];
-    if (index > 0 && rnd.chance(0.45)) {
-      const face = rnd.int(0, 3);
-      extend[face] = rnd.chance(0.65) ? rnd.range(1.0, 2.0) : -rnd.range(0.8, 1.4);
-    }
-    const voidBay =
-      index === voided
-        ? {
-            face: rnd.int(0, 3) as 0 | 1 | 2 | 3,
-            along: rnd.range(-0.3, 0.3),
-            width: rnd.range(1.6, 2.6),
-          }
-        : null;
-    return {
-      index,
-      y: index * FLOOR_HEIGHT,
-      width,
-      depth,
-      offset: index === 0 ? [0, 0] : [rnd.range(-0.55, 0.55), rnd.range(-0.4, 0.4)],
-      extend,
-      void: voidBay,
-      rotation: index === twisted ? rnd.range(0.035, 0.07) * (rnd.chance(0.5) ? 1 : -1) : 0,
-      columns: columnGrid(width, depth),
-      finished: flag.finished,
-    };
-  });
-
-  const topY = count * FLOOR_HEIGHT;
-  const last = floors[count - 1];
-  const topLevel = {
-    y: topY,
-    columns: columnGrid(last.width, last.depth).filter(() => rnd.chance(0.75)),
-    width: last.width,
-    depth: last.depth,
-  };
-  const totalHeight = topY + FLOOR_HEIGHT;
 
   // Scaffolding hugs one or two faces of the tower.
   const scaffoldSides = SIDES.filter(() => rnd.chance(0.45));
@@ -200,6 +186,84 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     : [craneSign * craneDistance, 0, craneAlong];
   const toTower = Math.atan2(-cranePosition[0], -cranePosition[2]);
 
+  // Look at the tower from an open face; the crane then sits to one side.
+  const openSides = SIDES.filter((s) => !scaffoldSides.includes(s) && s !== craneSide);
+  const viewSide = openSides.length ? rnd.pick(openSides) : craneSide;
+  const craneAngle = Math.atan2(cranePosition[0], cranePosition[2]);
+  let away = SIDE_ANGLE[viewSide] - craneAngle;
+  away = Math.atan2(Math.sin(away), Math.cos(away));
+  const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? 0.4 : -0.4);
+
+  // Massing: three moves that read as decisions, not per-floor noise.
+  //   podium    floors 0..podiumTop         on axis, full footprint
+  //   shifted   floors podiumTop+1..upperFrom-1  slide sideways as one block; the
+  //             top of them cantilevers toward the camera; one loses a bay
+  //   upper     floors upperFrom..count-1   a narrower mass set to one side, the
+  //             topmost plate twisted
+  const podiumTop = Math.max(0, Math.round(count * 0.3) - 1);
+  const upperFrom = Math.max(podiumTop + 2, count - Math.max(1, Math.floor(count * 0.25)));
+  const viewHorizontal = viewSide === "+z" || viewSide === "-z";
+  // The camera stands to one side of the open face; that side face is in shot.
+  const camX = Math.sin(viewAngle);
+  const camZ = Math.cos(viewAngle);
+  const sideFace: Side = viewHorizontal ? (camX >= 0 ? "+x" : "-x") : camZ >= 0 ? "+z" : "-z";
+  // Lateral is along the open face, so the shift reads as a slide across the shot.
+  const lateral: [number, number] = viewHorizontal ? [1, 0] : [0, 1];
+  const normal: [number, number] = viewHorizontal ? [0, 1] : [1, 0];
+  const shiftSign = rnd.chance(0.5) ? 1 : -1;
+  const shiftAmount = rnd.range(0.9, 1.3) * shiftSign;
+  const drift = rnd.range(-0.3, 0.3);
+  const shift: [number, number] = [lateral[0] * shiftAmount + normal[0] * drift, lateral[1] * shiftAmount + normal[1] * drift];
+  const lateralBase = viewHorizontal ? baseWidth : baseDepth;
+  const upperScale = rnd.range(0.58, 0.68);
+  const upperLateral = lateralBase * upperScale;
+  // The upper mass sits flush with one edge of the block below it.
+  const flush = (rnd.chance(0.5) ? 1 : -1) * ((lateralBase - upperLateral) / 2);
+  const upperOffset: [number, number] = [shift[0] + lateral[0] * flush, shift[1] + lateral[1] * flush];
+  const cantileverFloor = upperFrom - 1;
+  const cantilever = rnd.range(1.4, 2.2);
+  const voidFloor = podiumTop + 1 < cantileverFloor ? podiumTop + 1 : cantileverFloor;
+  const twistFloor = count - 1 >= upperFrom ? count - 1 : -1;
+  const twist = rnd.range(0.035, 0.07) * (rnd.chance(0.5) ? 1 : -1);
+
+  const grid = columnGrid(baseWidth, baseDepth);
+
+  const floors: Floor[] = floorFlags.map((flag, index) => {
+    const upper = index >= upperFrom;
+    const mid = !upper && index > podiumTop;
+    const width = upper && viewHorizontal ? upperLateral : baseWidth;
+    const depth = upper && !viewHorizontal ? upperLateral : baseDepth;
+    const offset: [number, number] = upper ? upperOffset : mid ? shift : [0, 0];
+    const extend: Floor["extend"] = [0, 0, 0, 0];
+    if (index === cantileverFloor) extend[SIDE_FACE[viewSide]] = cantilever;
+    const rotation = index === twistFloor ? twist : 0;
+    return {
+      index,
+      y: index * FLOOR_HEIGHT,
+      width,
+      depth,
+      offset,
+      extend,
+      void:
+        index === voidFloor
+          ? { face: SIDE_FACE[sideFace], along: rnd.range(-0.25, 0.25), width: rnd.range(1.6, 2.4) }
+          : null,
+      rotation,
+      columns: columnsFor(grid, offset, rotation, width, depth),
+      finished: flag.finished,
+    };
+  });
+
+  const topY = count * FLOOR_HEIGHT;
+  const last = floors[count - 1];
+  const topLevel = {
+    y: topY,
+    columns: last.columns.filter(() => rnd.chance(0.75)),
+    width: last.width,
+    depth: last.depth,
+  };
+  const totalHeight = topY + FLOOR_HEIGHT;
+
   const crane: Crane = {
     position: cranePosition,
     mastHeight: totalHeight + rnd.range(6, 9),
@@ -209,14 +273,6 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     trolley: craneDistance + rnd.range(-1, 1),
     hookDrop: rnd.range(3, 5),
   };
-
-  // Look at the tower from an open face; the crane then sits to one side.
-  const openSides = SIDES.filter((s) => !scaffoldSides.includes(s) && s !== craneSide);
-  const viewSide = openSides.length ? rnd.pick(openSides) : craneSide;
-  const craneAngle = Math.atan2(cranePosition[0], cranePosition[2]);
-  let away = SIDE_ANGLE[viewSide] - craneAngle;
-  away = Math.atan2(Math.sin(away), Math.cos(away));
-  const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? 0.4 : -0.4);
 
   const gap = 0.9;
   const scaffolds: ScaffoldRun[] = scaffoldSides.map((side) => {
@@ -239,13 +295,32 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     };
   });
 
-  // The spine (lift core) rises inside the footprint, a storey ahead of the frame.
+  // The spine (lift core) rises through every plate, so it sits inside the
+  // footprint they all share, pushed to the back away from the open face.
+  let xMin = -Infinity;
+  let xMax = Infinity;
+  let zMin = -Infinity;
+  let zMax = Infinity;
+  for (const f of floors) {
+    xMin = Math.max(xMin, f.offset[0] - f.width / 2);
+    xMax = Math.min(xMax, f.offset[0] + f.width / 2);
+    zMin = Math.max(zMin, f.offset[1] - f.depth / 2);
+    zMax = Math.min(zMax, f.offset[1] + f.depth / 2);
+  }
+  const coreSize = { width: 2.0, depth: 1.8 };
+  const back = { x: -camX, z: -camZ };
+  const wantX = (xMin + xMax) / 2 + back.x * (xMax - xMin) * 0.3;
+  const wantZ = (zMin + zMax) / 2 + back.z * (zMax - zMin) * 0.3;
+  const clampIn = (v: number, lo: number, hi: number, half: number) => Math.min(Math.max(v, lo + half + 0.45), hi - half - 0.45);
   const core: Core = {
-    x: baseWidth * 0.2 * (rnd.chance(0.5) ? 1 : -1),
-    z: -(baseDepth / 2 - 1.15) * (viewSide === "-z" ? -1 : 1),
-    width: 2.0,
-    depth: 1.8,
+    x: clampIn(wantX, xMin, xMax, coreSize.width / 2),
+    z: clampIn(wantZ, zMin, zMax, coreSize.depth / 2),
+    ...coreSize,
   };
+
+  // The braced bay sits on the side face, off centre, on every floor.
+  const bracedBay = { face: SIDE_FACE[sideFace], s0: rnd.range(0.12, 0.3), s1: 0 };
+  bracedBay.s1 = bracedBay.s0 + rnd.range(0.26, 0.34);
 
   return {
     seed,
@@ -259,5 +334,6 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     viewSide,
     yardSide: craneCorner === 1 ? -1 : 1,
     lamp: rnd.chance(0.6) ? LAMPS[0] : rnd.pick(LAMPS),
+    bracedBay,
   };
 }

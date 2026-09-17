@@ -135,18 +135,15 @@ export function buildStructure(site: Site): Structure {
   const wall = FLOOR_HEIGHT;
 
   for (const { floor, index, columnsOnly } of levels) {
-    const below = site.floors[index - 1];
     const y0 = floor.y;
 
-    // Columns rise from the plate below to this plate.
+    // Columns rise from the plate below to this plate, dead vertical: the
+    // grid runs straight through the stack and the plates move around it.
     if (index > 0) {
-      const from = below;
-      for (const [cx, cz] of floor.columns) {
-        const [ax, az] = place(from, cx, cz);
-        const [bx, bz] = place(floor, cx, cz);
+      for (const [bx, bz] of floor.columns) {
         const start = rnd.range(0, 0.1);
         push({
-          instance: strut([ax, y0 - wall, az], [bx, y0, bz], COLUMN),
+          instance: strut([bx, y0 - wall, bz], [bx, y0, bz], COLUMN),
           floor: index,
           start,
           dur: 0.2,
