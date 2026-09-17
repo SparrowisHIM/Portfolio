@@ -6,14 +6,14 @@ import * as THREE from "three";
 import type { ScaffoldRun, Site } from "@/lib/site-generator";
 import { LIFT, onSide } from "@/lib/site-generator";
 import { builtHeight } from "@/lib/construction";
-import { box, post, strut, type Instance, type Vec3 } from "@/lib/geometry";
-import { nettingTexture } from "@/lib/textures";
-import { Cloth } from "./Cloth";
+import { post, strut, type Instance } from "@/lib/geometry";
 import { Instances } from "./Instances";
 
-const STANDARD = 0.05;
-const LEDGER = 0.032;
+const STANDARD = 0.04;
+const LEDGER = 0.028;
 const ROW = 0.9;
+/** How far below the work the boarded lift reaches, in metres. */
+const WORKING_BAND = 5.5;
 
 type ScaffoldProps = {
   site: Site;
@@ -22,123 +22,75 @@ type ScaffoldProps = {
 };
 
 type RunParts = {
+  /** Standards run the full height: thin verticals read as rhythm, not mesh. */
+  posts: Instance[];
+  /** Everything else only exists on the working lift near the top. */
   tubes: Instance[];
-  joints: Instance[];
-  net?: { origin: Vec3; u: Vec3; width: number; height: number; nx: number; ny: number };
 };
 
-/** A run of scaffold as pure line work: standards, ledgers, transoms, bracing, joints. */
+/**
+ * One run of scaffold, in two parts.
+ *
+ * Full-height ledgers and bracing turn the run into a mesh, and a mesh in
+ * front of a frame drawn in 4cm steel simply hides it. A real run is struck
+ * as the floors below are finished anyway, so only the standards go all the
+ * way down; everything that makes it dense lives on the working lift near
+ * the top and is clipped away below.
+ */
 function buildRun(run: ScaffoldRun): RunParts {
   const { side, span, offset, bays, height, lifts } = run;
+  const posts: Instance[] = [];
   const tubes: Instance[] = [];
-  const joints: Instance[] = [];
   const at = (along: number, out: number, y: number) => onSide(side, along, out, y);
   const step = span / bays;
   const along = (i: number) => -span / 2 + i * step;
-  const rows = [offset, offset + ROW];
+  const outer = offset + ROW;
 
   for (let i = 0; i <= bays; i++) {
-    tubes.push(post(at(along(i), rows[1], 0), height - (i % 3 === 1 ? 0.4 : 0), STANDARD));
-    // The inner row is braced at every third bay only; a standard at every
-    // bay on both rows buries the frame behind it.
-    if (i % 3 === 0) tubes.push(post(at(along(i), rows[0], 0), height, STANDARD * 0.8));
+    posts.push(post(at(along(i), outer, 0), height - (i % 3 === 1 ? 0.4 : 0), STANDARD));
   }
-  // Density is hierarchy, not uniformity. The outer row carries a ledger at
-  // every lift because that face is what reads as scaffold; the inner row
-  // and the transoms are thinned so you can see the frame through the run,
-  // which matters now the camera stands close enough to look through it.
   for (let l = 1; l <= lifts; l++) {
     const y = l * LIFT;
-    tubes.push(strut(at(-span / 2 - 0.15, rows[1], y), at(span / 2 + 0.15, rows[1], y), LEDGER));
-    if (l % 2 === 0) tubes.push(strut(at(-span / 2 - 0.15, rows[0], y), at(span / 2 + 0.15, rows[0], y), LEDGER));
-    for (let i = 0; i <= bays; i += 2) {
-      tubes.push(strut(at(along(i), offset - 0.1, y), at(along(i), offset + ROW + 0.1, y), LEDGER));
-      if (l % 2 === 1) joints.push(box(at(along(i), rows[1], y), [0.09, 0.09, 0.09]));
+    if (l % 2 === 0) tubes.push(strut(at(-span / 2 - 0.15, outer, y), at(span / 2 + 0.15, outer, y), LEDGER));
+    for (let i = 0; i <= bays; i += 3) {
+      tubes.push(strut(at(along(i), offset - 0.1, y), at(along(i), outer + 0.1, y), LEDGER));
     }
-    for (let i = 0; i < bays; i += 2) {
-      const flip = (i / 2 + l) % 2 === 0;
-      if (l < lifts) tubes.push(strut(at(along(flip ? i : i + 1), offset + ROW + 0.05, y), at(along(flip ? i + 1 : i), offset + ROW + 0.05, y + LIFT), 0.028));
+    for (let i = 0; i < bays; i += 4) {
+      if (l < lifts) tubes.push(strut(at(along(i), outer + 0.05, y), at(along(i + 1), outer + 0.05, y + LIFT), 0.024));
     }
   }
-
-  let net: RunParts["net"];
-  if (run.netted) {
-    const a = at(-span / 2, offset + ROW + 0.14, height - 0.35);
-    const b = at(span / 2, offset + ROW + 0.14, height - 0.35);
-    const len = Math.hypot(b[0] - a[0], b[2] - a[2]);
-    net = {
-      origin: a,
-      u: [(b[0] - a[0]) / len, 0, (b[2] - a[2]) / len],
-      width: span,
-      height: height - 0.8,
-      nx: Math.max(8, Math.round(span / 0.55)),
-      ny: Math.max(8, Math.round((height - 0.8) / 0.55)),
-    };
-  }
-  return { tubes, joints, net };
+  return { posts, tubes };
 }
 
 /** Scaffolding climbs with the building: everything above the built height is clipped. */
-export function Scaffold({ site, section, animate }: ScaffoldProps) {
+export function Scaffold({ site, section }: ScaffoldProps) {
   const plane = useRef(new THREE.Plane(new THREE.Vector3(0, -1, 0), 4));
-  const clipTop = useRef(4);
+  const floorPlane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
   const mats = useMemo(() => {
-    const clip = [plane.current];
+    const top = [plane.current];
+    const band = [plane.current, floorPlane.current];
     return {
-      tube: new THREE.MeshStandardMaterial({ color: "#1b2230", emissive: "#161d2c", emissiveIntensity: 0.05, roughness: 0.4, metalness: 0.6, clippingPlanes: clip }),
-      joint: new THREE.MeshStandardMaterial({ color: "#39435a", emissive: "#2e3750", emissiveIntensity: 0.09, roughness: 0.5, metalness: 0.4, clippingPlanes: clip }),
+      post: new THREE.MeshStandardMaterial({ color: "#1e2635", emissive: "#18202f", emissiveIntensity: 0.06, roughness: 0.4, metalness: 0.6, clippingPlanes: top }),
+      tube: new THREE.MeshStandardMaterial({ color: "#1b2230", emissive: "#161d2c", emissiveIntensity: 0.05, roughness: 0.4, metalness: 0.6, clippingPlanes: band }),
     };
   }, []);
-  const netMaterials = useMemo(
-    () =>
-      site.scaffolds.map(
-        () =>
-          new THREE.MeshStandardMaterial({
-            color: "#0c1320",
-            map: nettingTexture("#2a3a55"),
-            transparent: true,
-            opacity: 0.55,
-            side: THREE.DoubleSide,
-            depthWrite: false,
-            roughness: 0.95,
-          }),
-      ),
-    [site],
-  );
-
   useFrame((_, delta) => {
     const top = builtHeight(site, section.current ?? 0) - 0.9;
     plane.current.constant = THREE.MathUtils.damp(plane.current.constant, top, 5, delta);
-    clipTop.current = plane.current.constant;
+    // Keeps points above the floor of the working lift.
+    floorPlane.current.constant = -Math.max(0, plane.current.constant - WORKING_BAND);
   });
 
-  const runs = useMemo(() => site.scaffolds.map(buildRun), [site]);
-  const down = useMemo<Vec3>(() => [0, -1, 0], []);
-  const pin = useMemo(() => ({ top: true, every: 3 }), []);
+  // One run only. A second run on another face doubles the line count and
+  // is almost always the one standing between the camera and the building.
+  const runs = useMemo(() => site.scaffolds.slice(0, 1).map(buildRun), [site]);
 
   return (
     <group>
       {runs.map((run, i) => (
         <group key={i}>
+          <Instances items={run.posts} material={mats.post} />
           <Instances items={run.tubes} material={mats.tube} />
-          <Instances items={run.joints} material={mats.joint} />
-          {run.net && (
-            <Cloth
-              origin={run.net.origin}
-              u={run.net.u}
-              v={down}
-              width={run.net.width}
-              height={run.net.height}
-              nx={run.net.nx}
-              ny={run.net.ny}
-              pin={pin}
-              material={netMaterials[i]}
-              windScale={0.7}
-              gravity={1.8}
-              animate={animate}
-              clipAbove={clipTop}
-            />
-          )}
         </group>
       ))}
     </group>
