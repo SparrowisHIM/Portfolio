@@ -25,6 +25,7 @@ attribute vec3 aOrigin;
 attribute float aSeed;
 attribute float aHue;
 attribute float aLock;
+attribute float aWeight;
 
 varying vec3 vWorld;
 varying vec3 vNormalW;
@@ -33,6 +34,7 @@ varying float vSeed;
 varying float vHue;
 varying float vLock;
 varying float vAxis;
+varying float vWeight;
 
 // Overshoot on arrival, then settle.
 float backOut(float t) {
@@ -81,6 +83,7 @@ void main() {
   vHue = aHue;
   vLock = aLock;
   vAxis = position.y;
+  vWeight = aWeight;
   gl_Position = projectionMatrix * viewMatrix * world;
 }
 `;
@@ -102,6 +105,7 @@ varying float vSeed;
 varying float vHue;
 varying float vLock;
 varying float vAxis;
+varying float vWeight;
 
 vec3 hue(float h) {
   if (h < 0.5) return vec3(1.0, 0.70, 0.28);
@@ -117,8 +121,12 @@ void main() {
   // Drawn wire: self-lit so it reads against the void, brighter at the rim.
   float top = 0.5 + 0.5 * n.y;
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
-  vec3 col = uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow);
-  if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow;
+  // Hierarchy by weight: columns carry the resting light and run warm,
+  // beams sit back, hairlines barely register until something lights them.
+  float w = mix(0.26, 1.0, vWeight * vWeight);
+  vec3 col = (uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow)) * w;
+  col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow);
+  if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow * w;
 
   vec3 accent = hue(vHue);
   // Connection flash: bright for a moment after locking, then dark again.

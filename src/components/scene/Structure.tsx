@@ -37,6 +37,7 @@ function memberGeometry(packed: Packed, base: THREE.BufferGeometry) {
   g.setAttribute("aOrigin", attr(packed.origin, 3));
   g.setAttribute("aSeed", attr(packed.seed, 1));
   g.setAttribute("aHue", attr(packed.hue, 1));
+  g.setAttribute("aWeight", attr(packed.weight, 1));
   const lock = new Float32Array(packed.count).fill(-1);
   g.setAttribute("aLock", attr(lock, 1).setUsage(THREE.DynamicDrawUsage));
   return g;

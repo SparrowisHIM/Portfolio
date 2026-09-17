@@ -29,8 +29,8 @@ function create() {
     steel: new THREE.MeshStandardMaterial({ color: palette.steel, roughness: 0.45, metalness: 0.7 }),
     steelDark: new THREE.MeshStandardMaterial({ color: palette.steelDark, roughness: 0.4, metalness: 0.75 }),
     galvanised: new THREE.MeshStandardMaterial({ color: "#4b5566", roughness: 0.35, metalness: 0.85 }),
-    /** Crane structure: warm drawn lines, lit from within. */
-    crane: new THREE.MeshStandardMaterial({ color: "#5a4a2e", emissive: "#f5b043", emissiveIntensity: 0.18, roughness: 0.5, metalness: 0.4 }),
+    /** Crane structure: dark drawn lines with a trace of warmth, so the building stays the brightest thing. */
+    crane: new THREE.MeshStandardMaterial({ color: "#3b3323", emissive: "#f5b043", emissiveIntensity: 0.07, roughness: 0.5, metalness: 0.4 }),
   };
 }
 

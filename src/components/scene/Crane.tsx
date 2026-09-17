@@ -236,7 +236,7 @@ export function Crane({ site, section, animate }: CraneProps) {
         {parts.lights.map((p, i) => (
           <mesh key={i} position={p}>
             <sphereGeometry args={[0.06, 8, 8]} />
-            <meshStandardMaterial color="#e8eefb" emissive="#dfe8ff" emissiveIntensity={1.2} toneMapped={false} />
+            <meshStandardMaterial color="#e8eefb" emissive="#dfe8ff" emissiveIntensity={0.7} toneMapped={false} />
           </mesh>
         ))}
 
@@ -265,7 +265,7 @@ export function Crane({ site, section, animate }: CraneProps) {
           </mesh>
           <mesh position={[0, JIB_Y + 0.3, 0.8 + crane.jibLength]}>
             <sphereGeometry args={[0.06, 8, 8]} />
-            <meshStandardMaterial color="#e8eefb" emissive="#dfe8ff" emissiveIntensity={1.2} toneMapped={false} />
+            <meshStandardMaterial color="#e8eefb" emissive="#dfe8ff" emissiveIntensity={0.7} toneMapped={false} />
           </mesh>
 
           <group ref={trolley} position={[0, TROLLEY_Y, crane.trolley]}>

@@ -59,6 +59,8 @@ export type Packed = {
   seed: Float32Array;
   hue: Float32Array;
   loud: Uint8Array;
+  /** Visual weight 0..1 from the member section: columns 1, hairlines near 0. */
+  weight: Float32Array;
   /** World centre of each instance, for the CPU connection pass. */
   centre: Float32Array;
 };
@@ -350,8 +352,8 @@ export function buildStructure(site: Site): Structure {
     }
   }
 
-  // Dotted setting-out lines: guides from the ground past the roof at each
-  // corner of the footprint, there from the start like survey marks.
+  // Dotted setting-out lines: survey marks at each corner of the footprint,
+  // set out one storey ahead of the build and no further.
   const base = site.floors[0];
   const eb = extents(base);
   for (const [cx, cz] of [
@@ -360,8 +362,9 @@ export function buildStructure(site: Site): Structure {
     [eb.xp + 0.8, eb.zp + 0.8],
     [-eb.xn - 0.8, eb.zp + 0.8],
   ]) {
-    for (let y = 0; y < site.totalHeight + 3; y += 0.8) {
-      nodes.push({ position: [cx, y, cz], floor: 0, start: 0, seed: rnd.next(), hue: HUE.white, size: 0.05 });
+    for (let y = 0; y < site.totalHeight + 1.6; y += 0.8) {
+      const floor = Math.min(site.floors.length, Math.max(0, Math.ceil((y - 0.4) / FLOOR_HEIGHT)));
+      nodes.push({ position: [cx, y, cz], floor, start: 0, seed: rnd.next(), hue: HUE.white, size: 0.04 });
     }
   }
 
@@ -370,7 +373,7 @@ export function buildStructure(site: Site): Structure {
 
 const dummy = new THREE.Object3D();
 
-function pack(list: Member[]): Packed {
+function pack(list: Member[], fullWeight = COLUMN): Packed {
   const n = list.length;
   const out: Packed = {
     count: n,
@@ -382,6 +385,7 @@ function pack(list: Member[]): Packed {
     seed: new Float32Array(n),
     hue: new Float32Array(n),
     loud: new Uint8Array(n),
+    weight: new Float32Array(n),
     centre: new Float32Array(n * 3),
   };
   list.forEach((m, i) => {
@@ -399,6 +403,7 @@ function pack(list: Member[]): Packed {
     out.seed[i] = m.seed;
     out.hue[i] = m.hue;
     out.loud[i] = m.loud ? 1 : 0;
+    out.weight[i] = Math.min(1, it.scale[0] / fullWeight);
     out.centre.set(it.position, i * 3);
   });
   return out;
@@ -415,7 +420,7 @@ function packNodes(list: Node[]): Packed & { size: Float32Array } {
     hue: n.hue,
     loud: false,
   }));
-  return { ...pack(members), size: Float32Array.from(list.map((n) => n.size)) };
+  return { ...pack(members, 0.2), size: Float32Array.from(list.map((n) => n.size)) };
 }
 
 function packPanels(list: Panel[]): Structure["panels"] {
