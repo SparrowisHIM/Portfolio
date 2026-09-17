@@ -38,7 +38,10 @@ function buildRun(run: ScaffoldRun): RunParts {
   const rows = [offset, offset + ROW];
 
   for (let i = 0; i <= bays; i++) {
-    for (const out of rows) tubes.push(post(at(along(i), out, 0), height - (i % 3 === 1 ? 0.4 : 0), STANDARD));
+    tubes.push(post(at(along(i), rows[1], 0), height - (i % 3 === 1 ? 0.4 : 0), STANDARD));
+    // The inner row is braced at every third bay only; a standard at every
+    // bay on both rows buries the frame behind it.
+    if (i % 3 === 0) tubes.push(post(at(along(i), rows[0], 0), height, STANDARD * 0.8));
   }
   // Density is hierarchy, not uniformity. The outer row carries a ledger at
   // every lift because that face is what reads as scaffold; the inner row
@@ -82,7 +85,7 @@ export function Scaffold({ site, section, animate }: ScaffoldProps) {
   const mats = useMemo(() => {
     const clip = [plane.current];
     return {
-      tube: new THREE.MeshStandardMaterial({ color: "#232b3a", emissive: "#1a2234", emissiveIntensity: 0.07, roughness: 0.4, metalness: 0.6, clippingPlanes: clip }),
+      tube: new THREE.MeshStandardMaterial({ color: "#1b2230", emissive: "#161d2c", emissiveIntensity: 0.05, roughness: 0.4, metalness: 0.6, clippingPlanes: clip }),
       joint: new THREE.MeshStandardMaterial({ color: "#39435a", emissive: "#2e3750", emissiveIntensity: 0.09, roughness: 0.5, metalness: 0.4, clippingPlanes: clip }),
     };
   }, []);
