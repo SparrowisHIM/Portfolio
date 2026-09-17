@@ -307,7 +307,7 @@ export function Crane({ site, section, animate }: CraneProps) {
           ))}
         </group>
         <group ref={frame}>
-          <Instances items={parts.frame} material={m.steel} frustumCulled={false} />
+          <Instances items={parts.frame} material={m.crane} frustumCulled={false} />
         </group>
       </group>
     </group>
