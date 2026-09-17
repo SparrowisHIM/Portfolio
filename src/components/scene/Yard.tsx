@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { SLAB_THICKNESS } from "@/lib/site-generator";
 import { remainingSlabs, yardPosition } from "@/lib/construction";
-import { concrete, plank } from "./materials";
+import { materials } from "./materials";
 
 type YardProps = {
   site: Site;
@@ -15,6 +15,7 @@ type YardProps = {
 
 /** The slab yard: precast floors stacked on timber bearers, waiting for the crane. */
 export function Yard({ site, section }: YardProps) {
+  const m = materials();
   const slabs = useRef<THREE.Mesh[]>([]);
   const position = yardPosition(site);
   const count = Math.max(0, site.floors.length - 1);
@@ -30,8 +31,8 @@ export function Yard({ site, section }: YardProps) {
 
   return (
     <group position={position}>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * width * 0.3, 0.08, 0]} material={plank}>
+      {[-1, 0, 1].map((s) => (
+        <mesh key={s} position={[s * width * 0.32, 0.08, 0]} material={m.plank}>
           <boxGeometry args={[0.3, 0.16, depth + 0.4]} />
         </mesh>
       ))}
@@ -42,7 +43,7 @@ export function Yard({ site, section }: YardProps) {
             if (mesh) slabs.current[i] = mesh;
           }}
           position={[0, 0.16 + SLAB_THICKNESS * (i + 0.5), 0]}
-          material={concrete}
+          material={m.concrete}
         >
           <boxGeometry args={[width, SLAB_THICKNESS, depth]} />
         </mesh>
