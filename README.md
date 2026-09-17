@@ -1,44 +1,64 @@
 # Build site
 
-A portfolio under construction.
-
-Every project is a floor of a tower that goes up while you scroll. Arrive at a
-floor and you watch it get built: the columns rise with welding sparks at the
-top, the crane lifts that floor's slab out of the yard, swings it over and
-lowers it onto the columns, then the glazing rises and the lamp comes on.
-Scroll back down and it comes apart again in reverse. The roof is where you
-get in touch, with the next slab already hanging from the hook.
-
-Press **Rebuild** and the whole site is torn down and put up again from a new
-seed: a different footprint, different scaffolding, a different corner for the
-crane, sometimes a different lighting rig.
+A portfolio under construction. A night-shift construction site, generated
+from a seed, where every project is a floor of a tower that goes up while you
+scroll. The site is alive: the crane swings the slabs in, a crew welds and
+walks the scaffold, the debris netting and the hoarding banner move in the
+wind, and the visitor carries a work lamp that stirs the air as it sweeps.
 
 Built by [Efe Ebomwonyi](https://github.com/SparrowisHIM), design engineer.
 
-## What it does
+## What is on site
 
-- **Scroll is the construction schedule.** `src/lib/construction.ts` maps the
-  page's scroll position to a build stage for every floor. Columns, slabs,
-  glazing, scaffolding height, the crane's slew, trolley and hook, and the
-  slab stack in the yard are all functions of that one number, so the whole
-  site is scrubbable and reversible.
-- **The load swings.** The slab on the hook is a damped pendulum that lags the
-  crane and settles after every move. The cable is drawn from the trolley to
-  wherever the load actually is.
-- **You hold a work lamp.** A spotlight beside the camera aims wherever the
-  pointer is, so moving the mouse sweeps light across the site.
-- **Drag to walk around.** Sideways drag orbits the tower. Vertical drag still
-  scrolls, on touch too.
-- **Click a floor** in the scene to jump to its section. **Walk in** on a
-  floor with a live build and the project opens in place, over the site.
-- **Procedural site.** `src/lib/site-generator.ts` turns a seed into floors,
-  columns, scaffolding, work lamps, the crane and the yard. Same seed, same
-  site.
-- **Cinematic pass.** Bloom on the lamps, a vignette and film grain. If the
-  frame rate drops, the effects and pixel ratio are reduced automatically.
-- **Reduced motion.** With `prefers-reduced-motion`, the intro fly-in, crane
-  slew lag, dust drift, sparks and loader animation are skipped. Scrolling
-  still builds the tower, because that is the reader's own action.
+**The tower.** Steel H-section columns rise from the slab below with starter
+bars at the top, beams are set down on them, the crane lands the slab, edge
+protection and orange netting go up, then the curtain wall (mullions,
+transoms, spandrels, glass) rises and the lights come on. Scroll back down and
+it all comes apart in reverse. A slip-formed lift core with a climbing
+formwork rig runs a storey ahead of the frame.
+
+**The crane.** A braced lattice mast with a ladder, slewing ring, A-frame
+tower top with pendant ties, a tapered truss jib, a counter-jib with concrete
+ballast and a winch, a hazard-striped trolley, twin hoist ropes, a hook block,
+a spreader beam and four slings to the slab corners. The load hangs as a
+damped pendulum and leans in the wind. Beacon on the apex, obstruction light
+on the tip, a lit cab.
+
+**Scaffolding.** Tube-and-coupler runs with base plates and sole boards,
+ledgers, transoms, couplers at every junction, face bracing, boarded lifts
+with toe boards and guardrails, ladders, and green debris netting that flaps.
+It climbs with the building; everything above the built height is clipped.
+
+**The crew.** Seven hi-vis figures: a welder crouched at whichever column is
+being raised, a banksman on the top slab watching the load come in, walkers on
+the scaffold boards and people on the ground. They walk, bob and turn.
+
+**The rest.** Plywood hoarding with a gate and a printed banner, a lit site
+cabin, a generator with a cable to the crane, a skip, rebar and steel laydown,
+pallets, cones, puddles that catch the lights, a road with a kerb and cool LED
+street lights against the warm sodium site.
+
+**Weather.** A steady breeze with gusts moves the netting, the banner, the
+dust and the load on the hook. Sweeping the pointer quickly is a gust.
+
+## Interactions
+
+- **Scroll** builds the tower. `src/lib/construction.ts` maps scroll to a
+  build stage for every floor; the whole site is a function of that number.
+- **Move the pointer** and the work lamp follows. Pass it over the banner or
+  the netting and the sheet is pushed away; move fast and it ripples.
+- **Drag sideways** to walk around the site. Vertical drag still scrolls.
+- **Click a floor** to jump to its section. **Visit the site** opens the
+  live project; **Walk in** opens it in place, over the site.
+- **Rebuild** tears the site down and puts it up from a new seed: footprint,
+  scaffolding, crane corner, dressing and lighting rig all change.
+- **Night shift** is the game. The crane swings the next slab back and forth
+  over the tower; click, tap or press space to land it. Whatever hangs over
+  the edge is cut off and falls. Dead-level drops flash; three in a row win
+  some slab back. Best shift is kept in local storage.
+- **Components** switches to the yard: the parts the site is built from, each
+  one live. Magnetic button, scrambled headline, card stack, segmented
+  control, rolling counter, a toast lowered in on a cable, hold to confirm.
 
 ## Stack
 
@@ -46,10 +66,13 @@ Built by [Efe Ebomwonyi](https://github.com/SparrowisHIM), design engineer.
 - Tailwind CSS v4
 - three.js with `@react-three/fiber`, `@react-three/drei` and
   `@react-three/postprocessing`
-- Framer Motion for the HTML overlay
+- Framer Motion for the HTML overlay and the component yard
+- Self-hosted variable fonts (Big Shoulders, Archivo) via Fontsource
 
-Everything in the scene is generated geometry. There are no models or textures
-to download.
+Everything in the scene is generated: geometry from `src/lib/geometry.ts`
+(struts, lattices, trusses, H-sections), textures drawn on canvases in
+`src/lib/textures.ts` (concrete, netting, hazard stripes, decking, hoarding,
+the banner). There are no models or images to download.
 
 ## Run it
 
@@ -65,9 +88,16 @@ Other scripts: `npm run build`, `npm run lint`.
 ## Add a floor
 
 Add a project to `src/lib/projects.ts`. Floors are ordered bottom to top, so
-the first entry is the ground floor and is finished before the visitor arrives.
-Set `live` to a URL to enable **Walk in**. Set `finished: false` for work still
-in progress and that floor's columns render as bare steel.
+the first entry is the ground floor and is finished before the visitor
+arrives. Set `live` to the URL of the site itself to enable **Visit the
+site** and **Walk in**. Set `finished: false` for work still in progress and
+that floor stays partly open, with edge protection instead of glass.
+
+## Add a part to the yard
+
+Drop a component into `src/components/yard/demos/` and give it a bay in
+`src/components/yard/ComponentYard.tsx`. Every demo should respect
+`useReducedMotion`.
 
 ## Credits
 
