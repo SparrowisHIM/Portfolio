@@ -77,8 +77,8 @@ export function Scaffold({ site, section, animate }: ScaffoldProps) {
   const mats = useMemo(() => {
     const clip = [plane.current];
     return {
-      tube: new THREE.MeshStandardMaterial({ color: "#3e4a60", emissive: "#2a3550", emissiveIntensity: 0.2, roughness: 0.4, metalness: 0.6, clippingPlanes: clip }),
-      joint: new THREE.MeshStandardMaterial({ color: "#6f7d9a", emissive: "#5a6a8c", emissiveIntensity: 0.25, roughness: 0.5, metalness: 0.4, clippingPlanes: clip }),
+      tube: new THREE.MeshStandardMaterial({ color: "#232b3a", emissive: "#1a2234", emissiveIntensity: 0.07, roughness: 0.4, metalness: 0.6, clippingPlanes: clip }),
+      joint: new THREE.MeshStandardMaterial({ color: "#39435a", emissive: "#2e3750", emissiveIntensity: 0.09, roughness: 0.5, metalness: 0.4, clippingPlanes: clip }),
     };
   }, []);
   const netMaterials = useMemo(
