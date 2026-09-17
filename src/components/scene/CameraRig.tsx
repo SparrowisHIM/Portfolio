@@ -48,28 +48,32 @@ function lerp(a: number, b: number, t: number) {
 }
 
 export function buildKeyframes(site: Site): Keyframe[] {
-  // Swing the orbit across the open face, never behind the scaffolding.
-  const sweep = 0.75;
+  // Swing the orbit a little across the open face; the crane stays behind.
+  const sweep = 0.5;
   const start = site.viewAngle - sweep / 2;
   const step = sweep / (site.floors.length + 1);
   const frames: Keyframe[] = [
     // Ground level: low and close, the first lines large in the frame.
     { lookY: 3.4, rise: 0.4, radius: HERO.radius, angle: site.viewAngle + HERO.angleOffset },
   ];
+  // Floors: from about twenty degrees up, so the plates read as plates and
+  // the massing shows. The camera backs off as the stack grows, keeping the
+  // built floors in frame with the active one in the upper third.
   site.floors.forEach((floor, i) => {
     frames.push({
-      lookY: floor.y + FLOOR_HEIGHT * 0.5,
-      rise: 2.4,
-      radius: 26,
+      lookY: floor.y - FLOOR_HEIGHT * 0.45,
+      rise: 9 + i * 0.6,
+      radius: 26 + i * 1.7,
       angle: start + step * (i + 1),
     });
   });
-  // Roof: above the unfinished top level, looking down at the frame on the hook.
+  // Roof: well above the unfinished top level, looking down onto the plan
+  // and the frame on the hook.
   frames.push({
-    lookY: site.topLevel.y + 1.2,
-    rise: 6,
-    radius: 30,
-    angle: start + sweep + 0.2,
+    lookY: site.topLevel.y - 2.4,
+    rise: 17,
+    radius: 32,
+    angle: start + sweep + 0.15,
   });
   return frames;
 }

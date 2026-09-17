@@ -13,7 +13,7 @@ export const HERO = {
   angleOffset: -0.47,
   radius: 30,
   /** Fraction of the radius the camera slides left on wide screens. */
-  shift: 0.22,
+  shift: 0.17,
 } as const;
 
 export type Side = "+x" | "-x" | "+z" | "-z";
@@ -25,6 +25,8 @@ export const SIDE_ANGLE: Record<Side, number> = {
   "-z": Math.PI,
   "-x": -Math.PI / 2,
 };
+
+const OPPOSITE: Record<Side, Side> = { "+x": "-x", "-x": "+x", "+z": "-z", "-z": "+z" };
 
 /** Face index (+x, -x, +z, -z) for a side, as used by `extend` and `void`. */
 export const SIDE_FACE: Record<Side, 0 | 1 | 2 | 3> = { "+x": 0, "-x": 1, "+z": 2, "-z": 3 };
@@ -168,14 +170,14 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   const baseDepth = rnd.range(5.5, 7);
   const count = floorFlags.length;
 
-  // Scaffolding hugs one or two faces of the tower.
-  const scaffoldSides = SIDES.filter(() => rnd.chance(0.45));
-  if (scaffoldSides.length === 0) scaffoldSides.push(rnd.pick(SIDES));
-  if (scaffoldSides.length > 2) scaffoldSides.length = 2;
-
-  // Crane stands clear of the scaffolding.
-  const free = SIDES.filter((s) => !scaffoldSides.includes(s));
-  const craneSide = free.length ? rnd.pick(free) : rnd.pick(SIDES);
+  // The open face is the one the visitor looks at. The crane stands behind
+  // the building, off one corner, so it is beside the silhouette and never
+  // between the camera and the structure. Scaffolding takes the side faces.
+  const viewSide = rnd.pick(SIDES);
+  const craneSide = OPPOSITE[viewSide];
+  const lateralSides = SIDES.filter((s) => s !== viewSide && s !== craneSide);
+  const scaffoldSides = lateralSides.filter(() => rnd.chance(0.55));
+  if (scaffoldSides.length === 0) scaffoldSides.push(rnd.pick(lateralSides));
   const craneHorizontal = craneSide === "+z" || craneSide === "-z";
   const craneSign = craneSide.startsWith("+") ? 1 : -1;
   const craneDistance = (craneHorizontal ? baseDepth : baseWidth) / 2 + rnd.range(3.5, 5);
@@ -186,13 +188,12 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     : [craneSign * craneDistance, 0, craneAlong];
   const toTower = Math.atan2(-cranePosition[0], -cranePosition[2]);
 
-  // Look at the tower from an open face; the crane then sits to one side.
-  const openSides = SIDES.filter((s) => !scaffoldSides.includes(s) && s !== craneSide);
-  const viewSide = openSides.length ? rnd.pick(openSides) : craneSide;
+  // Stand a little to the side the crane is on, so its mast clears the
+  // silhouette and reads beside the building rather than through it.
   const craneAngle = Math.atan2(cranePosition[0], cranePosition[2]);
   let away = SIDE_ANGLE[viewSide] - craneAngle;
   away = Math.atan2(Math.sin(away), Math.cos(away));
-  const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? 0.4 : -0.4);
+  const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? -0.4 : 0.4);
 
   // Massing: three moves that read as decisions, not per-floor noise.
   //   podium    floors 0..podiumTop         on axis, full footprint
