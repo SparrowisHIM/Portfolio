@@ -116,7 +116,7 @@ What the reference has that we do not:
    controlled version of that idea.
 
 Suggested order of attack: density and nodes first (biggest gap, contained
-to ), then proportion, then the interior, then annotation
+to src/lib/structure.ts), then proportion, then the interior, then annotation
 lines. The curtain wall and cladding retries come after those.
 
 ## How to actually see the site
