@@ -283,18 +283,31 @@ export function buildStructure(site: Site): Structure {
         push({ instance: strut(world(foot[0], foot[1], y0 - wall), world(tip[0], tip[1], y0), DIAG * 1.0), floor: index, start: 0.7 + rnd.range(0, 0.04), dur: 0.12, origin: flyFrom([0, -0.8, 0], 0.4), seed: rnd.next(), hue: pickHue(), loud: rnd.chance(0.5) });
       }
     }
-    // Wall mullions: hairlines every other bay that arrive with the glazing,
-    // so the walls read as walls without competing with the columns.
+    // Curtain wall: a mullion on every bay line and a transom across every
+    // bay at mid height, so a face reads as a grid of framed panes instead
+    // of one sheet of glass. Every other bay and no horizontal at all is
+    // what made the walls read as sheets. The frame is the thing you see
+    // here; the glass behind it barely is.
     for (let f = 0; f < 4; f++) {
       const a = corners[f];
       const b = corners[(f + 1) % 4];
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       const bays = Math.max(2, Math.round(len / 1.5));
-      for (let k = 1; k < bays; k += 2) {
+      const faceKey = ([3, 0, 2, 1] as const)[f];
+      const voidHere = floor.void && floor.void.face === faceKey ? floor.void : null;
+      const inVoid = (s: number) => !!voidHere && Math.abs(s - (0.5 + voidHere.along)) * len < voidHere.width / 2;
+      const at = (s: number, y: number) => world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y);
+      for (let k = 1; k < bays; k++) {
         const s = k / bays;
-        const p = world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y0);
-        const q = world(a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, y0 + wall);
-        push({ instance: strut(p, q, DIAG * 0.5), floor: index, start: 0.8 + rnd.range(0, 0.08), dur: 0.1, origin: flyFrom([0, 0.5, 0], 0.3), seed: rnd.next(), hue: pickHue(), loud: false });
+        if (inVoid(s)) continue;
+        push({ instance: strut(at(s, y0), at(s, y0 + wall), DIAG * 0.5), floor: index, start: 0.78 + rnd.range(0, 0.06), dur: 0.1, origin: flyFrom([0, 0.5, 0], 0.3), seed: rnd.next(), hue: pickHue(), loud: false });
+      }
+      const ty = y0 + wall * 0.52;
+      for (let k = 0; k < bays; k++) {
+        const s0 = k / bays;
+        const s1 = (k + 1) / bays;
+        if (inVoid((s0 + s1) / 2)) continue;
+        push({ instance: strut(at(s0, ty), at(s1, ty), DIAG * 0.42), floor: index, start: 0.84 + rnd.range(0, 0.06), dur: 0.1, origin: flyFrom([0, 0.4, 0], 0.25), seed: rnd.next(), hue: pickHue(), loud: false });
       }
     }
     // The core as a glass box, lit warm, on every floor.
