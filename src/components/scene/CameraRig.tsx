@@ -73,7 +73,12 @@ export function buildKeyframes(site: Site): Keyframe[] {
     // Arrival: standing on the ground at the hoarding, looking up at the
     // first frame going in. Eye height, close enough that the site fills
     // the view — you are on it, not looking at a model of it.
-    { lookY: 5.6, rise: -3.3, radius: 17, angle: site.viewAngle + HERO.angleOffset, fit: 0.8 },
+    // Aimed at 5.6 with the eye at 2.3, the only finished thing on the site —
+    // the lit ground plate — fell out of the bottom of the frame and under
+    // the buttons, leaving a third of the shot as empty sky. Drop the aim and
+    // come in: the plate sits in the lower third whole, the mast and the hook
+    // take the top, and you are still looking up at the work.
+    { lookY: 4.0, rise: -1.4, radius: 14.5, angle: site.viewAngle + HERO.angleOffset, fit: 0.8 },
   ];
   // Floors: the camera climbs with the build and stays just under the slab
   // being set, so the finished stack falls away out of the bottom of the
