@@ -92,19 +92,26 @@ void main() {
 
   // Smoked glass, near black, with a faint warm breath along the floor
   // line on finished floors only. Cooler and a little denser at the rim.
-  vec3 glass = mix(vec3(0.020, 0.026, 0.040), vec3(0.16, 0.20, 0.28), fresnel);
+  // The panels are double sided and a bay stacks three or four of them
+  // between the eye and the void, so whatever one pane does, the stack does
+  // four times over. At mix(0.55, 0.92) they piled up into the milk that
+  // filled the frame. The body of the glass gives way; its frame does the
+  // reading, below.
+  vec3 glass = mix(vec3(0.016, 0.021, 0.034), vec3(0.075, 0.095, 0.135), fresnel);
   float finished = smoothstep(0.5, 1.0, vMax);
   float warm = vPlate > 0.5 ? 0.12 : 0.5 * pow(1.0 - vUv.y, 2.0);
   vec3 col = glass + accent * warm * finished * (0.03 + 0.25 * uGlow);
-  float alpha = mix(0.55, 0.92, fresnel) * skin;
-  if (vPlate > 0.5) alpha = 0.55 * skin;
+  float alpha = mix(0.30, 0.58, fresnel) * skin;
+  if (vPlate > 0.5) alpha = 0.36 * skin;
 
   // Only the plate lines draw: a thin edge where the floor meets the glass.
   vec2 e = min(vUv, 1.0 - vUv);
   float edge = 1.0 - smoothstep(0.0, 0.028, min(e.x, e.y));
   float plateLine = vPlate > 0.5 ? edge : (1.0 - smoothstep(0.0, 0.03, e.y));
-  col += vec3(0.3, 0.34, 0.46) * plateLine * (0.25 + 0.4 * uGlow);
-  alpha = max(alpha, plateLine * 0.5 * skin);
+  // A pane you can barely see still has to read as a pane: the edge carries
+  // it now, a fine bright frame on dark glass rather than a pale sheet.
+  col += vec3(0.40, 0.45, 0.60) * plateLine * (0.3 + 0.45 * uGlow);
+  alpha = max(alpha, plateLine * 0.8 * skin);
 
   // When a floor completes, one pulse runs round its outline.
   if (vPerimeter.x >= 0.0) {
