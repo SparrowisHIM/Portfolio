@@ -173,7 +173,7 @@ void main() {
   float heat = exp(-pow(vFloor - uActiveFloor, 2.0) * 1.9);
   vec3 site = mix(uCold, uWarm, heat);
   vec3 col = (uBase * (0.7 + 0.3 * top) + vec3(0.22, 0.27, 0.4) * rim * (0.5 + uGlow)) * w;
-  col += vec3(0.22, 0.14, 0.04) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow) * heat;
+  col += vec3(0.15, 0.09, 0.025) * smoothstep(0.8, 1.0, vWeight) * (0.3 + uGlow) * heat;
   if (uNode > 0.5) col += vec3(0.25, 0.28, 0.36) * uGlow * w;
   // Hairline light: a bright core along the axis and a slow iridescent
   // drift along the length, cool white to warm, so a line reads as light.
@@ -214,7 +214,11 @@ void main() {
   }
 
   // Finished floors go quiet and blue; the level being built holds the lamp.
-  col *= mix(vec3(1.0), site * 1.25, 0.72) * (1.06 + 0.46 * heat) * (1.0 + 0.3 * smoothstep(0.75, 1.0, vWeight));
+  // The heat boost was set when a floor was a handful of beams. With the
+  // deck grid and the wall grid on it there are now many lit lines crossing
+  // in the same place, they sum, and the working floor went to lemon. Sodium
+  // is the colour; it should glow, not clip.
+  col *= mix(vec3(1.0), site * 1.25, 0.72) * (1.04 + 0.26 * heat) * (1.0 + 0.3 * smoothstep(0.75, 1.0, vWeight));
 
   gl_FragColor = vec4(col, vBuilt);
 }
