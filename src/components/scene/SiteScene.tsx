@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { AdaptiveDpr, PerformanceMonitor } from "@react-three/drei";
-import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
+import { Bloom, EffectComposer, Noise, SMAA, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { buildStructure } from "@/lib/structure";
@@ -177,8 +177,16 @@ export function SiteScene({
       <PerformanceMonitor bounds={() => [40, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
         <AdaptiveDpr pixelated />
       </PerformanceMonitor>
+      {/*
+        multisampling MUST stay 0. Any value above it renders the whole
+        composer black on Intel UHD through ANGLE/D3D11 — the scene is perfect
+        underneath, the output is not. That is the blank building. SMAA does
+        the antialiasing instead, in a shader with no MSAA render target: the
+        thin steel needs antialiasing more than anything else here.
+      */}
       {effects && (
-        <EffectComposer multisampling={rich ? 2 : 0}>
+        <EffectComposer multisampling={0}>
+          <SMAA />
           <Bloom luminanceThreshold={0.42} mipmapBlur intensity={rich ? 1.15 : 1.3} radius={0.72} />
           <Vignette offset={0.25} darkness={rich ? 0.7 : 0.45} />
           {rich ? <Noise opacity={0.035} /> : <></>}
