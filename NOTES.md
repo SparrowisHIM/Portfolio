@@ -115,9 +115,29 @@ What the reference has that we do not:
    placed. We deleted the old floating fragments; the reference shows the
    controlled version of that idea.
 
-Suggested order of attack: density and nodes first (biggest gap, contained
-to src/lib/structure.ts), then proportion, then the interior, then annotation
-lines. The curtain wall and cladding retries come after those.
+Status against that list:
+
+- **1 density, 2 nodes — done.** Mullion on every bay line and a transom
+  across every bay at mid height, so a face is a grid of framed panes; the
+  deck grid tightened; a node on every deck crossing and every wall-grid
+  crossing. That is item 4 as well: the curtain wall is subdivided now.
+- **3 proportion — done.** `FLOOR_HEIGHT` 3.2 to 3.55 and the base plate down
+  to roughly 6.9 x 5.3, taking it from about 2.3:1 to 3:1. It reads as a
+  tower.
+- **5 interior — partly.** Crude partitions stand inside every floor with a
+  framed edge, so you no longer see straight through to the far glass. Rooms,
+  stairs and furniture-scale objects are still missing, and the glazed core
+  (item 6) still does not read as a shaft.
+- **8 annotation — done.** A dotted leader runs off each slab corner into
+  space with a tick where it lands and a storey dimension standing at its end.
+- **7 slab overhang with a plate grid** was already largely there.
+- **9 detached floating panels** not started.
+
+The light balance was re-set at the same time, because all of it had been
+tuned against an image bloom was never actually drawing: bloom threshold up to
+0.62 with a tighter radius, the glass body pulled right back so stacked panes
+stop piling into milk, and the heat on the working floor calmed so it reads
+sodium instead of lemon.
 
 ## The building was invisible on desktop — composer multisampling
 
@@ -146,6 +166,34 @@ steel ever needs better AA than SMAA gives, raise DPR — not MSAA.
 Bisected by rewriting the composer block and measuring mean screen luminance
 per variant: ms0 visible at mean 31, ms2/ms4 black at mean 2.6, with or
 without canvas `antialias`, with or without `mipmapBlur`.
+
+## Driving it from a script, and the three ways that lies to you
+
+Screenshots can be taken over CDP and measured, which beats arguing about
+whether something "looks washed out" — decode the PNG and count pixels. Mean
+luminance, the fraction that is still true black, and the fraction that is
+clipped white say most of what matters here. But the harness lied three
+separate ways in one session, and each one cost a wrong conclusion:
+
+- **A stale frame is darker than a real one.** `Page.captureScreenshot`
+  intermittently hands back a blank or half-composited frame, at 40+fps, with
+  the scene in perfect health. One run went visible, visible, blank, visible.
+  Take three or four captures and keep the brightest; the real frame always
+  wins. Do not average them and do not trust a single one.
+- **A hard scroll jump tears the skeleton on purpose.** `window.scrollTo` to a
+  distant position spikes the scroll velocity, `uTear` fires, and the building
+  flies apart for several seconds — the decay rate is 1.6, so it is slow. A
+  frame captured mid-decay looks like an explosion and is not a bug. Step the
+  scroll there in increments, the way a person would.
+- **Pin the viewport.** `Emulation.setDeviceMetricsOverride` to a fixed size
+  before measuring. The window drifted between runs, and since the page height
+  changes with it, the same scroll fraction points at a different part of the
+  build — the numbers are not comparable and neither are the pictures.
+
+And the stale dev server from the section below is real and bit twice more:
+both times the symptom was the glass and the deck plates vanishing while the
+steel kept drawing perfectly. `rm -rf .next` and restart. Nothing else fixes
+it, and it looks exactly like a shader bug.
 
 ## How to actually see the site
 
