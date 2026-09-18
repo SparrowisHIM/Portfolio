@@ -309,6 +309,14 @@ export function buildStructure(site: Site): Structure {
         if (inVoid((s0 + s1) / 2)) continue;
         push({ instance: strut(at(s0, ty), at(s1, ty), DIAG * 0.42), floor: index, start: 0.84 + rnd.range(0, 0.06), dur: 0.1, origin: flyFrom([0, 0.4, 0], 0.25), seed: rnd.next(), hue: pickHue(), loud: false });
       }
+      // A point wherever the wall grid crosses itself. Small: a hundred of
+      // these is precision, a hundred blobs is noise.
+      for (let k = 1; k < bays; k++) {
+        const s = k / bays;
+        if (inVoid(s)) continue;
+        nodes.push({ position: at(s, ty), floor: index, start: 0.9, seed: rnd.next(), hue: pickHue(), size: 0.062, origin: flyFrom([0, 0.3, 0], 0.15) });
+        nodes.push({ position: at(s, y0), floor: index, start: 0.88, seed: rnd.next(), hue: pickHue(), size: 0.055, origin: flyFrom([0, 0.3, 0], 0.15) });
+      }
     }
     // The core as a glass box, lit warm, on every floor.
     {
@@ -331,17 +339,31 @@ export function buildStructure(site: Site): Structure {
       push({ instance: strut(world(x, -e.zn, y0), world(x, e.zp, y0), BEAM), floor: index, start: frameStart, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
     }
     push({ instance: strut(world(-e.xn, 0, y0), world(e.xp, 0, y0), BEAM), floor: index, start: frameStart, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
-    const crossing = Math.max(2, Math.round((e.zp + e.zn) / 2.6));
+    // Deck grid, tighter than it was, and remembered: a node goes on every
+    // crossing. Hundreds of small bright points where members meet is most
+    // of why the reference reads as engineering rather than a sketch.
+    const zUsed: number[] = [];
+    const crossing = Math.max(2, Math.round((e.zp + e.zn) / 1.8));
     for (let k = 1; k < crossing; k++) {
       const z = -e.zn + (k * (e.zp + e.zn)) / crossing;
       if (Math.abs(z) < 0.4) continue;
+      zUsed.push(z);
       push({ instance: strut(world(-e.xn, z, y0 + 0.02), world(e.xp, z, y0 + 0.02), BEAM * 0.7), floor: index, start: frameStart + 0.015, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
     }
-    const secondaries = Math.max(2, Math.round((e.xp + e.xn) / 1.6));
+    const xUsed: number[] = [];
+    const secondaries = Math.max(2, Math.round((e.xp + e.xn) / 1.15));
     for (let k = 1; k < secondaries; k++) {
       const x = -e.xn + (k * (e.xp + e.xn)) / secondaries;
       if (Math.abs(x) < 0.4) continue;
+      xUsed.push(x);
       push({ instance: strut(world(x, zLines[0], y0 + 0.02), world(x, zLines[1], y0 + 0.02), BEAM * 0.7), floor: index, start: frameStart + 0.01, dur: frameDur, origin: frameOrigin(), seed: rnd.next(), hue: pickHue(), loud: false });
+    }
+    for (const x of xUsed) {
+      for (const z of zUsed) {
+        nodes.push({ position: world(x, z, y0 + 0.03), floor: index, start: frameStart + frameDur + 0.02, seed: rnd.next(), hue: pickHue(), size: 0.058, origin: frameOrigin() });
+      }
+      nodes.push({ position: world(x, zLines[0], y0 + 0.03), floor: index, start: frameStart + frameDur + 0.02, seed: rnd.next(), hue: pickHue(), size: 0.05, origin: frameOrigin() });
+      nodes.push({ position: world(x, zLines[1], y0 + 0.03), floor: index, start: frameStart + frameDur + 0.02, seed: rnd.next(), hue: pickHue(), size: 0.05, origin: frameOrigin() });
     }
 
     // The plate: a dark translucent floor that reads as a slab.
