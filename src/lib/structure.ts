@@ -454,6 +454,44 @@ export function buildStructure(site: Site): Structure {
       // One warning node per floor, on the spine.
       nodes.push({ position: [core.x, y0 + wall * 0.5, core.z + core.depth / 2], floor: index, start: 0.9, seed: rnd.next(), hue: HUE.red, size: 0.12 });
     }
+
+    // Construction-drawing annotation: a dotted leader running off the slab
+    // corner into empty space, a tick where it lands, and a storey dimension
+    // standing at its end. Pure line work, no lighting, drawn last — it says
+    // the building is being described as well as built, and it is the
+    // cheapest thing in the reference by a distance.
+    if (index > 0) {
+      const ox = Math.sin(site.viewAngle);
+      const oz = Math.cos(site.viewAngle);
+      const from = world(e.xp * 0.98, e.zp * 0.98, y0);
+      const len = 3.2 + (index % 3) * 0.85;
+      const dots = Math.max(6, Math.round(len / 0.32));
+      for (let d = 1; d <= dots; d++) {
+        const t = d / dots;
+        nodes.push({
+          position: [from[0] + ox * len * t, y0, from[2] + oz * len * t],
+          floor: index,
+          start: 0.93,
+          seed: rnd.next(),
+          hue: HUE.white,
+          size: 0.032,
+          origin: [0, 0, 0],
+        });
+      }
+      const ex = from[0] + ox * len;
+      const ez = from[2] + oz * len;
+      const tick = (y: number, half: number): [Vec3, Vec3] => [
+        [ex - oz * half, y, ez + ox * half],
+        [ex + oz * half, y, ez - ox * half],
+      ];
+      const thin = (a: Vec3, b: Vec3, size: number, start: number) =>
+        push({ instance: strut(a, b, size), floor: index, start, dur: 0.05, origin: [0, 0, 0], seed: rnd.next(), hue: HUE.white, loud: false });
+      const [t0a, t0b] = tick(y0, 0.32);
+      thin(t0a, t0b, RAIL * 0.55, 0.94);
+      thin([ex, y0, ez], [ex, y0 + wall, ez], RAIL * 0.45, 0.95);
+      const [t1a, t1b] = tick(y0 + wall, 0.32);
+      thin(t1a, t1b, RAIL * 0.55, 0.95);
+    }
   }
 
   // Dotted setting-out lines: survey marks at each corner of the footprint,
