@@ -119,6 +119,34 @@ Suggested order of attack: density and nodes first (biggest gap, contained
 to src/lib/structure.ts), then proportion, then the interior, then annotation
 lines. The curtain wall and cladding retries come after those.
 
+## The building was invisible on desktop — composer multisampling
+
+`<EffectComposer multisampling={rich ? 2 : 0}>`. On Intel UHD through
+ANGLE/D3D11, **any** multisampling above 0 makes the composer output a fully
+black frame. The scene underneath is perfect: camera in the right place,
+`uProgress` correct, instance matrices filled, draw calls flowing, console
+clean, and a direct `gl.render(scene, camera)` draws the building. Only the
+composed output is black, and it is opaque black, not transparent.
+
+`rich` is `min-width: 768px`, so this only ever bit **desktop**. Narrow
+windows got multisampling 0 and looked fine, which is why it survived so long.
+
+It also explains "the building appears out of nowhere around the fourth
+floor": scrolling a heavy scene drops the frame rate, `PerformanceMonitor`
+fires `onDecline`, `effects` goes false, the composer unmounts — and the
+building pops into view. Bloom being *disabled* was what made the site
+visible. Every good-looking capture in this project until now was a bloom-off
+frame, so the whole light balance was tuned against an image the site was
+never actually supposed to show.
+
+Fixed in 56b597e: `multisampling={0}` permanently, with `<SMAA />` doing the
+antialiasing in a shader instead. Do not put multisampling back. If the thin
+steel ever needs better AA than SMAA gives, raise DPR — not MSAA.
+
+Bisected by rewriting the composer block and measuring mean screen luminance
+per variant: ms0 visible at mean 31, ms2/ms4 black at mean 2.6, with or
+without canvas `antialias`, with or without `mipmapBlur`.
+
 ## How to actually see the site
 
 **Do not trust a single capture.** Hard-won:
