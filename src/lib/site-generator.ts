@@ -1,6 +1,12 @@
 import { createRandom } from "./random";
 
-export const FLOOR_HEIGHT = 3.2;
+/**
+ * Storey height. Five floors on a 8.5m plate read as a low box next to the
+ * reference, which is unmistakably a tower. Taller storeys and a narrower
+ * plate take the proportion from roughly 2.3:1 to 3:1, and give the curtain
+ * wall grid room to be a grid.
+ */
+export const FLOOR_HEIGHT = 3.55;
 export const SLAB_THICKNESS = 0.32;
 /** Scaffold lifts are half a storey. */
 export const LIFT = FLOOR_HEIGHT / 2;
@@ -166,8 +172,8 @@ function columnsFor(grid: [number, number][], offset: [number, number], rotation
 
 export function generateSite(seed: number, floorFlags: { finished: boolean }[]): Site {
   const rnd = createRandom(seed);
-  const baseWidth = rnd.range(7.5, 9);
-  const baseDepth = rnd.range(5.5, 7);
+  const baseWidth = rnd.range(6.4, 7.4);
+  const baseDepth = rnd.range(4.8, 5.8);
   const count = floorFlags.length;
 
   // The open face is the one the visitor looks at. The crane stands behind
