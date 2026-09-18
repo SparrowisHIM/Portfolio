@@ -160,8 +160,13 @@ void main() {
   float top = 0.5 + 0.5 * n.y;
   float rim = pow(1.0 - max(dot(n, v), 0.0), 2.0);
   // Hierarchy by weight: columns carry the resting light and run warm,
-  // beams sit back, hairlines barely register until something lights them.
-  float w = mix(0.16, 1.0, vWeight * vWeight);
+  // beams sit back, hairlines stay quiet — but they all have to be *there*.
+  // Squaring the weight over a 0.16 floor put every beam, diagonal and rail
+  // at a fifth of a column, so the frame read as a handful of posts with
+  // nothing between them. The reference reads as fabric because the small
+  // members are visible. Gentler curve, higher floor: columns still lead at
+  // 1.0, floor beams land near 0.5, hairlines near 0.38.
+  float w = mix(0.3, 1.0, pow(vWeight, 1.35));
   // Heat: 1 on the floor being worked, falling away sharply below it. A
   // gentle falloff left half the building in a muddy in-between; a floor
   // should read as clearly warm or clearly cold.
