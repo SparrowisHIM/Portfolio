@@ -332,6 +332,45 @@ export function buildStructure(site: Site): Structure {
       }
     }
 
+    // Interior: a few partitions standing inside the volume, head height, each
+    // with a framed edge so it reads as built rather than as a smudge. The
+    // building was completely hollow, which is the single reason it read as a
+    // diagram instead of a place — you could see straight through every floor
+    // to the glass on the far side. These do not have to be rooms you could
+    // occupy; they have to interrupt the view through.
+    if (index > 0) {
+      const ph = wall * 0.74;
+      const rooms = 2 + Math.round(rnd.range(0, 1));
+      for (let r = 0; r < rooms; r++) {
+        const alongX = rnd.chance(0.5);
+        const span = alongX ? e.xp + e.xn : e.zp + e.zn;
+        const other = alongX ? e.zp + e.zn : e.xp + e.xn;
+        const at0 = -(alongX ? e.xn : e.zn) + rnd.range(0.06, 0.34) * span;
+        const at1 = at0 + rnd.range(0.32, 0.56) * span;
+        const cross = -(alongX ? e.zn : e.xn) + rnd.range(0.24, 0.76) * other;
+        const mid = (at0 + at1) / 2;
+        const put = (a: number, c: number, y: number): Vec3 => (alongX ? world(a, c, y) : world(c, a, y));
+        panels.push({
+          position: put(mid, cross, y0 + ph / 2),
+          rotationY: (alongX ? 0 : Math.PI / 2) + floor.rotation,
+          width: at1 - at0,
+          height: ph,
+          floor: index,
+          p0: -1,
+          p1: -1,
+          maxSkin: 1,
+          plate: false,
+        });
+        const arrive = 0.88 + rnd.range(0, 0.04);
+        const fly = (): Vec3 => flyFrom([0, 0.5, 0], 0.25);
+        push({ instance: strut(put(at0, cross, y0 + ph), put(at1, cross, y0 + ph), RAIL), floor: index, start: arrive, dur: 0.1, origin: fly(), seed: rnd.next(), hue: pickHue(), loud: false });
+        push({ instance: strut(put(at0, cross, y0), put(at0, cross, y0 + ph), RAIL * 0.8), floor: index, start: arrive, dur: 0.1, origin: fly(), seed: rnd.next(), hue: pickHue(), loud: false });
+        push({ instance: strut(put(at1, cross, y0), put(at1, cross, y0 + ph), RAIL * 0.8), floor: index, start: arrive, dur: 0.1, origin: fly(), seed: rnd.next(), hue: pickHue(), loud: false });
+        nodes.push({ position: put(at0, cross, y0 + ph), floor: index, start: arrive + 0.04, seed: rnd.next(), hue: pickHue(), size: 0.055, origin: fly() });
+        nodes.push({ position: put(at1, cross, y0 + ph), floor: index, start: arrive + 0.04, seed: rnd.next(), hue: pickHue(), size: 0.055, origin: fly() });
+      }
+    }
+
     // Beams across the plate between column lines, and secondaries.
     const zLines = [-e.zn, e.zp];
     const xLines = [-e.xn, 0, e.xp];
