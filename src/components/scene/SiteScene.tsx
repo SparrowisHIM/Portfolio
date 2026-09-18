@@ -187,7 +187,14 @@ export function SiteScene({
       {effects && (
         <EffectComposer multisampling={0}>
           <SMAA />
-          <Bloom luminanceThreshold={0.42} mipmapBlur intensity={rich ? 1.15 : 1.3} radius={0.72} />
+          {/*
+            Threshold high, radius tight. At 0.42 every dim member bloomed and
+            the halos filled the gaps between them, so the frame lost its
+            blacks: 73% of it was mid-grey and the glass read as milk. Only
+            what is genuinely lit — slab edges, lamps, the sodium on the
+            active floor — should throw light into the void.
+          */}
+          <Bloom luminanceThreshold={0.62} mipmapBlur intensity={rich ? 0.85 : 1.0} radius={0.5} />
           <Vignette offset={0.25} darkness={rich ? 0.7 : 0.45} />
           {rich ? <Noise opacity={0.035} /> : <></>}
         </EffectComposer>
