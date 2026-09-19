@@ -89,6 +89,18 @@ rules, which still hold:
   matrices written **from the frame loop** (not an effect — that is the
   blank-building bug). Plinth, uplights, one interior lamp per glazed storey,
   and the per-storey pick volumes for floor clicking.
+- `src/components/scene/Workers.tsx` — the crew. A welder at the arc, a
+  banksman on the highest slab, and two scaffolders per run riding the
+  working lift as it is erected. The lift comes from `workingLift` in
+  `Scaffold.tsx`, which is the same expression the clip plane uses, so
+  nobody stands on boards that have not gone up yet.
+
+  **Only the torso and legs cast shadows.** A figure is forty pixels tall
+  here and its shadow is a smudge, but the hat, brim, head and two
+  reflective strips were each taking their own draw in the shadow pass.
+  Cutting them gained about eight frames — more than the four new people
+  cost, so the site runs faster populated than it did empty. Worth
+  remembering for anything else instanced and small.
 - `src/components/scene/Welding.tsx` — the arc at the joint being made, plus
   the four corners of a plate burning off for ~2.6s as it lands.
 - `src/components/scene/Workers.tsx` — two figures: a welder at the arc, a

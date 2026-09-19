@@ -21,6 +21,24 @@ const GUARD = 0.95;
 const MID = 0.48;
 const TOE = 0.16;
 
+/**
+ * The highest boarded lift on a run that has actually been erected.
+ *
+ * The same expression the clip plane uses, so anyone standing on it is
+ * standing on boards that exist rather than on the air above them.
+ */
+export function workingLift(site: Site, run: ScaffoldRun, f: number) {
+  const top = builtHeight(site, f) + 0.9;
+  return Math.max(1, Math.min(run.lifts, Math.floor((top - 0.35) / LIFT)));
+}
+
+/** Where someone stands on a run: the middle of a bay, on the boards. */
+export function scaffoldStand(run: ScaffoldRun, bay: number, lift: number) {
+  const step = run.span / run.bays;
+  const along = -run.span / 2 + step * (bay + 0.5);
+  return onSide(run.side, along, run.offset + ROW / 2, DECK_Y + lift * LIFT + BOARD + 0.04);
+}
+
 type ScaffoldProps = {
   site: Site;
   /** Construction time, which stops once the site tops out. */
