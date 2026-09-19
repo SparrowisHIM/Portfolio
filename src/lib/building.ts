@@ -38,7 +38,7 @@ export const STARTER_LEN = 0.78;
 export const MULLION = 0.075;
 export const GLASS = 0.04;
 /** Panes per structural bay. */
-export const PANES_PER_BAY = 3;
+export const PANES_PER_BAY = 2;
 
 /**
  * How many levels the frame has to climb above a storey before that storey

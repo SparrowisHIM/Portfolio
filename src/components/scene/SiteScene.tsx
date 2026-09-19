@@ -169,8 +169,8 @@ export function SiteScene({
       */}
       <color attach="background" args={["#08090b"]} />
       {/* Barely there, and cool, so the concrete has somewhere to sit in shadow. */}
-      <ambientLight intensity={0.5} color="#3c4354" />
-      <hemisphereLight args={["#4a5262", "#0b0d11", 0.85]} />
+      <ambientLight intensity={0.5} color="#4a4740" />
+      <hemisphereLight args={["#5a564d", "#0b0d11", 0.85]} />
       {/*
         One key from high and in front, which does all the modelling. Tight
         shadow camera: the whole subject is about 22 units tall and 16 across,

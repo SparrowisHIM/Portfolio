@@ -75,11 +75,11 @@ export function buildKeyframes(site: Site): Keyframe[] {
   // The old ceiling of about twenty-five units was set by 4cm steel going
   // sub-pixel; the smallest thing here is a 5cm handrail against a 44cm
   // column, so standing back no longer costs the drawing.
-  const far = 35;
+  const far = 38;
   const frames: Keyframe[] = [
     // Arrival: the whole object, seen slightly from above, sitting on its
     // plinth with the uplights catching the underside of the base slab.
-    { lookY: 6.5, rise: 5.2, radius: far * 0.86, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
+    { lookY: 6.5, rise: 4.2, radius: far * 0.86, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
   ];
   // Floors: rise with the build so the working level stays around the upper
   // third, without ever losing the base.
@@ -87,7 +87,7 @@ export function buildKeyframes(site: Site): Keyframe[] {
     const back = RHYTHM[i % RHYTHM.length];
     frames.push({
       lookY: lerp(floor.y * 0.5 + 3.4, site.totalHeight * 0.44, back),
-      rise: lerp(3.2, 6.4, back) + i * 0.35,
+      rise: lerp(2.2, 4.6, back) + i * 0.3,
       radius: lerp(far * 0.82, far, back) + i * 0.5,
       angle: start + step * (i + 1),
       fit: 1,
@@ -96,7 +96,7 @@ export function buildKeyframes(site: Site): Keyframe[] {
   // Roof: the finished elevation, square on to the clear face.
   frames.push({
     lookY: site.totalHeight * 0.46,
-    rise: 6.8,
+    rise: 5.0,
     radius: far * 1.1,
     angle: start + sweep,
     fit: 1,
