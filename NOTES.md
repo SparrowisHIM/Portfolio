@@ -154,6 +154,20 @@ with the foot planted, and retracts the same way scrolling back down.
   then holds at `STACK_MIN`. It used to run to nothing by the top floor,
   which reads as a yard that has finished rather than one that is working.
 
+### The arrival is framed on the crane, not the deck
+
+Before a floor is up the deck is four metres tall and the crane is thirty,
+and the old shot was framed on the deck — so the mast ran off the top of
+the frame. That was invisible while the crane was a dark silhouette and
+became the first thing you saw once it was not.
+
+`lookY` sits at the middle of the whole subject (crane top 30, plinth
+bottom about -1) and the radius holds thirty-seven units, so the margins
+come out even. The deck ends up low in frame; that is what a thirty-unit
+subject does in a 16:9 window, and it is why the wordmark on the left
+carries the other half of the composition. It also gives the first section
+something to do — scrolling to floor one is a dolly in from here.
+
 ### The view angle is fixed, on purpose
 
 `VIEW_SIDE` and `CRANE_CORNER` in `site-generator.ts` are constants, not

@@ -141,17 +141,28 @@ export function buildKeyframes(site: Site): Keyframe[] {
   // has stopped working.
   const facingCrane = Math.atan2(-site.crane.position[0], -site.crane.position[2]);
   const frames: Keyframe[] = [
-    // Arrival: the whole object, seen slightly from above, sitting on its
-    // plinth with the uplights catching the underside of the base slab.
-    // Nothing is built yet, so the subject is four metres tall, not twenty.
-    // Aiming at mid-tower left it sitting in the bottom corner of an empty
-    // frame; come down and in so the site fills the shot it opens on.
-    // Most of the correction: nothing is built yet, so the subject is the
-    // deck and the laydown, which is the one genuinely wide shot in the run.
+    /*
+      Arrival: the whole crane, standing over a site nothing has been built
+      on yet.
+
+      The subject is not the deck. Before a single floor is up the deck is
+      four metres tall and the crane is thirty, and a shot framed on the
+      deck cut the mast off at the top of the frame — which was fine while
+      the crane was a dark silhouette and became the first thing you saw
+      once it was not. Framed on the crane, the arrival is a poster: the
+      wordmark down the left, the whole machine down the right, the laydown
+      and the cabin at its feet, and the hook hanging in the middle of the
+      air the building is about to fill. It also gives the first section
+      something to do — scrolling to floor one is a dolly in from here.
+
+      lookY sits at the middle of the subject so the margins come out even:
+      the crane tops out at thirty, the plinth bottoms out at about minus
+      one, and the frame holds thirty-seven.
+    */
     {
-      lookY: 3.0,
+      lookY: 14.1,
       rise: 3.2,
-      radius: far * 0.88,
+      radius: far * 1.1,
       angle: site.viewAngle + HERO.angleOffset * 0.5,
       fit: 0.9,
       // Upright, the arrival turns to face the crane down the barrel: stand
