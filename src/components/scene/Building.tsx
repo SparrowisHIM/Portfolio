@@ -314,9 +314,9 @@ function Plinth({
   base: ReturnType<typeof plinth>;
   materials: Record<string, THREE.Material>;
 }) {
-  const { width, depth, height, lip, top } = base;
+  const { width, depth, height, lip, top, offsetX, offsetZ } = base;
   return (
-    <group>
+    <group position={[offsetX, 0, offsetZ]}>
       {/* Lower step, wider, catching the uplights. */}
       <mesh position={[0, top - height - 0.16, 0]} receiveShadow material={materials.plinth}>
         <boxGeometry args={[width + lip * 2, 0.32, depth + lip * 2]} />
@@ -359,7 +359,7 @@ export function PlinthLights({ site }: { site: Site }) {
   }, [base]);
 
   return (
-    <group>
+    <group position={[base.offsetX, 0, base.offsetZ]}>
       {spots.map(([x, z], i) => (
         <pointLight
           key={i}

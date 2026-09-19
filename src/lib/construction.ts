@@ -124,20 +124,51 @@ export function plateSize(floor: Floor) {
   };
 }
 
+/** Clear air between the building and the plate waiting to be lifted. */
+export const YARD_GAP = 1.9;
+
+/**
+ * Which way the laydown lies, snapped to an axis.
+ *
+ * Snapped rather than free, because a rectangle reaches furthest at its
+ * corners: a stack placed on a diagonal at a radius that clears the flat of
+ * the building will still be inside its corner. Square to the base, the room
+ * needed is simply the half width, and the plates stack straight.
+ */
+export function yardAxis(site: Site) {
+  const a = Math.atan2(site.crane.position[0], site.crane.position[2]) + site.yardSide * 0.6;
+  const nx = Math.sin(a);
+  const nz = Math.cos(a);
+  return Math.abs(nx) >= Math.abs(nz)
+    ? { nx: Math.sign(nx) || 1, nz: 0 }
+    : { nx: 0, nz: Math.sign(nz) || 1 };
+}
+
+/** How far out the middle of the stack sits. */
+export function yardRadius(site: Site) {
+  const { nx, nz } = yardAxis(site);
+  const floor = site.floors[0];
+  const reach = Math.abs(nx) * (floor.width / 2) + Math.abs(nz) * (floor.depth / 2);
+  return reach + YARD_GAP + PLANK.depth / 2;
+}
+
 /**
  * The laydown: where the next plate waits to be lifted.
  *
- * It sits on the plinth, in the band between the edge of the building and the
- * edge of the base, on the side the crane stands. It used to be measured out
- * from the crane and landed well past the model, so every lift began by the
- * hook dipping into empty black and coming back up with a slab — the oddest
- * moment in the whole scroll, and the most obviously unreal.
+ * Standing clear of the building on purpose. It used to sit at a fixed radius
+ * and the plates ended up overlapping the slab, so a lift began already
+ * inside the thing it was building and had nowhere to travel from. The gap is
+ * what gives the crane a journey to make.
  */
 export function yardPosition(site: Site): Vec3 {
-  const toCrane = Math.atan2(site.crane.position[0], site.crane.position[2]);
-  const angle = toCrane + site.yardSide * 0.6;
-  const r = Math.max(site.floors[0].width, site.floors[0].depth) / 2 + 1.7;
-  return [Math.sin(angle) * r, 0, Math.cos(angle) * r];
+  const { nx, nz } = yardAxis(site);
+  const r = yardRadius(site);
+  return [nx * r, 0, nz * r];
+}
+
+/** The plates lie across the direction they stand off in. */
+export function yardTurn(site: Site) {
+  return yardAxis(site).nx !== 0 ? Math.PI / 2 : 0;
 }
 
 /**

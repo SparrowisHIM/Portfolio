@@ -4,7 +4,7 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { PLANK, remainingSlabs, yardPosition } from "@/lib/construction";
+import { PLANK, remainingSlabs, yardPosition, yardTurn } from "@/lib/construction";
 import { plinth, SLAB } from "@/lib/building";
 import { createRandom } from "@/lib/random";
 import { materials } from "./materials";
@@ -64,10 +64,7 @@ export function SiteYard({
   }, [site]);
 
   const yard = useMemo(() => yardPosition(site), [site]);
-  const yardTurn = useMemo(
-    () => Math.atan2(site.crane.position[0], site.crane.position[2]) + site.yardSide * 0.6,
-    [site],
-  );
+  const turn = useMemo(() => yardTurn(site), [site]);
   const plates = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const maxPlates = site.floors.length;
@@ -80,7 +77,7 @@ export function SiteYard({
     for (let i = 0; i < maxPlates; i++) {
       if (i < left) {
         dummy.position.set(yard[0], deck + SLAB / 2 + i * (SLAB + 0.04), yard[2]);
-        dummy.rotation.set(0, yardTurn + i * 0.012, 0);
+        dummy.rotation.set(0, turn + i * 0.012, 0);
         dummy.scale.set(PLATE.w, SLAB, PLATE.d);
       } else {
         dummy.scale.set(0, 0, 0);
@@ -106,7 +103,7 @@ export function SiteYard({
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
       {/* Bearers under the stack, so it is not resting on the deck. */}
-      <group position={[yard[0], deck + 0.06, yard[2]]} rotation={[0, yardTurn, 0]}>
+      <group position={[yard[0], deck + 0.06, yard[2]]} rotation={[0, turn, 0]}>
         {[-1.15, 1.15].map((o) => (
           <mesh key={o} position={[0, 0, o]} castShadow material={m.timber}>
             <boxGeometry args={[PLATE.w * 0.92, 0.12, 0.18]} />

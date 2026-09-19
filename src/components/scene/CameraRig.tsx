@@ -82,7 +82,7 @@ export function buildKeyframes(site: Site): Keyframe[] {
     // Nothing is built yet, so the subject is four metres tall, not twenty.
     // Aiming at mid-tower left it sitting in the bottom corner of an empty
     // frame; come down and in so the site fills the shot it opens on.
-    { lookY: 3.0, rise: 3.2, radius: far * 0.70, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
+    { lookY: 3.0, rise: 3.2, radius: far * 0.88, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
   ];
   // Floors: rise with the build so the working level stays around the upper
   // third, without ever losing the base.

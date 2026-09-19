@@ -1,5 +1,5 @@
 import { FLOOR_HEIGHT, SLAB_OVERHANG, type Core, type Site } from "./site-generator";
-import { floorProgress } from "./construction";
+import { PLANK, floorProgress, yardAxis, yardRadius } from "./construction";
 import { createRandom, type Random } from "./random";
 
 /**
@@ -496,7 +496,13 @@ function addStorey(
 }
 
 /**
- * The plinth the whole thing stands on, sized off the base plate.
+ * The plinth the whole thing stands on.
+ *
+ * Not a square pad any more: it runs long in the direction the laydown stands
+ * off in, so the stack has somewhere to sit well clear of the building, and
+ * stays tight across the other axis so the base does not read as an empty
+ * field with a tower in the middle. That is also what a real site looks like —
+ * a footprint with a working apron beside it.
  *
  * `top` sits a reveal below the soffit of the ground slab. It has to: with
  * the plinth top and the slab top both at y = 0 the two faces were exactly
@@ -505,12 +511,29 @@ function addStorey(
  * is also how the base of a building like this is detailed anyway.
  */
 export function plinth(site: Site) {
-  // Wide enough for the site to work on: the laydown alone needs a six
-  // metre plate to rest on with room to sling it, and the cabin, skip and
-  // rebar have to stand clear of it.
-  const w = site.floors[0].width + SLAB_OVERHANG * 2 + 6.8;
-  const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 6.8;
-  return { width: w, depth: d, height: 0.62, lip: 0.5, top: -SLAB - 0.07 };
+  const floor = site.floors[0];
+  const axis = yardAxis(site);
+  const onX = axis.nx !== 0;
+  const reach = onX ? floor.width / 2 : floor.depth / 2;
+  // Long on the laydown side only. Mirroring the apron onto the far side
+  // doubled the amount of empty deck for nothing — a site has a working
+  // apron, not a margin.
+  const workSide = yardRadius(site) + PLANK.depth / 2 + 0.8;
+  const farSide = reach + 2.4;
+  const along = workSide + farSide;
+  const across = (onX ? floor.depth : floor.width) + SLAB_OVERHANG * 2 + 4.6;
+  // The base is no longer centred on the building; it is pushed out the way
+  // the work happens.
+  const shift = ((workSide - farSide) / 2) * (onX ? axis.nx : axis.nz);
+  return {
+    width: onX ? along : across,
+    depth: onX ? across : along,
+    height: 0.62,
+    lip: 0.5,
+    top: -SLAB - 0.07,
+    offsetX: onX ? shift : 0,
+    offsetZ: onX ? 0 : shift,
+  };
 }
 
 /**
