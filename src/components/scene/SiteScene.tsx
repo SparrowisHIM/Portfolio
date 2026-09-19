@@ -32,6 +32,8 @@ type SiteSceneProps = {
   onSelectFloor?: (index: number) => void;
   /** Called once the scene has mounted and drawn. */
   onReady?: () => void;
+  /** Called the frame the site tops out, so the page can say the orbit is free. */
+  onToppedOut?: () => void;
 };
 
 /**
@@ -85,6 +87,7 @@ function Smoother({
   topped,
   below,
   animate,
+  onToppedOut,
 }: {
   site: Site;
   progress: RefObject<number>;
@@ -94,6 +97,7 @@ function Smoother({
   topped: RefObject<boolean>;
   below: RefObject<boolean>;
   animate: boolean;
+  onToppedOut?: () => void;
 }) {
   const end = sectionCount - 1;
   const toppedAt = useMemo(() => toppedOutAt(site), [site]);
@@ -108,7 +112,10 @@ function Smoother({
     } else {
       build.current = next;
       if (next < toppedAt) below.current = true;
-      else if (below.current) topped.current = true;
+      else if (below.current) {
+        topped.current = true;
+        onToppedOut?.();
+      }
     }
   }, -10);
   return null;
@@ -125,6 +132,7 @@ export function SiteScene({
   shiftY = 0,
   onSelectFloor,
   onReady,
+  onToppedOut,
 }: SiteSceneProps) {
   // Bloom is what makes the lines read as light, so a narrow screen keeps
   // it and drops the grain and the vignette instead. It is still the first
@@ -203,7 +211,7 @@ export function SiteScene({
         only ever rakes across them.
       */}
       <directionalLight position={[-4, 8, 24]} intensity={0.85} color="#a6aebc" />
-      <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} />
+      <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} onToppedOut={onToppedOut} />
       <Building site={site} build={build} animate={animate} onSelectFloor={onSelectFloor} />
       <PlinthLights site={site} />
       <InteriorLights site={site} build={build} />
@@ -213,7 +221,7 @@ export function SiteScene({
       <SiteYard site={site} build={build} />
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
-      <CameraRig site={site} section={section} build={build} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
+      <CameraRig site={site} section={section} build={build} topped={topped} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
       <PerformanceMonitor bounds={() => [32, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
         <AdaptiveDpr pixelated />
       </PerformanceMonitor>

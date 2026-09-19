@@ -10,6 +10,7 @@ import { floorProgress, smoothstep } from "@/lib/construction";
 import { buildParts, plinth, slabTop, storey, CLAD_LAG, SLAB, type Part, type PartKind, type Vec3 } from "@/lib/building";
 import { boardConcreteTexture, siteDeckTexture } from "@/lib/textures";
 import { hover, resetHover } from "@/lib/hover";
+import { orbit } from "@/lib/orbit";
 import { projects } from "@/lib/projects";
 
 /**
@@ -239,6 +240,9 @@ function HoverGlow({ site, animate }: { site: Site; animate: boolean }) {
   }, [levels, site]);
 
   useFrame((_, delta) => {
+    // Swinging the camera round sweeps the pointer across every storey on
+    // the way. Labels firing off behind the drag is noise, not navigation.
+    if (orbit.dragging) hover.index = -1;
     const glow = hover.glow;
     for (let i = 0; i < levels; i++) {
       const want = hover.index === i ? 1 : 0;
@@ -432,7 +436,7 @@ function FloorPicker({
           key={b.i}
           position={[0, b.y, 0]}
           onPointerOver={(e) => {
-            if (!done(b.i)) return;
+            if (!done(b.i) || orbit.dragging) return;
             e.stopPropagation();
             hover.index = b.i;
             setCursor("pointer");

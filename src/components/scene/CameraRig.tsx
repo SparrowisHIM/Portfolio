@@ -7,6 +7,7 @@ import type { Site } from "@/lib/site-generator";
 import { HERO } from "@/lib/site-generator";
 import { floorProgress, smoothstep } from "@/lib/construction";
 import { game, stackTop } from "@/lib/stack-game";
+import { orbit } from "@/lib/orbit";
 
 type Keyframe = {
   /** Height the camera looks at. */
@@ -31,6 +32,8 @@ type CameraRigProps = {
   section: RefObject<number>;
   /** Construction time, which stops once the site tops out. */
   build: RefObject<number>;
+  /** Latched once the last level is complete. Unlocks the orbit. */
+  topped: RefObject<boolean>;
   sectionCount: number;
   /** When false the camera snaps to its target instead of easing. */
   animate: boolean;
@@ -46,6 +49,22 @@ type CameraRigProps = {
 };
 
 const INTRO_SECONDS = 2.6;
+
+/**
+ * How far the drag may swing the camera.
+ *
+ * While the site is going up the orbit is on a short leash: the build has a
+ * front, the scaffolded faces and the laydown are not the shot, and the
+ * keyframes are doing the directing. Once it has topped out there is nothing
+ * left to direct and the model is finished on every face, so the leash comes
+ * off and the drag gets a vertical axis too.
+ */
+const LEASH = 0.45;
+/** Elevation of the camera above the look point, as an angle. */
+const PITCH_LOW = -0.2;
+const PITCH_HIGH = 1.05;
+/** Past this much pointer travel a press is a drag, not a click. */
+const DRAG_SLOP = 4;
 
 function easeOutExpo(t: number) {
   return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
@@ -114,7 +133,7 @@ export function buildKeyframes(site: Site): Keyframe[] {
  * round the open face, comes in on the floor being built and pulls back as
  * that floor completes. Drag adds a little orbit; the pointer adds parallax.
  */
-export function CameraRig({ site, section, build, sectionCount, animate, started, shiftX = 0, shiftY = 0 }: CameraRigProps) {
+export function CameraRig({ site, section, build, topped, sectionCount, animate, started, shiftX = 0, shiftY = 0 }: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const domElement = useThree((s) => s.gl.domElement);
   const frames = useMemo(() => buildKeyframes(site), [site]);
@@ -122,24 +141,59 @@ export function CameraRig({ site, section, build, sectionCount, animate, started
   const pointer = useRef({ x: 0, y: 0 });
   const current = useRef<Keyframe | null>(null);
   const look = useRef(new THREE.Vector3());
-  const drag = useRef({ active: false, lastX: 0, target: 0, value: 0 });
+  const drag = useRef({
+    active: false,
+    lastX: 0,
+    lastY: 0,
+    travel: 0,
+    yaw: 0,
+    yawAt: 0,
+    pitch: 0,
+    pitchAt: 0,
+  });
 
-  // Drag sideways to walk round the site a little. Vertical movement stays with scroll.
+  // A rebuild is a different site standing in a different place. Carrying the
+  // old orbit over would open the new one from behind.
+  useEffect(() => {
+    const state = drag.current;
+    state.yaw = 0;
+    state.yawAt = 0;
+    state.pitch = 0;
+    state.pitchAt = 0;
+    orbit.free = false;
+    orbit.dragging = false;
+  }, [site]);
+
+  // Drag to walk round the site. Sideways always; up and down once the site
+  // has topped out and there is a finished object to walk round.
   useEffect(() => {
     const state = drag.current;
     const down = (e: PointerEvent) => {
       if (e.button !== 0 || game.active) return;
       state.active = true;
+      state.travel = 0;
       state.lastX = e.clientX;
+      state.lastY = e.clientY;
     };
     const move = (e: PointerEvent) => {
       if (!state.active) return;
       const dx = e.clientX - state.lastX;
+      const dy = e.clientY - state.lastY;
       state.lastX = e.clientX;
-      state.target = THREE.MathUtils.clamp(state.target - dx * 0.003, -0.45, 0.45);
+      state.lastY = e.clientY;
+      state.travel += Math.abs(dx) + Math.abs(dy);
+      // Below the slop this is still a press on a storey, not a swing of the
+      // camera, so the hover label stays up and the click lands.
+      if (state.travel > DRAG_SLOP) orbit.dragging = true;
+      const leash = orbit.free ? Math.PI : LEASH;
+      state.yaw = THREE.MathUtils.clamp(state.yaw - dx * 0.003, -leash, leash);
+      if (orbit.free) {
+        state.pitch = THREE.MathUtils.clamp(state.pitch + dy * 0.004, -0.5, 1.0);
+      }
     };
     const up = () => {
       state.active = false;
+      orbit.dragging = false;
     };
     domElement.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
@@ -150,6 +204,7 @@ export function CameraRig({ site, section, build, sectionCount, animate, started
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      orbit.dragging = false;
     };
   }, [domElement]);
 
@@ -218,16 +273,38 @@ export function CameraRig({ site, section, build, sectionCount, animate, started
     c.angle = THREE.MathUtils.damp(c.angle, target.angle, smoothing, delta);
     current.current = c;
 
+    // The leash comes off the moment the site tops out. The night shift is
+    // its own shot and keeps the short one.
+    orbit.free = (topped.current ?? false) && !game.active;
+
     const d = drag.current;
-    d.value = THREE.MathUtils.damp(d.value, d.target, animate ? 6 : 1000, delta);
-    const angle = c.angle + pointer.current.x * 0.06 + d.value;
-    camera.position.set(Math.sin(angle) * c.radius, c.lookY + c.rise + pointer.current.y * 0.5, Math.cos(angle) * c.radius);
+    const smoothDrag = animate ? 6 : 1000;
+    d.yawAt = THREE.MathUtils.damp(d.yawAt, d.yaw, smoothDrag, delta);
+    d.pitchAt = THREE.MathUtils.damp(d.pitchAt, orbit.free ? d.pitch : 0, smoothDrag, delta);
+    const angle = c.angle + pointer.current.x * 0.06 + d.yawAt;
+
+    // Radius and rise are the two legs of a right angle on the look point,
+    // so tilting is a rotation of that pair rather than a lift: swing them
+    // together and the camera rides over the model at a constant distance
+    // instead of drifting away from it as it climbs.
+    const reach = Math.hypot(c.radius, c.rise);
+    const elevation = THREE.MathUtils.clamp(
+      Math.atan2(c.rise, c.radius) + d.pitchAt,
+      PITCH_LOW,
+      PITCH_HIGH,
+    );
+    const radius = reach * Math.cos(elevation);
+    const rise = reach * Math.sin(elevation);
+
+    camera.position.set(Math.sin(angle) * radius, c.lookY + rise + pointer.current.y * 0.5, Math.cos(angle) * radius);
     look.current.set(0, c.lookY, 0);
     camera.lookAt(look.current);
-    // Slide along the camera's own axes; orientation stays the same.
+    // Slide along the camera's own axes; orientation stays the same. Scaled
+    // by the orbit radius actually in use, or tilting overhead would drag
+    // the model sideways out of the frame as the radius closed up.
     const shift = game.active ? 0 : 1;
-    camera.translateX(-c.radius * shiftX * shift);
-    camera.translateY(-c.radius * shiftY * shift);
+    camera.translateX(-radius * shiftX * shift);
+    camera.translateY(-radius * shiftY * shift);
   });
 
   return null;
