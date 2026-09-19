@@ -54,6 +54,11 @@ function create() {
       roughness: 0.4,
     }),
     hardHat: new THREE.MeshStandardMaterial({ color: "#f2d02a", roughness: 0.4 }),
+    /* ---- site dressing ---- */
+    cabin: new THREE.MeshStandardMaterial({ color: "#8a8f96", roughness: 0.68, metalness: 0.25 }),
+    skip: new THREE.MeshStandardMaterial({ color: "#8a4a22", roughness: 0.78, metalness: 0.2 }),
+    rebar: new THREE.MeshStandardMaterial({ color: "#6a6257", roughness: 0.72, metalness: 0.45 }),
+    timber: new THREE.MeshStandardMaterial({ color: "#7d7263", roughness: 0.9 }),
     hardHatWhite: new THREE.MeshStandardMaterial({ color: "#e9ecef", roughness: 0.4 }),
     skin: new THREE.MeshStandardMaterial({ color: "#8a5a3c", roughness: 0.8 }),
     denim: new THREE.MeshStandardMaterial({ color: "#2b3a52", roughness: 0.9 }),

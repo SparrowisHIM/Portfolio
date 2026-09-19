@@ -75,11 +75,14 @@ export function buildKeyframes(site: Site): Keyframe[] {
   // The old ceiling of about twenty-five units was set by 4cm steel going
   // sub-pixel; the smallest thing here is a 5cm handrail against a 44cm
   // column, so standing back no longer costs the drawing.
-  const far = 38;
+  const far = 41;
   const frames: Keyframe[] = [
     // Arrival: the whole object, seen slightly from above, sitting on its
     // plinth with the uplights catching the underside of the base slab.
-    { lookY: 6.5, rise: 4.2, radius: far * 0.86, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
+    // Nothing is built yet, so the subject is four metres tall, not twenty.
+    // Aiming at mid-tower left it sitting in the bottom corner of an empty
+    // frame; come down and in so the site fills the shot it opens on.
+    { lookY: 3.0, rise: 3.2, radius: far * 0.70, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
   ];
   // Floors: rise with the build so the working level stays around the upper
   // third, without ever losing the base.

@@ -22,10 +22,21 @@ import { FLOOR_HEIGHT, SLAB_THICKNESS, type Floor, type Site, type Vec3 } from "
  * while the last floor is being read, and the crane holds its frame overhead.
  */
 
+/**
+ * The precast unit on the hook, and the units stacked in the laydown.
+ *
+ * The crane used to carry a plate the size of the whole floor — eleven metres
+ * by ten, swinging over the building. Nothing lifts a floor in one piece, and
+ * at that size it was the largest object in the hero frame by a distance. A
+ * plank is what actually arrives on a hook, and it lets the laydown be a
+ * believable stack rather than four floors piled on the deck.
+ */
+export const PLANK = { width: 3.4, depth: 2.3 };
+
 export const PLACED_AT = 0.66;
 
 /** The frame hovers this far above its plate before it is released. */
-export const HOVER = 0.9;
+export const HOVER = 0.55;
 
 /** Floor `index` is under construction while f runs from start to end. */
 function window(index: number) {
@@ -110,12 +121,20 @@ export function plateSize(floor: Floor) {
   };
 }
 
+/**
+ * The laydown: where the next plate waits to be lifted.
+ *
+ * It sits on the plinth, in the band between the edge of the building and the
+ * edge of the base, on the side the crane stands. It used to be measured out
+ * from the crane and landed well past the model, so every lift began by the
+ * hook dipping into empty black and coming back up with a slab — the oddest
+ * moment in the whole scroll, and the most obviously unreal.
+ */
 export function yardPosition(site: Site): Vec3 {
-  const { crane } = site;
-  const toTower = Math.atan2(-crane.position[0], -crane.position[2]);
-  const angle = toTower + site.yardSide * 1.45;
-  const r = Math.min(crane.jibLength - 1.5, 7.5);
-  return [crane.position[0] + Math.sin(angle) * r, 0, crane.position[2] + Math.cos(angle) * r];
+  const toCrane = Math.atan2(site.crane.position[0], site.crane.position[2]);
+  const angle = toCrane + site.yardSide * 0.6;
+  const r = Math.max(site.floors[0].width, site.floors[0].depth) / 2 + 1.55;
+  return [Math.sin(angle) * r, 0, Math.cos(angle) * r];
 }
 
 /**
@@ -182,13 +201,12 @@ export function cranePose(site: Site, f: number): CranePose {
     loaded = true;
   }
 
-  const size = plateSize(floor);
   return {
     angle,
     trolley,
     hook: [crane.position[0] + Math.sin(angle) * trolley, y, crane.position[2] + Math.cos(angle) * trolley],
     loaded,
-    slab: overRoof ? { width: floor.width * 0.92, depth: floor.depth * 0.92 } : size,
+    slab: PLANK,
     rotation: overRoof ? 0 : floor.rotation,
   };
 }
