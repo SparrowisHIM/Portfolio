@@ -25,13 +25,16 @@ import { FLOOR_HEIGHT, SLAB_THICKNESS, type Floor, type Site, type Vec3 } from "
 /**
  * The precast unit on the hook, and the units stacked in the laydown.
  *
- * The crane used to carry a plate the size of the whole floor — eleven metres
- * by ten, swinging over the building. Nothing lifts a floor in one piece, and
- * at that size it was the largest object in the hero frame by a distance. A
- * plank is what actually arrives on a hook, and it lets the laydown be a
- * believable stack rather than four floors piled on the deck.
+ * Sized to read as a piece of the floor rather than as an anonymous plank:
+ * about a quarter of the plate, so when it comes down over the frame you see
+ * the floor arriving. A 3.4m plank was honest and said nothing — it was too
+ * small against an eleven metre plate to look like it was building anything.
+ *
+ * Elongated rather than square: the same area reads more like a floor plate,
+ * and lying tangentially in the laydown it needs far less of the base than a
+ * squarer unit of the same size would.
  */
-export const PLANK = { width: 3.4, depth: 2.3 };
+export const PLANK = { width: 7.4, depth: 3.2 };
 
 export const PLACED_AT = 0.66;
 
@@ -133,7 +136,7 @@ export function plateSize(floor: Floor) {
 export function yardPosition(site: Site): Vec3 {
   const toCrane = Math.atan2(site.crane.position[0], site.crane.position[2]);
   const angle = toCrane + site.yardSide * 0.6;
-  const r = Math.max(site.floors[0].width, site.floors[0].depth) / 2 + 1.55;
+  const r = Math.max(site.floors[0].width, site.floors[0].depth) / 2 + 1.7;
   return [Math.sin(angle) * r, 0, Math.cos(angle) * r];
 }
 

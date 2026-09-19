@@ -75,7 +75,7 @@ export function buildKeyframes(site: Site): Keyframe[] {
   // The old ceiling of about twenty-five units was set by 4cm steel going
   // sub-pixel; the smallest thing here is a 5cm handrail against a 44cm
   // column, so standing back no longer costs the drawing.
-  const far = 41;
+  const far = 43;
   const frames: Keyframe[] = [
     // Arrival: the whole object, seen slightly from above, sitting on its
     // plinth with the uplights catching the underside of the base slab.

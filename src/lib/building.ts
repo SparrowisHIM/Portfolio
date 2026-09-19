@@ -505,10 +505,11 @@ function addStorey(
  * is also how the base of a building like this is detailed anyway.
  */
 export function plinth(site: Site) {
-  // Wide enough for the site to stand on: a container is 2.4m across and
-  // the old 1.4m band round the building could not hold one.
-  const w = site.floors[0].width + SLAB_OVERHANG * 2 + 3.6;
-  const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 3.6;
+  // Wide enough for the site to work on: the laydown alone needs a six
+  // metre plate to rest on with room to sling it, and the cabin, skip and
+  // rebar have to stand clear of it.
+  const w = site.floors[0].width + SLAB_OVERHANG * 2 + 6.8;
+  const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 6.8;
   return { width: w, depth: d, height: 0.62, lip: 0.5, top: -SLAB - 0.07 };
 }
 

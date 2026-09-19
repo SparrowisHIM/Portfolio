@@ -50,20 +50,24 @@ export function SiteYard({
       return [Math.sin(a) * (half + out), Math.cos(a) * (half + out)];
     };
     return {
-      cabin: at(2.35, 1.9),
-      cabinTurn: site.viewAngle + 2.35,
-      skip: at(-2.05, 1.8),
-      skipTurn: site.viewAngle - 2.05,
-      rebar: at(1.45, 1.75),
-      rebarTurn: site.viewAngle + 1.45,
-      mast: at(-1.25, 2.3),
-      cones: [at(-0.55, 2.0), at(0.5, 2.15), at(1.0, 1.7)],
-      pallets: [at(-1.7, 1.6), at(2.9, 1.7)],
+      cabin: at(2.45, 2.8),
+      cabinTurn: site.viewAngle + 2.45,
+      skip: at(-2.15, 2.7),
+      skipTurn: site.viewAngle - 2.15,
+      rebar: at(1.5, 2.6),
+      rebarTurn: site.viewAngle + 1.5,
+      mast: at(-1.3, 3.0),
+      cones: [at(-0.6, 2.2), at(0.55, 2.4), at(1.05, 1.9)],
+      pallets: [at(-1.75, 2.6), at(2.95, 2.8)],
       jitter: rnd.range(-0.15, 0.15),
     };
   }, [site]);
 
   const yard = useMemo(() => yardPosition(site), [site]);
+  const yardTurn = useMemo(
+    () => Math.atan2(site.crane.position[0], site.crane.position[2]) + site.yardSide * 0.6,
+    [site],
+  );
   const plates = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const maxPlates = site.floors.length;
@@ -76,7 +80,7 @@ export function SiteYard({
     for (let i = 0; i < maxPlates; i++) {
       if (i < left) {
         dummy.position.set(yard[0], deck + SLAB / 2 + i * (SLAB + 0.04), yard[2]);
-        dummy.rotation.set(0, i * 0.012, 0);
+        dummy.rotation.set(0, yardTurn + i * 0.012, 0);
         dummy.scale.set(PLATE.w, SLAB, PLATE.d);
       } else {
         dummy.scale.set(0, 0, 0);
@@ -102,11 +106,13 @@ export function SiteYard({
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
       {/* Bearers under the stack, so it is not resting on the deck. */}
-      {[-1.0, 1.0].map((o) => (
-        <mesh key={o} position={[yard[0], deck + 0.06, yard[2] + o]} castShadow material={m.timber}>
-          <boxGeometry args={[PLATE.w * 0.92, 0.12, 0.14]} />
-        </mesh>
-      ))}
+      <group position={[yard[0], deck + 0.06, yard[2]]} rotation={[0, yardTurn, 0]}>
+        {[-1.15, 1.15].map((o) => (
+          <mesh key={o} position={[0, 0, o]} castShadow material={m.timber}>
+            <boxGeometry args={[PLATE.w * 0.92, 0.12, 0.18]} />
+          </mesh>
+        ))}
+      </group>
 
       <Cabin position={[layout.cabin[0], deck, layout.cabin[1]]} turn={layout.cabinTurn} m={m} />
       <Skip position={[layout.skip[0], deck, layout.skip[1]]} turn={layout.skipTurn} m={m} />
@@ -117,7 +123,7 @@ export function SiteYard({
         <Cone key={i} position={[c[0], deck, c[1]]} m={m} />
       ))}
       {layout.pallets.map((p, i) => (
-        <mesh key={i} position={[p[0], deck + 0.11, p[1]]} rotation={[0, layout.jitter + i, 0]} castShadow material={m.timber}>
+        <mesh key={i} position={[p[0], deck + 0.11, p[1]]} rotation={[0, layout.jitter + i, 0]} material={m.timber}>
           <boxGeometry args={[1.5, 0.22, 1.1]} />
         </mesh>
       ))}
@@ -193,7 +199,6 @@ function RebarStack({ position, turn, m }: { position: [number, number, number];
             key={`${row.y}-${i}`}
             position={[(i - (row.n - 1) / 2) * 0.17, row.y, 0]}
             rotation={[Math.PI / 2, 0, 0]}
-            castShadow
             material={m.rebar}
           >
             <cylinderGeometry args={[0.055, 0.055, 2.6, 6]} />
@@ -242,7 +247,7 @@ function Cone({ position, m }: { position: [number, number, number]; m: Kit }) {
       <mesh position={[0, 0.03, 0]} material={m.skip}>
         <boxGeometry args={[0.42, 0.06, 0.42]} />
       </mesh>
-      <mesh position={[0, 0.32, 0]} castShadow material={m.skip}>
+      <mesh position={[0, 0.32, 0]} material={m.skip}>
         <coneGeometry args={[0.17, 0.58, 10]} />
       </mesh>
       <mesh position={[0, 0.36, 0]}>
