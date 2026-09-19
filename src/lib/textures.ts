@@ -46,6 +46,77 @@ function noise(seed: number) {
   };
 }
 
+/**
+ * Board-marked concrete, pale.
+ *
+ * The existing `concreteTexture` fills with #6a7480, which is a mid grey in
+ * sRGB and about 0.15 in linear — multiply any material colour by that and
+ * the surface lands near 0.10 albedo, which is asphalt. No amount of light
+ * fixes it, and a lot of light was spent trying. This one sits around 0.45
+ * linear, which is what concrete actually is, and carries the horizontal
+ * board lines of an in-situ pour.
+ */
+export function boardConcreteTexture(seed = 3) {
+  return make(
+    `board-concrete-${seed}`,
+    512,
+    (ctx, s) => {
+      const rnd = noise(seed);
+      ctx.fillStyle = "#b8b2a7";
+      ctx.fillRect(0, 0, s, s);
+
+      // Aggregate and pinholes, kept close in value so it reads as a surface
+      // rather than as noise.
+      for (let i = 0; i < 7000; i++) {
+        const v = 168 + rnd() * 34;
+        ctx.fillStyle = `rgba(${v},${v - 4},${v - 12},${0.05 + rnd() * 0.14})`;
+        ctx.beginPath();
+        ctx.arc(rnd() * s, rnd() * s, 0.6 + rnd() * 3.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Shutter boards: a darker line at every joint, with a soft shadow under
+      // it, and a faint tone shift board to board.
+      const boards = 8;
+      const pitch = s / boards;
+      for (let i = 0; i <= boards; i++) {
+        const y = i * pitch;
+        const tone = 0.5 + rnd() * 0.5;
+        ctx.fillStyle = `rgba(150,144,134,${0.1 + tone * 0.1})`;
+        ctx.fillRect(0, y, s, pitch);
+        ctx.fillStyle = "rgba(108,102,94,0.5)";
+        ctx.fillRect(0, y - 1, s, 2);
+        ctx.fillStyle = "rgba(196,190,180,0.28)";
+        ctx.fillRect(0, y + 1, s, 1.5);
+      }
+
+      // Tie holes on a regular grid, which is the detail that says in-situ.
+      for (let i = 0; i < boards; i += 2) {
+        for (let j = 0; j < 4; j++) {
+          const x = (j + 0.5) * (s / 4);
+          const y = (i + 1) * pitch;
+          ctx.fillStyle = "rgba(96,90,82,0.55)";
+          ctx.beginPath();
+          ctx.arc(x, y, 2.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // A few pour stains so the surface is not uniform.
+      for (let i = 0; i < 14; i++) {
+        const x = rnd() * s;
+        const y = rnd() * s;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, 30 + rnd() * 70);
+        g.addColorStop(0, "rgba(150,144,133,0.16)");
+        g.addColorStop(1, "rgba(150,144,133,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - 100, y - 100, 200, 200);
+      }
+    },
+    [2, 2],
+  );
+}
+
 /** Debris netting: a fine diamond mesh on a transparent ground. */
 export function nettingTexture(color = "#ff7a2f") {
   return make(
