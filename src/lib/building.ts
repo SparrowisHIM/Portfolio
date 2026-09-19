@@ -242,8 +242,12 @@ export function buildParts(site: Site): Part[] {
         push({
           kind: "core",
           floor: index,
-          at: 0.0,
-          growth: 0.4,
+          // The slab lands first, then the core climbs off it. PLACED_AT is
+          // when the crane lets go, so nothing grows on a level until there
+          // is a level to grow on — the core used to run a storey ahead of
+          // the frame and read as a shaft standing in mid air.
+          at: 0.7,
+          growth: 0.26,
           position: [panel.position[0], bottom + panel.position[1], panel.position[2]],
           scale: panel.scale,
           rotationY: 0,

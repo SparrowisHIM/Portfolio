@@ -4,7 +4,8 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { COLUMN, weldLevel, weldSpots } from "@/lib/building";
+import { COLUMN, slabTop, weldLevel, weldSpots } from "@/lib/building";
+import { PLACED_AT, floorProgress } from "@/lib/construction";
 
 /**
  * Welding at the connections.
@@ -31,6 +32,8 @@ import { COLUMN, weldLevel, weldSpots } from "@/lib/building";
 const SPARKS = 200;
 const GRAVITY = -13;
 /** Seconds of arc, then seconds of pause. Re-rolled each cycle. */
+/** How long the connections at a newly landed plate are burned off for. */
+const FIXING = 2.6;
 const BURST = [0.6, 1.5] as const;
 const GAP = [0.35, 1.1] as const;
 
@@ -112,6 +115,9 @@ export function Welding({
     [site],
   );
 
+  const corners = useRef<(THREE.Mesh | null)[]>([]);
+  /** Clock time each plate landed, or -1. Re-arms when you scroll back up. */
+  const placed = useRef<number[]>([]);
   const arc = useRef({ on: false, until: 0.6, level: -1, heat: 0, flicker: 1 });
   const here = useRef(new THREE.Vector3());
   const clock = useRef(0);
@@ -174,6 +180,78 @@ export function Welding({
       m.color.setRGB(1, 0.28 + 0.6 * state.heat * state.heat, 0.08 + 0.6 * Math.pow(state.heat, 4));
     }
 
+    // ---- fixing the plate down ----------------------------------------
+    // A plate is not placed when it is released, it is placed when it is
+    // welded off. The four corners burning for a couple of seconds is what
+    // makes the drop land rather than just stop.
+    const levels = site.floors.length;
+    let fixing: { y: number; hw: number; hd: number; age: number } | null = null;
+    for (let i = 0; i <= levels; i++) {
+      const p = floorProgress(i, f);
+      if (p >= PLACED_AT) {
+        if ((placed.current[i] ?? -1) < 0) placed.current[i] = now;
+      } else {
+        placed.current[i] = -1;
+      }
+      const at = placed.current[i] ?? -1;
+      if (at >= 0 && now - at < FIXING) {
+        const floor = site.floors[Math.min(i, levels - 1)];
+        fixing = {
+          y: slabTop(i),
+          hw: floor.width / 2 - 0.55,
+          hd: floor.depth / 2 - 0.55,
+          age: now - at,
+        };
+      }
+    }
+
+    const fade = fixing ? 1 - fixing.age / FIXING : 0;
+    for (let c = 0; c < 4; c++) {
+      const mesh = corners.current[c];
+      if (!mesh) continue;
+      if (!fixing) {
+        mesh.visible = false;
+        continue;
+      }
+      const sx = c === 0 || c === 3 ? -1 : 1;
+      const sz = c < 2 ? -1 : 1;
+      const cx = sx * fixing.hw;
+      const cz = sz * fixing.hd;
+      // Each corner runs on its own stutter, so they do not blink together.
+      const beat = 0.5 + 0.5 * Math.sin(now * (23 + c * 5) + c * 2.1);
+      const on = beat > 0.35 ? beat : 0;
+      mesh.visible = on > 0 && fade > 0;
+      mesh.position.set(cx, fixing.y + 0.06, cz);
+      mesh.scale.setScalar(0.11 * on * fade + 0.03);
+
+      if (on > 0.5 && fade > 0) {
+        // Sparks off the corner being burned.
+        for (let n = 0; n < 2; n++) {
+          for (let i = 0; i < SPARKS; i++) {
+            const sp = pool[i];
+            if (sp.life > 0) continue;
+            sp.max = 0.32 + Math.random() * 0.5;
+            sp.life = sp.max;
+            sp.bounced = false;
+            const a = Math.random() * Math.PI * 2;
+            const speed = 1.1 + Math.random() * 2.6;
+            sp.vx = Math.cos(a) * speed;
+            sp.vz = Math.sin(a) * speed;
+            sp.vy = 1.0 + Math.random() * 2.0;
+            positions[i * 3] = cx;
+            positions[i * 3 + 1] = fixing.y + 0.06;
+            positions[i * 3 + 2] = cz;
+            break;
+          }
+        }
+      }
+    }
+    if (fixing && light.current) {
+      // Lift the arc lamp a little while the corners burn, so the plate is
+      // lit by its own fixing rather than by nothing.
+      light.current.intensity += 14 * fade;
+    }
+
     // Spawn while burning.
     if (burning && spot) {
       const want = 3 + Math.floor(Math.random() * 4);
@@ -198,7 +276,7 @@ export function Welding({
     }
 
     // Integrate.
-    const slabBelow = spot ? spot.y - 0.42 : -999;
+    const slabBelow = fixing ? fixing.y : spot ? spot.y - 0.42 : -999;
     for (let i = 0; i < SPARKS; i++) {
       const s = pool[i];
       if (s.life <= 0) {
@@ -247,6 +325,19 @@ export function Welding({
         <sphereGeometry args={[1, 8, 8]} />
         <meshBasicMaterial color="#ff7a20" toneMapped={false} transparent opacity={0} />
       </mesh>
+      {/* The four connections being burned off as a plate lands. */}
+      {[0, 1, 2, 3].map((c) => (
+        <mesh
+          key={c}
+          ref={(mesh) => {
+            corners.current[c] = mesh;
+          }}
+          visible={false}
+        >
+          <sphereGeometry args={[1, 8, 8]} />
+          <meshBasicMaterial color="#e6f0ff" toneMapped={false} />
+        </mesh>
+      ))}
       {/* What makes it a light source rather than a sticker. */}
       <pointLight ref={light} color="#cfe0ff" intensity={0} distance={11} decay={2} />
     </group>
