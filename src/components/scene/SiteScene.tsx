@@ -13,6 +13,8 @@ import { Crane } from "./Crane";
 import { Welding } from "./Welding";
 import { Workers } from "./Workers";
 import { SiteYard } from "./SiteYard";
+import { Scaffold } from "./Scaffold";
+import { Bursts } from "./Bursts";
 import { Pointer } from "./Pointer";
 import { CameraRig } from "./CameraRig";
 import { StackGame } from "./StackGame";
@@ -218,7 +220,15 @@ export function SiteScene({
       <Crane site={site} build={build} animate={animate} />
       <Welding site={site} build={build} animate={animate} />
       <Workers site={site} build={build} animate={animate} />
+      <Scaffold site={site} build={build} />
       <SiteYard site={site} build={build} />
+      {/*
+        The crane has been calling emitBurst on every release since it was
+        written and nothing has ever drawn the result — the queue filled to
+        its cap of 24 and sat there. Sparks at the moment a plate is taken by
+        the structure, at last.
+      */}
+      <Bursts animate={animate} />
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} topped={topped} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />

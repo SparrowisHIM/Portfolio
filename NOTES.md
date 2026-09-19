@@ -369,6 +369,60 @@ above and below.
 - Cards clear the home indicator with
   `bottom-[max(1.25rem,env(safe-area-inset-bottom))]`.
 
+## The components that were still lying there
+
+The 09-17 strip did not delete the rich site, it stopped rendering it.
+Eight scene components survived in the repo with nothing importing them,
+and finding that is worth more than any of them individually — **before
+building site dressing, check whether it is already written.**
+
+Revived, because they fit a model on a plinth:
+
+- **`Scaffold.tsx`** — rebuilt rather than switched on. See below.
+- **`Bursts.tsx`** — `Crane.tsx` has called `emitBurst` on every release
+  since it was written and nothing drew the result; the queue filled to its
+  cap of 24 and sat there.
+
+Left dormant, because they undo the presentation Efe approved:
+
+- **`Atmosphere.tsx`** gives the void a ground plane and a horizon, and
+  **`Ground.tsx`** is a ground plane. The whole point of the current scene
+  is an object on a plinth in a black studio. A horizon turns it back into
+  a site standing in a landscape.
+- **`Structure.tsx`** is the old skeletal renderer. That is the thing a
+  designer called too AI generated. Do not.
+- **`WorkLights.tsx`** puts light masts on the ground outside the building
+  and needs `Atmosphere`'s haze for its cones to scatter in. The idea worth
+  taking from it is the visible beam, on the lighting mast already standing
+  on the plinth.
+- **`Cloth.tsx`** and **`Dust.tsx`** — still unused. Cloth is verlet
+  netting/banners with wind and pointer interaction; the scaffold netting is
+  a static sheet for now and Cloth is the upgrade if it needs to move.
+
+### The scaffold
+
+Rebuilt, not switched on. The old one drew a single run with only the
+standards at full height and everything dense confined to a working band,
+because *a mesh in front of a frame drawn in 4cm steel simply hides it*.
+That was right against the wireframe and is backwards against solid
+concrete: a scaffold is supposed to read as a mesh in front of a solid, and
+it is most of what makes a site look like a site.
+
+Now: two rows of standards on base plates and sole boards, boarded at every
+lift, ledgers and transoms, facade bracing that zigzags, guard rail, mid
+rail and toe board, a ladder in the end bay, and debris netting on the
+outer face where `run.netted`. Real sizes — 48mm tube, 225mm boards, a
+guard rail at 950mm. It costs nothing to be right and the proportions are
+half of why scaffolding reads.
+
+Two things to know if you touch it:
+
+- **It stands on the deck**, in a group offset by `DECK_Y`, not on the
+  origin. The clip plane is world space, so it is set in world terms.
+- **Galvanised, not near-black emissive.** The old tube colour was `#1e2635`
+  with an emissive term — glowing line work again, and against pale concrete
+  it would read as dark hairlines.
+
 ## Traps that cost real time
 
 - **The old `concreteTexture` fills with `#6a7480`.** That is 0.15 in linear,
@@ -536,6 +590,9 @@ What is left:
 ## Recent history
 
 ```
+c5c6c0d the arrival holds the whole crane
+7a9f76c the crane stopped teleporting between the fourth floor and the end
+60cdf21 the crane goes back to dark, and keeps what actually fixed it
 0bfb348 five things Efe circled, and the top floor gets a lift at last
 34ac10c a crane that reads as a machine, and a lift that starts on the pile
 7dd62d2 a phone gets its own shot of the site, and a lift panel to travel in
