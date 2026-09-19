@@ -478,11 +478,19 @@ function addStorey(
   }
 }
 
-/** The plinth the whole thing stands on, sized off the base plate. */
+/**
+ * The plinth the whole thing stands on, sized off the base plate.
+ *
+ * `top` sits a reveal below the soffit of the ground slab. It has to: with
+ * the plinth top and the slab top both at y = 0 the two faces were exactly
+ * coplanar, the depth buffer could not separate them, and the ground floor
+ * striped and shimmered as the camera moved. A shadow gap is the fix and it
+ * is also how the base of a building like this is detailed anyway.
+ */
 export function plinth(site: Site) {
   const w = site.floors[0].width + SLAB_OVERHANG * 2 + 2.8;
   const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 2.8;
-  return { width: w, depth: d, height: 0.62, lip: 0.5 };
+  return { width: w, depth: d, height: 0.62, lip: 0.5, top: -SLAB - 0.07 };
 }
 
 /**

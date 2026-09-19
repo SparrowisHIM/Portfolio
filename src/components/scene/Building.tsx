@@ -237,15 +237,15 @@ function Plinth({
   base: ReturnType<typeof plinth>;
   materials: Record<string, THREE.Material>;
 }) {
-  const { width, depth, height, lip } = base;
+  const { width, depth, height, lip, top } = base;
   return (
     <group>
       {/* Lower step, wider, catching the uplights. */}
-      <mesh position={[0, -height - 0.16, 0]} receiveShadow material={materials.plinth}>
+      <mesh position={[0, top - height - 0.16, 0]} receiveShadow material={materials.plinth}>
         <boxGeometry args={[width + lip * 2, 0.32, depth + lip * 2]} />
       </mesh>
       {/* Upper step, the deck the building stands on. */}
-      <mesh position={[0, -height / 2, 0]} receiveShadow material={materials.plinthTop}>
+      <mesh position={[0, top - height / 2, 0]} receiveShadow material={materials.plinthTop}>
         <boxGeometry args={[width, height, depth]} />
       </mesh>
     </group>
@@ -270,7 +270,7 @@ export function PlinthLights({ site }: { site: Site }) {
       {spots.map(([x, z], i) => (
         <pointLight
           key={i}
-          position={[x, 0.12, z]}
+          position={[x, base.top + 0.12, z]}
           color="#ffb765"
           intensity={1.5}
           distance={4.2}
@@ -278,7 +278,7 @@ export function PlinthLights({ site }: { site: Site }) {
         />
       ))}
       {spots.map(([x, z], i) => (
-        <mesh key={`l${i}`} position={[x, 0.02, z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={`l${i}`} position={[x, base.top + 0.02, z]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.13, 12]} />
           <meshBasicMaterial color="#ffcd91" toneMapped={false} />
         </mesh>
