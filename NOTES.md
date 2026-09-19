@@ -130,6 +130,19 @@ with the foot planted, and retracts the same way scrolling back down.
   look like it was building anything.
 - Picks off a **real stack** that shrinks as the building goes up.
 
+### The hero lighting pass
+
+The plinth top is the largest surface in the opening frame and it was an
+untextured slab lit evenly from above — nothing for the eye to go to.
+`siteDeckTexture` gives it tyre tracks, damp patches, dust and scuff, which is
+the cheapest way to make a big surface read. And the lighting mast now carries
+a real `spotLight`: it stood there with two bright lamp faces lighting
+nothing, which is why the deck had no reason for any part of it to be brighter
+than any other. The default spot target is world origin, which is the middle
+of the site, so it rakes the deck and up the building without needing a target
+object. First pass at intensity 260 blew the core out; 95 with a wide angle
+and high penumbra is a rake, not a flood.
+
 ### The laydown
 
 `yardAxis` / `yardRadius` / `yardPosition` / `yardTurn` in `construction.ts`.
@@ -247,20 +260,18 @@ trigger Rebuild. That is not a bug; ask before chasing it.
 
 In rough priority order. Nothing here is started.
 
-1. **A lighting pass on the hero.** Now that the site fills the frame the deck
-   reads flat against all that black. This is the frame everyone sees first.
-2. **Mobile.** Deliberately untouched, and Efe wants something different
+1. **Mobile.** Deliberately untouched, and Efe wants something different
    there, not the desktop experience shrunk.
-3. **Hover on the finished building.** Clicking a storey already jumps to its
+2. **Hover on the finished building.** Clicking a storey already jumps to its
    project (the pick volumes are in `Building.tsx`). The hover state — glass
    opens, plate edge pulses, project name pinned to the slab in 3D — would
    turn the finished tower into the navigation. The pick volumes are the hook
    it hangs off.
-4. **Free orbit once finished.** Drag is clamped to ±0.45 rad with no vertical
+3. **Free orbit once finished.** Drag is clamped to ±0.45 rad with no vertical
    control (`CameraRig.tsx`). The topped-out latch already gives it the flag
    it needs to unlock against.
-5. **The night-shift game**, which Efe will rebuild as a whole game.
-6. Load time. 1.4s in production. Chase only if Efe finds it slow.
+4. **The night-shift game**, which Efe will rebuild as a whole game.
+5. Load time. 1.4s in production. Chase only if Efe finds it slow.
 
 ## Recent history
 

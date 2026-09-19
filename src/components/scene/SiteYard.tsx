@@ -233,6 +233,23 @@ function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
           <meshBasicMaterial color="#ffd9a2" toneMapped={false} />
         </mesh>
       ))}
+      {/*
+        The mast actually lights the site now. It stood there with two bright
+        faces and lit nothing, which left the deck a flat even wash with no
+        reason for any part of it to be brighter than any other. The default
+        spot target is world origin, which is the middle of the site — so it
+        rakes across the deck and up the building, exactly where a site lamp
+        would be aimed.
+      */}
+      <spotLight
+        position={[0, 4.35, 0.3]}
+        color="#ffc98a"
+        intensity={95}
+        angle={0.95}
+        penumbra={0.9}
+        distance={42}
+        decay={1.25}
+      />
     </group>
   );
 }

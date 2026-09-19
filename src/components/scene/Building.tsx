@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { floorProgress, smoothstep } from "@/lib/construction";
 import { buildParts, plinth, storey, CLAD_LAG, type Part, type PartKind, type Vec3 } from "@/lib/building";
-import { boardConcreteTexture } from "@/lib/textures";
+import { boardConcreteTexture, siteDeckTexture } from "@/lib/textures";
 
 /**
  * The building: one instanced draw per material, placed from the frame loop.
@@ -138,7 +138,19 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
       rebar: new THREE.MeshStandardMaterial({ color: "#6a6257", roughness: 0.75, metalness: 0.5 }),
       timber: new THREE.MeshStandardMaterial({ color: "#7d7263", roughness: 0.9 }),
       plinth: new THREE.MeshStandardMaterial({ color: "#14161a", roughness: 0.4, metalness: 0.4, envMapIntensity: 0.7 }),
-      plinthTop: new THREE.MeshStandardMaterial({ color: "#1b1e23", roughness: 0.26, metalness: 0.55, envMapIntensity: 0.9 }),
+      /*
+        The deck people work on. Textured, because it is the largest surface
+        in the hero frame and a flat slab there is the flattest thing in the
+        shot; and rough, because a polished plinth under a construction site
+        is a showroom floor.
+      */
+      plinthTop: new THREE.MeshStandardMaterial({
+        color: "#ffffff",
+        map: siteDeckTexture(17),
+        roughness: 0.82,
+        metalness: 0.05,
+        envMapIntensity: 0.4,
+      }),
     };
   }, []);
 

@@ -117,6 +117,91 @@ export function boardConcreteTexture(seed = 3) {
   );
 }
 
+/**
+ * The site deck: concrete that has been worked on.
+ *
+ * The plinth top is the largest surface in the hero frame and it was a flat
+ * untextured slab — the single flattest thing in the shot. Tracks, damp
+ * patches and scuff give it somewhere for the eye to go, and they cost
+ * nothing: this is the cheapest way to make a big surface read.
+ *
+ * Kept dark. It has to sit under the building without competing with it.
+ */
+export function siteDeckTexture(seed = 17) {
+  return make(
+    `site-deck-${seed}`,
+    512,
+    (ctx, s) => {
+      const rnd = noise(seed);
+      ctx.fillStyle = "#6e6862";
+      ctx.fillRect(0, 0, s, s);
+
+      // Damp patches, where water has stood.
+      for (let i = 0; i < 18; i++) {
+        const x = rnd() * s;
+        const y = rnd() * s;
+        const r = 30 + rnd() * 110;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(58,54,50,${0.18 + rnd() * 0.22})`);
+        g.addColorStop(1, "rgba(58,54,50,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+
+      // Dust and dried spill, the other way.
+      for (let i = 0; i < 12; i++) {
+        const x = rnd() * s;
+        const y = rnd() * s;
+        const r = 24 + rnd() * 80;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(146,138,127,${0.12 + rnd() * 0.16})`);
+        g.addColorStop(1, "rgba(146,138,127,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+
+      // Tyre tracks: pairs of bands with a gauge between them, curving a
+      // little, because nothing on a site drives in a straight line.
+      for (let t = 0; t < 3; t++) {
+        const y0 = rnd() * s;
+        const drift = (rnd() - 0.5) * 120;
+        const gauge = 42 + rnd() * 18;
+        for (const off of [0, gauge]) {
+          ctx.strokeStyle = `rgba(48,44,41,${0.22 + rnd() * 0.2})`;
+          ctx.lineWidth = 9 + rnd() * 5;
+          ctx.beginPath();
+          ctx.moveTo(-20, y0 + off);
+          ctx.bezierCurveTo(s * 0.3, y0 + off + drift, s * 0.7, y0 + off - drift, s + 20, y0 + off);
+          ctx.stroke();
+        }
+      }
+
+      // Aggregate and grit.
+      for (let i = 0; i < 6000; i++) {
+        const v = 92 + rnd() * 66;
+        ctx.fillStyle = `rgba(${v},${v - 4},${v - 10},${0.05 + rnd() * 0.14})`;
+        ctx.beginPath();
+        ctx.arc(rnd() * s, rnd() * s, 0.5 + rnd() * 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Scuff, dragged in one direction.
+      for (let i = 0; i < 90; i++) {
+        const x = rnd() * s;
+        const y = rnd() * s;
+        const len = 12 + rnd() * 70;
+        ctx.strokeStyle = `rgba(122,115,107,${0.05 + rnd() * 0.1})`;
+        ctx.lineWidth = 1 + rnd() * 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + len, y + (rnd() - 0.5) * 10);
+        ctx.stroke();
+      }
+    },
+    [4, 4],
+  );
+}
+
 /** Debris netting: a fine diamond mesh on a transparent ground. */
 export function nettingTexture(color = "#ff7a2f") {
   return make(
