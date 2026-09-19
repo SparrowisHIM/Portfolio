@@ -11,6 +11,7 @@ import { Building, InteriorLights, PlinthLights } from "./Building";
 import { Crane } from "./Crane";
 import { Welding } from "./Welding";
 import { Workers } from "./Workers";
+import { SiteYard } from "./SiteYard";
 import { Pointer } from "./Pointer";
 import { CameraRig } from "./CameraRig";
 import { StackGame } from "./StackGame";
@@ -121,8 +122,7 @@ export function SiteScene({
   rich = true,
   shiftX = 0,
   shiftY = 0,
-  // Floor picking comes back with the hover work, once the glazed storeys
-  // are in and there is something to light up.
+  onSelectFloor,
   onReady,
 }: SiteSceneProps) {
   // Bloom is what makes the lines read as light, so a narrow screen keeps
@@ -202,12 +202,13 @@ export function SiteScene({
       */}
       <directionalLight position={[-4, 8, 24]} intensity={0.8} color="#9aa3b2" />
       <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} />
-      <Building site={site} build={build} animate={animate} />
+      <Building site={site} build={build} animate={animate} onSelectFloor={onSelectFloor} />
       <PlinthLights site={site} />
       <InteriorLights site={site} build={build} />
       <Crane site={site} build={build} animate={animate} />
       <Welding site={site} build={build} animate={animate} />
       <Workers site={site} build={build} animate={animate} />
+      <SiteYard site={site} build={build} />
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
