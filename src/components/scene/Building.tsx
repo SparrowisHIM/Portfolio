@@ -386,7 +386,7 @@ export function InteriorLights({ site, build }: { site: Site; build: RefObject<n
     for (let i = 0; i < lamps.length; i++) {
       const light = refs.current[i];
       if (!light) continue;
-      light.intensity = 26 * smoothstep(0.34, 0.72, floorProgress(lamps[i].cladBy, f));
+      light.intensity = 34 * smoothstep(0.34, 0.72, floorProgress(lamps[i].cladBy, f));
     }
   });
 

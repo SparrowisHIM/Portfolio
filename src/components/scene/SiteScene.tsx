@@ -154,7 +154,7 @@ export function SiteScene({
         // asphalt value however much light was thrown at it. Neutral holds
         // the mid greys and still rolls the highlights off.
         toneMapping: THREE.NeutralToneMapping,
-        toneMappingExposure: 1.35,
+        toneMappingExposure: 1.7,
       }}
       onCreated={({ gl }) => {
         // Let vertical touch drags scroll the page; horizontal ones orbit.
@@ -170,8 +170,8 @@ export function SiteScene({
       */}
       <color attach="background" args={["#08090b"]} />
       {/* Barely there, and cool, so the concrete has somewhere to sit in shadow. */}
-      <ambientLight intensity={0.5} color="#4a4740" />
-      <hemisphereLight args={["#5a564d", "#0b0d11", 0.85]} />
+      <ambientLight intensity={0.8} color="#4f4b43" />
+      <hemisphereLight args={["#635e54", "#0d0f13", 1.15]} />
       {/*
         One key from high and in front, which does all the modelling. Tight
         shadow camera: the whole subject is about 22 units tall and 16 across,
@@ -180,8 +180,8 @@ export function SiteScene({
       */}
       <directionalLight
         position={[14, 26, 16]}
-        intensity={4.2}
-        color="#f2ece2"
+        intensity={6.4}
+        color="#f8f3ea"
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0008}
@@ -194,13 +194,13 @@ export function SiteScene({
         shadow-camera-bottom={-6}
       />
       {/* A cool rim from behind so the frame separates from the background. */}
-      <directionalLight position={[-18, 12, -14]} intensity={1.0} color="#6d82a4" />
+      <directionalLight position={[-18, 12, -14]} intensity={1.3} color="#7a8eae" />
       {/*
         Soft fill from roughly where the viewer stands. Without it every
         camera-facing soffit and column face is pure black, because the key
         only ever rakes across them.
       */}
-      <directionalLight position={[-4, 8, 24]} intensity={0.8} color="#9aa3b2" />
+      <directionalLight position={[-4, 8, 24]} intensity={1.35} color="#a6aebc" />
       <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} />
       <Building site={site} build={build} animate={animate} onSelectFloor={onSelectFloor} />
       <PlinthLights site={site} />
@@ -233,7 +233,7 @@ export function SiteScene({
             active floor — should throw light into the void.
           */}
           <Bloom luminanceThreshold={0.82} mipmapBlur intensity={rich ? 0.5 : 0.6} radius={0.55} />
-          <Vignette offset={0.3} darkness={rich ? 0.34 : 0.24} />
+          <Vignette offset={0.32} darkness={rich ? 0.24 : 0.18} />
           {rich ? <Noise opacity={0.035} /> : <></>}
         </EffectComposer>
       )}
