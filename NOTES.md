@@ -9,19 +9,23 @@ Next.js 16 App Router, TypeScript, Tailwind v4, three.js via
 react-three-fiber, Framer Motion. Dev server `npm run dev` on port 3000.
 Everything committed and pushed on `main`.
 
-The front side is **a building made of code, not a building rendered by
-code**. Dark void, thin skeletal structure engineered live as you scroll,
-floor by floor, bottom to top. The crane carries each floor's frame in and
-snaps it down. Light is feedback: dark by default, glow on events, fade.
-Efe rates it out of 10 and it has to make people stop — portfolio, X, job
-visibility. It was a 5, then a 6; the last few passes moved it but it is
-not there.
+The front side is a **concrete-frame building under construction, presented
+as a model on a plinth in a black studio**, engineered live as you scroll,
+floor by floor. A tower crane lifts a precast plate off a laydown stack and
+lands it on the frame; the connections are welded off; the storey glazes and
+lights up as the build moves above it. Efe rates it by eye and it has to make
+people stop — portfolio, X, job visibility.
+
+**As of this session the building is working and Efe is happy with it.** The
+remaining work is polish and the parts that have not been started.
 
 ## Do not touch
 
 - The night-shift game: `src/lib/stack-game.ts`,
   `src/components/scene/StackGame.tsx`, `src/components/overlay/NightShift.tsx`.
   The `game.active` block in `Crane.tsx` stays byte-for-byte.
+  **Efe has said the game is broken and will be rebuilt from scratch later.**
+  Do not spend time on it; do not let it block anything.
 - The component yard: `src/app/components/`, `src/components/yard/`.
 
 ## Ground rules
@@ -31,395 +35,249 @@ not there.
 - `npx tsc --noEmit -p .` and `npm run lint` before every commit.
 - Bash heredocs with backticks or apostrophes break on this machine. Write
   python patch scripts to the scratchpad and run them with `python`.
+- **Do not stop to ask for a look between steps.** Efe has asked explicitly:
+  work through a list, screenshot-check yourself, keep going, report at the
+  end. Raise a problem the moment you see one, but do not pause on it.
 
-## The building was rebuilt as a solid concrete frame
+## How this building came to be, and what not to repeat
 
-A designer friend told Efe the site looked **too AI generated**. He agreed and
-would not push it out. The concept — scroll to build — was never the problem.
+A designer told Efe the old site looked **too AI generated**. The cause was
+not the lighting. Fourteen commits on 09-17 between 16:36 and 16:38 had
+replaced a materially rich, populated night construction site with an
+instanced skeletal wireframe, deleting the crew, the site dressing, the
+structural floors, the core, six textures and fourteen materials. What was
+left was glowing line work in a void — which is the house style of every
+three.js demo on the internet.
 
-### What was actually wrong
+Two dead ends were burned before that was understood:
 
-Fourteen commits on 09-17 between 16:36 and 16:38 replaced a materially rich,
-populated night construction site with an instanced skeletal wireframe. That
-batch deleted `Workers.tsx` (the crew), `Dressing.tsx` (hoarding, cabin,
-generator, skip, street lights), `Floors.tsx`, `Core.tsx`, `Lamps.tsx`,
-`Sparks.tsx`, six procedural textures and fourteen materials, and introduced
-the void environment, the irregular massing and the member/skin shaders. The
-last good commit before it is `02edd88`; the deletions are `fe65ff4` and
-`e35c58d`.
+- **Four surface treatments** (`?look=current|lit|ink|day`) were built over the
+  wireframe to fix it with light. Efe rejected all of them; the drawing
+  treatment in particular "looks like we are trying to force a geometry of a
+  building on a pattern". Reverted. **Do not reach for a shader when the
+  problem is that there is nothing in the scene.**
+- **A restore of the deleted rich site** was designed and never asked for.
+  Efe only wanted an opinion on a recording. Answer what is asked.
 
-So the "AI" read was not a lighting problem. It was that everything which made
-the scene a *place* had been removed, leaving glowing line work in a void.
-
-**A tangent to avoid repeating:** four surface treatments were built over the
-wireframe (`?look=current|lit|ink|day`) to try to fix it with light. Efe
-rejected all of them — the drawing treatment in particular "looks like we are
-trying to force a geometry of a building on a pattern". That harness has been
-reverted. Do not reach for a shader when the problem is that there is nothing
-in the scene.
-
-### The direction now
-
-Efe supplied two references: a concrete-frame tower under construction, on a
-plinth, black background, lower storeys glazed and warm inside, upper storeys
-bare frame, crane placing a slab, two figures, a welder. His two rules:
+Efe then supplied two references: a concrete-frame tower under construction on
+a plinth, black background, lower storeys glazed and warm inside, upper
+storeys bare frame, crane placing a plate, two figures, a welder. His two
+rules, which still hold:
 
 1. **No impossible structures.** The eye knows where load goes; plates
-   floating on nothing read as wrong before you can say why. That is what the
-   irregular massing was doing.
+   floating on nothing read as wrong before you can say why.
 2. **The animation carries the energy.** The spectacle belongs to the process
    of the thing going up, not to a strange silhouette.
 
-### What is built
+## What is built
 
-- `src/lib/site-generator.ts` — massing simplified to one consistent frame.
-  Same plate on every storey, a regular column grid (`BAYS_X`/`BAYS_Z`, the
-  middle left out for the core), columns dead straight top to bottom. The
-  `offset`/`extend`/`rotation`/`void` fields are kept at rest so
-  `construction.ts`, the crane, the pointer and the game keep their contract.
-  Changing the shape is now a data change in `generateSite`, not a code change.
+- `src/lib/site-generator.ts` — one consistent frame, repeated. Same plate on
+  every storey, a regular column grid (`BAYS_X`/`BAYS_Z`, middle left out for
+  the core), columns dead straight top to bottom. `offset`/`extend`/
+  `rotation`/`void` are kept at rest so `construction.ts`, the crane, the
+  pointer and the game keep their contract. **Changing the shape is a data
+  change in `generateSite`, not a code change.**
 - `src/lib/building.ts` — the building as a flat list of placed boxes, each
   naming the floor whose progress owns it and when in that progress it
   arrives. Columns, slabs, core, curtain wall, lit ceilings, fit-out, edge
-  protection, starter bars, stacked material. `CLAD_LAG = 2`: a storey glazes
-  once the frame is two levels above it, so the top of the building is
-  permanently raw.
+  protection, starter bars, stacked material. Also `plinth()`, `weldLevel()`,
+  `weldSpots()`.
 - `src/components/scene/Building.tsx` — one instanced draw per material,
   matrices written **from the frame loop** (not an effect — that is the
-  blank-building bug). Plinth, plinth uplights, one interior lamp per glazed
-  storey.
-- `src/components/scene/Welding.tsx` — the arc. Bursts with gaps, flicker,
-  a real point light so the flash has a source, sparks that fall and bounce
-  once off the slab, and a joint that cools white to orange after the arc
-  stops. Aimed at a column facing the camera.
-- `SiteScene.tsx` — black studio, no fog, warm key plus cool fill and rim,
-  `shadows="percentage"`, `NeutralToneMapping`.
+  blank-building bug). Plinth, uplights, one interior lamp per glazed storey,
+  and the per-storey pick volumes for floor clicking.
+- `src/components/scene/Welding.tsx` — the arc at the joint being made, plus
+  the four corners of a plate burning off for ~2.6s as it lands.
+- `src/components/scene/Workers.tsx` — two figures: a welder at the arc, a
+  banksman on the highest slab with his arm up while the load is on the hook.
+- `src/components/scene/SiteYard.tsx` — the laydown stack, cabin, skip, rebar,
+  lighting mast, cones, pallets.
+- `src/components/scene/StudioEnvironment.tsx` — a lighting rig built in code
+  and pre-filtered into a cube map, so the glass has something to reflect.
+- `Crane.tsx`, `CameraRig.tsx`, `SiteScene.tsx`, `Pointer.tsx`.
 
-### Two traps this cost time to find
+### Sequencing, which took three goes to get right
+
+Per floor `N`, in floor-local progress:
+
+```
+0.05 – 0.51   perimeter columns grow up out of slab N-1
+0.66          PLACED_AT: the crane lets go, slab N lands
+0.66 – 0.92   the four corners of slab N burn off
+0.70 – 0.96   the CORE grows up off slab N
+0.72 – 0.80   edge protection
+```
+
+**The core comes after the slab, not before.** It used to run a storey ahead
+and read as a shaft standing in mid air. Efe called this out specifically:
+"the slab should drop before the pillar grows" — and by pillar he means the
+centre core, not the perimeter columns.
+
+Growth is a `growth` field on a `Part`: the part rises out of its own base
+with the foot planted, and retracts the same way scrolling back down.
+
+### The crane
+
+- Stands **on the plinth** with everything else. It used to be four metres
+  clear of the base, planted in black beside the model at y = 0 while
+  everything else sat at the plinth top — that was most of why it read as
+  disconnected.
+- Mast is `totalHeight + 2.9..3.7`. Taller and the jib spends the whole
+  scroll above the frame.
+- Carries a **precast plate 7.4 × 3.2m**, about a quarter of the floor. It
+  used to carry a plate the size of the entire floor plate, which was the
+  largest object in the hero frame; then a 3.4m plank, which was too small to
+  look like it was building anything.
+- Picks off a **real stack** that shrinks as the building goes up.
+
+### The laydown
+
+`yardAxis` / `yardRadius` / `yardPosition` / `yardTurn` in `construction.ts`.
+Snapped to an axis and set at a **computed** distance, because a rectangle
+reaches furthest at its corners: a fixed radius that clears the flat of the
+building still lands inside its corner, and the plates were intersecting the
+slab. The plinth carries an **apron on the laydown side only** — mirroring it
+doubled the empty deck for nothing.
+
+## Traps that cost real time
 
 - **The old `concreteTexture` fills with `#6a7480`.** That is 0.15 in linear,
   so any material using it as a map lands near 0.10 albedo — asphalt. A lot of
   light was thrown at the building before this was measured rather than
-  guessed at. `boardConcreteTexture` in `textures.ts` sits around 0.45 linear
-  and carries board marks and tie holes. Check the linear value of a texture
-  before blaming the lights.
-- **ACES tone mapping crushed the midtones** and held the concrete dark
-  whatever the key did. `THREE.NeutralToneMapping` holds mid greys.
-- three 0.186 **removed `PCFSoftShadowMap`**; r3f asks for it by default and
-  falls back with a warning on every compile. Ask for `"percentage"`.
+  guessed at. `boardConcreteTexture` sits around 0.45. **Check the linear
+  value of a texture before blaming the lights.**
+- **ACES tone mapping crushes the midtones.** `THREE.NeutralToneMapping` holds
+  mid greys. Exposure is 1.4.
+- **Never toggle `visible` on a light.** three bakes the count of active lights
+  into every shader program, so flipping one recompiles every material in the
+  scene. The welding arc was doing it several times a second. Drive
+  `intensity` to zero instead.
+- **Coplanar faces z-fight.** The plinth top and the ground slab top were both
+  at exactly y = 0 and the ground floor striped. `plinth().top` sits a reveal
+  below the slab soffit.
+- **three 0.186 removed `PCFSoftShadowMap`**, which r3f asks for by default.
+  Ask for `shadows="percentage"`.
+- **Adding an environment map costs a sample on every standard material.** It
+  took the scene from 47 to 38 fps, under the `PerformanceMonitor` floor.
+  Clawed back by cutting the plinth uplights to two real lights (the eight lit
+  discs are geometry), dropping shadow casting from cones/pallets/rebar, and
+  lowering the monitor floor to 32. **45 fps** now.
+- **An environment also adds fill**, so the key and ambient that were raised to
+  fight a dark scene will clip every upward-facing slab to white once it is
+  in. Rebalance after adding it.
 
-### Still to do on the building
+## The composer multisampling blackout — do not undo this
 
-- The crane is still thin dark line work from the wireframe era and does not
-  match a solid building. It needs restyling to match the reference.
-- No figures yet. Two of them, at the right scale, is what sells the size.
-- The glass reads as dark panels with the interior glow behind, which is close,
-  but it has no reflections — there is no environment map in the scene.
-- No stair inside the core, and the core has no openings.
-- Then the site comes back around it, standing on the plinth.
-
-### Capture note
-
-In the desktop app Browser pane, rAF only runs while the pane composites. With
-it hidden the frame loop advances only when a screenshot forces a paint, at
-roughly three or four frames each — and any clock clamped with
-`Math.min(delta, 1/20)` then advances in slow motion. Measuring the weld clock
-showed 0.2s after six screenshots and 11s after twenty-four. Anything timed —
-an arc, a damped camera, glazing growing in — needs twenty-plus pump
-screenshots before a capture means anything.
-
-## Status: the regression was reverted in 91d9c35
-
-Efe confirmed from a recording that the structure looked better a few
-commits earlier. Cause identified and undone: the shaders are now back to
-their 35a6213 state — the frame he called "very good, almost there" — while
-keeping the blank-building fix (544251a), which only touched components.
-
-What was wrong, for when these ideas get retried:
-
-- **389cbf7 curtain wall + deck** pushed skin opacity far too high (plate
-  alpha 0.88, spandrel 0.95). The smoked glass became milky white plastic
-  and the lower floors turned into featureless pale slabs. The curtain wall
-  idea is good; the alphas need to be a fraction of that.
-- **044f748 cladding** hid most of the frame on finished floors. Efe's own
-  idea and still right, but stacked with the opacity above it subtracted
-  everything at once — frame gone *and* glass opaque leaves nothing to look
-  at. Retry it alone, gently, with the glass still dark.
-- Between them the active floor's columns also blew out to neon lemon
-  yellow instead of sodium orange.
-
-Lesson: these were two subtractive changes shipped back to back without
-being judged together. Change one thing that removes detail, then look.
-
-## Earlier notes on the same regression
-
-Efe says the building looks **worse now than it did a few commits ago**.
-Prime suspect, in order:
-
-1. **`389cbf7` curtain wall + deck.** Raised skin opacity a lot: plate
-   alpha up to `0.88`, spandrel band up to `0.95`. Likely turns the lower
-   floors into solid muddy boxes and buries the frame. Cheapest test:
-   `git revert 389cbf7`, look, then re-apply with much lower alphas.
-2. **`044f748` cladding.** Hides most of the frame on floors below the one
-   being built (`keep = mix(1.0, bones, clad)`), which was Efe's own idea
-   and is right in principle. Combined with (1) the two may be
-   over-subtracting: frame hidden *and* glass opaque leaves nothing to look
-   at. If reverting (1) alone is not enough, soften `bones` upward.
-
-Both are in the skin/member shaders, so they are cheap to dial. Get a
-screen recording from Efe before and after — his recordings have been by
-far the most reliable signal in this project.
-
-## THE TARGET — read this before changing anything
-
-Efe supplied a reference (two panels, "Real-time assembly" and "Exploded
-view"; ask him to re-share it). Panel A is the front side we are building.
-His words: *"it is a beautiful structure and I am not talking about the
-luminosity but the structure."* So the gap is geometry and composition, not
-light. Stop tuning colour and glow — that part is close enough.
-
-What the reference has that we do not:
-
-1. **Density.** Theirs is a fine mesh. Every bay is subdivided, every face
-   is gridded, and the eye reads fabric rather than sticks. Ours is sparse:
-   a handful of beams per floor. This is the single biggest gap. More
-   elements at smaller scale, not thicker ones.
-2. **Nodes at every intersection.** Hundreds of small bright points where
-   members cross. A huge part of why theirs reads as precise engineering.
-   Ours has a few per floor.
-3. **Proportion.** Theirs is a tower — clearly taller than wide. Ours is
-   squat: five floors on a wide plate reads as a low box. Either more
-   floors, or a smaller footprint, or both.
-4. **Glass as discrete framed panels.** Theirs is a unitised curtain wall —
-   many individual rectangles, each with its own frame, stacked in a grid.
-   Ours is one big quad per bay. (The 389cbf7 attempt at this was right in
-   spirit and wrong in execution: it went opaque instead of staying a fine
-   frame on dark glass.)
-5. **An interior.** Theirs has partitions, rooms, stairs and furniture-scale
-   objects glowing inside the volume. Ours is completely hollow, which is
-   why it reads as a diagram. Even crude interior partitions would
-   transform the depth.
-6. **A glazed circulation core** running the full height as a distinct
-   shaft, separate from the plates. We have a core in the data but it does
-   not read.
-7. **Slab plates that overhang the glass**, with a grid drawn on the plate
-   surface, so each floor is a bright horizontal plane.
-8. **Construction-drawing annotation:** dotted leader lines running off the
-   structure into space, dimension lines, small callouts. Distinctive and
-   cheap — pure line work, no lighting.
-9. **A few detached panels floating near the building**, as if waiting to be
-   placed. We deleted the old floating fragments; the reference shows the
-   controlled version of that idea.
-
-Status against that list:
-
-- **1 density, 2 nodes — done.** Mullion on every bay line and a transom
-  across every bay at mid height, so a face is a grid of framed panes; the
-  deck grid tightened; a node on every deck crossing and every wall-grid
-  crossing. That is item 4 as well: the curtain wall is subdivided now.
-- **3 proportion — done.** `FLOOR_HEIGHT` 3.2 to 3.55 and the base plate down
-  to roughly 6.9 x 5.3, taking it from about 2.3:1 to 3:1. It reads as a
-  tower.
-- **5 interior — partly.** Crude partitions stand inside every floor with a
-  framed edge, so you no longer see straight through to the far glass. Rooms,
-  stairs and furniture-scale objects are still missing, and the glazed core
-  (item 6) still does not read as a shaft.
-- **8 annotation — done.** A dotted leader runs off each slab corner into
-  space with a tick where it lands and a storey dimension standing at its end.
-- **7 slab overhang with a plate grid** was already largely there.
-- **9 detached floating panels** not started.
-
-The light balance was re-set at the same time, because all of it had been
-tuned against an image bloom was never actually drawing: bloom threshold up to
-0.62 with a tighter radius, the glass body pulled right back so stacked panes
-stop piling into milk, and the heat on the working floor calmed so it reads
-sodium instead of lemon.
-
-## The building was invisible on desktop — composer multisampling
-
-`<EffectComposer multisampling={rich ? 2 : 0}>`. On Intel UHD through
+`<EffectComposer multisampling={0}>` with `<SMAA />`. On Intel UHD through
 ANGLE/D3D11, **any** multisampling above 0 makes the composer output a fully
-black frame. The scene underneath is perfect: camera in the right place,
-`uProgress` correct, instance matrices filled, draw calls flowing, console
-clean, and a direct `gl.render(scene, camera)` draws the building. Only the
-composed output is black, and it is opaque black, not transparent.
-
-`rich` is `min-width: 768px`, so this only ever bit **desktop**. Narrow
-windows got multisampling 0 and looked fine, which is why it survived so long.
-
-It also explains "the building appears out of nowhere around the fourth
-floor": scrolling a heavy scene drops the frame rate, `PerformanceMonitor`
-fires `onDecline`, `effects` goes false, the composer unmounts — and the
-building pops into view. Bloom being *disabled* was what made the site
-visible. Every good-looking capture in this project until now was a bloom-off
-frame, so the whole light balance was tuned against an image the site was
-never actually supposed to show.
-
-Fixed in 56b597e: `multisampling={0}` permanently, with `<SMAA />` doing the
-antialiasing in a shader instead. Do not put multisampling back. If the thin
-steel ever needs better AA than SMAA gives, raise DPR — not MSAA.
-
-Bisected by rewriting the composer block and measuring mean screen luminance
-per variant: ms0 visible at mean 31, ms2/ms4 black at mean 2.6, with or
-without canvas `antialias`, with or without `mipmapBlur`.
-
-## Driving it from a script, and the three ways that lies to you
-
-Screenshots can be taken over CDP and measured, which beats arguing about
-whether something "looks washed out" — decode the PNG and count pixels. Mean
-luminance, the fraction that is still true black, and the fraction that is
-clipped white say most of what matters here. But the harness lied three
-separate ways in one session, and each one cost a wrong conclusion:
-
-- **A stale frame is darker than a real one.** `Page.captureScreenshot`
-  intermittently hands back a blank or half-composited frame, at 40+fps, with
-  the scene in perfect health. One run went visible, visible, blank, visible.
-  Take three or four captures and keep the brightest; the real frame always
-  wins. Do not average them and do not trust a single one.
-- **A hard scroll jump tears the skeleton on purpose.** `window.scrollTo` to a
-  distant position spikes the scroll velocity, `uTear` fires, and the building
-  flies apart for several seconds — the decay rate is 1.6, so it is slow. A
-  frame captured mid-decay looks like an explosion and is not a bug. Step the
-  scroll there in increments, the way a person would.
-- **Pin the viewport.** `Emulation.setDeviceMetricsOverride` to a fixed size
-  before measuring. The window drifted between runs, and since the page height
-  changes with it, the same scroll fraction points at a different part of the
-  build — the numbers are not comparable and neither are the pictures.
-
-And the stale dev server from the section below is real and bit twice more:
-both times the symptom was the glass and the deck plates vanishing while the
-steel kept drawing perfectly. `rm -rf .next` and restart. Nothing else fixes
-it, and it looks exactly like a shader bug.
+black frame while the scene underneath is perfect. `rich` is `min-width:
+768px`, so it only ever bit desktop. Fixed in 56b597e. If the thin steel ever
+needs better AA than SMAA gives, raise DPR — not MSAA.
 
 ## How to actually see the site
 
-**Do not trust a single capture.** Hard-won:
+**Do not use the desktop app's Browser pane.** It only paints while it is
+actually composited, it is capped by however wide the pane happens to be in
+the UI, and it drags Efe into resizing windows. A whole session was lost to
+it: rAF never fires when it is hidden, so any `await` on a frame times out and
+every damped value crawls.
 
-- The dev server goes stale after a batch of edits and silently serves a
-  broken scene. After any compile error, `rm -rf .next` and restart —
-  restarting `next dev` alone does **not** clear the Turbopack cache. A
-  whole session was lost to this.
-- The desktop app's Browser pane and Claude-in-Chrome are *different
-  browsers*. Reading the console of one while testing the other tells you
-  nothing.
-- An occluded Chrome window barely runs a frame loop, so anything damped
-  (camera, scaffold clip, lamp aim) needs frames pumped into it before a
-  screenshot means anything. Take 10–16 throwaway screenshots, keep the last.
-- `PerformanceMonitor` disables bloom when FPS drops. Under a loaded machine
-  that makes the whole scene near-black and looks exactly like a code bug.
-  It burned many rounds. If a capture is black, suspect this first.
-- A scratch CDP driver was used: launch Chrome with
-  `--remote-debugging-port=9222` and drive it over a small pure-python
-  WebSocket client. Screenshots are real GPU frames at any scroll position.
-- **Frame rate does not tell you the window is painting.** An occluded window
-  still reports 40-115fps from rAF while `Page.captureScreenshot` hands back a
-  blank frame — and underneath it the scene is in perfect health: camera
-  finite and in the right place, `uProgress` correct, draw calls flowing,
-  console clean. It reads exactly like a rendering bug and it is not one.
-  `Page.bringToFront` is not enough either; it raises the tab inside its
-  window, not the window above other apps. The only reliable test: take two
-  captures 1.2s apart and compare bytes. A live scene never repeats a frame,
-  so identical captures mean the frame is a lie — retry, do not believe it.
-  This cost a long detour here: Rebuild looked completely broken, blanking the
-  whole scene including the ground plane, and **Rebuild is fine**. Every black
-  frame was the capture.
-- `--headless=new` with `--enable-unsafe-swiftshader` looked like the way out
-  of that and is not: every capture came back identical and empty. Drive a
-  real window.
-- `location.reload()` restores the scroll position. Reload while parked at the
-  roof and the site tops out before you have looked at anything, so a "first
-  pass" capture is really a finished tower. Scroll to 0 and set
-  `history.scrollRestoration = 'manual'` before reloading.
+**Use the CDP driver instead.** It is in the session scratchpad as `cdp.py` —
+about 90 lines of pure-python WebSocket client, no packages. Recreate it if
+the scratchpad is gone.
 
-Measured load, on this machine:
+```sh
+"/c/Program Files/Google/Chrome/Application/chrome.exe" \
+  --remote-debugging-port=9222 \
+  --user-data-dir="$SCRATCH/chrome-profile" \
+  --no-first-run --no-default-browser-check \
+  --window-size=1480,1000 --window-position=40,40 \
+  --disable-features=CalculateNativeWinOcclusion \
+  "http://localhost:3000" &
 
-| | |
-|---|---|
-| dev server | 2.84s (2.5s of that is the loader fallback timing out) |
-| production `next build` + `next start` | 1.38–1.44s |
+python cdp.py --out shot.png --url http://localhost:3000 --scroll 0.45 --wait 5
+python cdp.py --out shot.png --scroll 0.8 --wait 4 --eval "window.scrollY"
+```
+
+Real GPU frames at any size, and Efe can work over the top of it. Things the
+driver has to do, each learned the hard way:
+
+- **`Page.bringToFront` and `Emulation.setFocusEmulationEnabled` before
+  anything.** A hidden page has rAF throttled to about **one frame a second**.
+  Three rounds were spent "fixing performance" that was never slow — the fps
+  measurement was the bug. `--disable-features=CalculateNativeWinOcclusion`
+  covers occlusion, not backgrounding.
+- **Pin the viewport** with `Emulation.setDeviceMetricsOverride`. Note this
+  forces `devicePixelRatio` to 1, so any `dpr` change is invisible to the
+  measurement.
+- **Wait for the canvas, not `readyState`.** A Turbopack recompile finishes
+  long after the document is complete, and a capture taken early comes back as
+  a ~13KB near-black PNG.
+- **Re-assert the scroll just before capturing.** Focus emulation can pull a
+  focused link into view during the settle and quietly move the shot.
+- Measuring fps needs an armed counter read back in a **second** call — a
+  promise that waits on rAF never resolves when rAF is the thing stalling.
+
+Efe scrolling the real window while a capture runs will move the shot and can
+trigger Rebuild. That is not a bug; ask before chasing it.
 
 ## Architecture
 
-- `src/lib/site-generator.ts` — seeded site, massing plan, crane, scaffold,
-  core, per-floor data.
+- `src/lib/site-generator.ts` — seeded site, massing, crane, scaffold, core.
 - `src/lib/construction.ts` — scroll-to-build timeline. `floorProgress`,
-  `cranePose`, `PLACED_AT 0.66`, `HOVER 0.9`.
-- `src/lib/structure.ts` — packs every member, node and skin panel into
-  typed arrays with timing. Section sizes at the top drive the whole line
-  hierarchy: `COLUMN .085 / OUTLINE .085 / FASCIA .036 / BEAM .032 /
-  DIAG .018 / RAIL .016`.
-- `src/components/scene/Structure.tsx` + `shaders/member.ts` +
-  `shaders/skin.ts` — three instanced draws. Assembly, flashes, pulses,
-  cladding, x-ray, shear, tear and tint all run in the shaders.
-- `Crane.tsx`, `WorkLights.tsx`, `Atmosphere.tsx`, `Scaffold.tsx`,
-  `Pointer.tsx`, `Bursts.tsx`, `Dust.tsx`, `Ground.tsx`, `CameraRig.tsx`,
-  `SiteScene.tsx`.
+  `cranePose`, `PLACED_AT 0.66`, `HOVER 0.55`, `PLANK`, the yard helpers.
+- `src/lib/building.ts` — the building as parts, plus the plinth and the weld
+  positions.
+- `src/components/scene/` — `Building`, `Crane`, `Welding`, `Workers`,
+  `SiteYard`, `StudioEnvironment`, `CameraRig`, `SiteScene`, `Pointer`.
 
 ### Things that are load-bearing and easy to break
 
-- **Instance matrices are filled from the frame loop**, not an effect
-  (`Structure.tsx`, `fill()`). r3f rebuilds an `instancedMesh` whenever its
-  `args` change and the replacement has an empty matrix. Filling from an
-  effect caused a blank building roughly half of all loads for hours. Do
-  not move it back into an effect.
-- **The loader has a 2.5s fallback** (`Ready` in `SiteScene.tsx`). Without
-  it a background tab never fires rAF and the visitor gets a black page.
-- **The scene must stay legible with bloom off.** Base steel carries the
-  drawing; bloom only lifts events. It used to rely on bloom entirely and
-  went black on any machine that dipped below 40fps.
-- **Columns take the mass offset but not the twist**
-  (`columnsFor(grid, offset, 0, …)`). Rotating them too gave every floor its
-  own corner posts standing on nothing — the building read as floating trays.
-- **Thin members and a distant camera do not mix.** Past ~25 units the 4cm
-  steel goes sub-pixel and the building disappears. Stand-back shots gain
-  their view by dropping and flattening, never by retreating.
+- **Instance matrices are filled from the frame loop**, not an effect. r3f
+  rebuilds an `instancedMesh` whenever its `args` change and the replacement
+  has an empty matrix. This cost hours once already.
+- **The loader has a 2.5s fallback** (`Ready` in `SiteScene.tsx`). Without it a
+  background tab never fires rAF and the visitor gets a black page.
+- `Instances.tsx` still fills from a `useLayoutEffect`. It has not bitten, but
+  it is the same hazard.
+- Rewriting the tail of `building.ts` once truncated `weldLevel`/`weldSpots`
+  off the end. TypeScript caught it; run it after any bulk file rewrite.
 
-## Outstanding — Efe's list, his priority order
+## Outstanding
 
-1. ~~Latch the build at the top.~~ **Done.** The smoothed scroll value is
-   two clocks now. `section` still follows the scroll both ways and drives
-   the camera; `build` drives construction and only runs forward, stopping
-   the moment the last level is complete (`toppedOutAt`, one frame past the
-   top level's window). Scrolling back down moves the camera over a finished
-   building instead of dismantling it. Rebuild drops the latch *and* sends
-   the page back to the ground, because once a site tops out that is the only
-   way to watch the next one go up. Camera, scroll shear and the warm band
-   still read `section`; the crane, scaffold, work lights, floor progress and
-   the glazing read `build`.
-2. **Free orbit once finished.** Drag is clamped to ±0.45 rad with no
-   vertical control. After topping out it should unlock: full 360°, vertical
-   tilt within limits, scroll-to-zoom.
-3. **Hover on the finished building.** Suggested and not yet agreed: extend
-   the existing storey x-ray so pointing at a floor lights it as a *project*
-   — glass opens, skeleton returns, plate edge pulses, project name pinned
-   to the slab in 3D, click to open. Turns the finished tower into the
-   navigation.
-4. **Load time.** 1.4s in production. Chase only if Efe still finds it slow;
-   profile rather than guess (structure build on the main thread, three
-   shader compiles).
-5. **Phase 3 and beyond, never started:** site hoarding carrying the
-   wordmark, uplit — this was the best idea from Efe's old reference
-   recording and it also retires the header-collision problem currently
-   patched in CSS. Then material stacks at the site boundary. Human figures
-   for scale were explicitly deferred.
+In rough priority order. Nothing here is started.
 
-Also open: mobile is deliberately untouched and Efe wants something
-different there, not the desktop experience shrunk.
+1. **A lighting pass on the hero.** Now that the site fills the frame the deck
+   reads flat against all that black. This is the frame everyone sees first.
+2. **Mobile.** Deliberately untouched, and Efe wants something different
+   there, not the desktop experience shrunk.
+3. **Hover on the finished building.** Clicking a storey already jumps to its
+   project (the pick volumes are in `Building.tsx`). The hover state — glass
+   opens, plate edge pulses, project name pinned to the slab in 3D — would
+   turn the finished tower into the navigation. The pick volumes are the hook
+   it hangs off.
+4. **Free orbit once finished.** Drag is clamped to ±0.45 rad with no vertical
+   control (`CameraRig.tsx`). The topped-out latch already gives it the flag
+   it needs to unlock against.
+5. **The night-shift game**, which Efe will rebuild as a whole game.
+6. Load time. 1.4s in production. Chase only if Efe finds it slow.
 
 ## Recent history
 
 ```
-389cbf7 curtain wall with spandrels and mullions, profiled deck   <- suspect
-544251a fill instance matrices from the frame loop                <- keep
-044f748 clad floors keep edges lose frame; hover x-rays a storey  <- suspect
-35a6213 slab edges, edge protection, one colour system per floor
-445b0d1 real contrast in line work, sodium against steel, glass
-e5641cd commit to steel and sodium, glass edge, frame floats clear
-49e854a floor reads as a structural grid, stray bracing out
-91d5380 columns run straight through the stack
-6a871e3 scaffold struck back to standards and one working lift
-0d1824c keep each mass over the grid below it
-ab37f08 massing moves big enough to read
+272bc60 the laydown stands clear of the building, so the lift has a journey
+3c3de49 fewer lights and casters, and a balance that does not clip the slabs
+0652560 a studio environment, so the glass has something to give back
+011d62a the crane lifts a piece of the floor, on a base wide enough to stack
+c013892 a crane that stands on the site and stays in the shot while it works
+cced74e the core climbs off the slab, and the corners burn off as it lands
+dc82095 light the building properly, it was reading as a silhouette
+09a8b07 a site on the plinth, and a crane that lifts a plank off a real stack
+6a6277c clicking a storey jumps to its project again
+6eaed76 columns cast up out of the slab instead of arriving whole
+b971c3c the ground floor striped where the plinth and the slab shared a plane
+4907fbf a welder at the arc and a banksman on the slab, for scale
+6f3404d hold the whole object in frame, and glass that reads as glass
 ```
 
 ## What working with Efe is like
@@ -429,3 +287,9 @@ time. When he says something is off, it is off — go and find the cause
 rather than tuning numbers. Show him the change, do not describe it. He
 would rather hear "this is still wrong and here is why" than a confident
 summary of work that did not land.
+
+He has asked twice for more judgement, not less: pick the best option and say
+why, flag problems the moment you see them rather than burying them in a
+report, and do not mirror his opinion back at him. He has also asked to be
+asked before a big detour — but not to be stopped between steps of an agreed
+list.
