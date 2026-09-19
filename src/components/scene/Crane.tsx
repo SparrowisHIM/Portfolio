@@ -45,6 +45,11 @@ const ANCHOR_Z = 0.31;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
+/** The same turn expressed as the shorter of the two ways round. */
+function shortTurn(delta: number) {
+  return (((delta + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+}
+
 /** Point a unit box from `a` to `b`. */
 function aim(mesh: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3, size: number, tmp: THREE.Vector3, q: THREE.Quaternion) {
   const dir = tmp.copy(b).sub(a);
@@ -86,6 +91,8 @@ export function Crane({ site, build, animate }: CraneProps) {
   const loadPos = useRef(new THREE.Vector3());
   const loadVel = useRef(new THREE.Vector3());
   const settled = useRef(false);
+  /** Where the jib actually is, as opposed to where the timeline wants it. */
+  const jibAt = useRef({ angle: 0, trolley: 0, y: 0, set: false });
   const tmpA = useRef(new THREE.Vector3());
   const tmpB = useRef(new THREE.Vector3());
   const tmpC = useRef(new THREE.Vector3());
@@ -239,13 +246,42 @@ export function Crane({ site, build, animate }: CraneProps) {
       };
     }
 
-    if (slew.current) slew.current.rotation.y = pose.angle;
-    if (trolley.current) trolley.current.position.z = pose.trolley;
+    /*
+      The jib eases to its pose; it is never cut to it.
+
+      The timeline hands over between states in a single frame, and two of
+      those hand-overs move the crane a long way: the tenth of a section
+      between one floor finishing and the next beginning, and the moment the
+      site tops out and the crane goes to standing by with a plate held over
+      the roof. That last one slews half a radian, runs the trolley out three
+      metres and lifts the hook twenty. Applied raw, the whole crane jumps.
+    */
+    const jib = jibAt.current;
+    if (!jib.set) {
+      jib.angle = pose.angle;
+      jib.trolley = pose.trolley;
+      jib.y = pose.hook[1];
+      jib.set = true;
+    }
+    const ease = animate && !playing ? 1 - Math.exp(-7 * dt) : 1;
+    jib.angle += shortTurn(pose.angle - jib.angle) * ease;
+    jib.trolley += (pose.trolley - jib.trolley) * ease;
+    jib.y += (pose.hook[1] - jib.y) * ease;
+
+    if (slew.current) slew.current.rotation.y = jib.angle;
+    if (trolley.current) trolley.current.position.z = jib.trolley;
 
     // Pendulum: the load chases the hook with a spring and damper, and the
     // wind leans on it. The vertical spring is what gives the overshoot and
     // snap when the frame lands.
-    const target = tmpA.current.set(pose.hook[0], pose.hook[1], pose.hook[2]);
+    // The hook hangs under the trolley, so it chases the eased pose the jib
+    // is drawn from rather than the raw one — otherwise the rope leans away
+    // from the trolley for as long as the two disagree.
+    const target = tmpA.current.set(
+      crane.position[0] + Math.sin(jib.angle) * jib.trolley,
+      jib.y,
+      crane.position[2] + Math.cos(jib.angle) * jib.trolley,
+    );
     const pos = loadPos.current;
     const vel = loadVel.current;
     if (!settled.current) {

@@ -141,10 +141,21 @@ export function craneJob(site: Site, f: number) {
     const t = floorProgress(i, f);
     if (t > 0 && t < 1) return { index: i, t, idle: false };
   }
-  // Nothing mid-build. Either waiting on the next frame, or holding the last
-  // one over the roof for whoever builds the next floor.
-  const next = site.floors.findIndex((_, i) => i > 0 && floorProgress(i, f) === 0);
-  if (next !== -1) return { index: next, t: 0, idle: false };
+  /*
+    Nothing mid-build. Either waiting on the next frame, or holding the last
+    one over the roof for whoever builds the next floor.
+
+    The lifts are numbered 1..count and there are `count` of them, but
+    `floors` is indexed 0..count-1 — so a `findIndex` over the array can
+    never return the last lift. Every floor is followed by a tenth of a
+    section where none is mid-build, and after floor four that gap found
+    nothing waiting and fell through to standing by: the crane teleported
+    nineteen metres up holding a plate, then dropped straight back to the
+    yard when the last lift began.
+  */
+  for (let i = 1; i <= count; i++) {
+    if (floorProgress(i, f) === 0) return { index: i, t: 0, idle: false };
+  }
   return { index: count, t: 0.42, idle: true };
 }
 
