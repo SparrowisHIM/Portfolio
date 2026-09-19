@@ -11,6 +11,16 @@ with something else.
 No third-party packages: the WebSocket client is the ~90 lines below.
 
   python cdp.py --out shot.png --url http://localhost:3000 --scroll 0.45 --wait 3
+  python cdp.py --out shot.png --w 390 --h 844 --scroll 1 --wait 5
+  python cdp.py --out shot.png --scroll 1 --mouse 900,520 --click
+  python cdp.py --out shot.png --scroll 1 --drag "950,450,-420,0"
+
+Two things that look like details and are not. Chrome binds the debug port
+on [::1] here, so urllib has to ask for "localhost" — "127.0.0.1" is
+refused, and curl reaching it is not evidence that Python will. And scroll
+fractions are of documentElement.scrollHeight: the page pulls its sections
+up under the canvas with a negative margin, so body.scrollHeight is a whole
+viewport short and --scroll 1 stops before the end.
 """
 
 import argparse
@@ -154,7 +164,7 @@ class Page:
 
 def attach(port=DEBUG_PORT, match=None):
     """The first page target, or one whose url contains `match`."""
-    with urllib.request.urlopen(f"http://127.0.0.1:{port}/json", timeout=10) as fh:
+    with urllib.request.urlopen(f"http://localhost:{port}/json", timeout=10) as fh:
         targets = json.load(fh)
     pages = [t for t in targets if t.get("type") == "page" and t.get("webSocketDebuggerUrl")]
     if match:
@@ -179,6 +189,9 @@ def main():
     ap.add_argument("--h", type=int, default=900)
     ap.add_argument("--dpr", type=float, default=1.0)
     ap.add_argument("--eval", dest="expr", help="run an expression after settling and print the value")
+    ap.add_argument("--mouse", help="X,Y to move the pointer to just before capture")
+    ap.add_argument("--click", action="store_true", help="press and release at --mouse")
+    ap.add_argument("--drag", help="X,Y,DX,DY: press at X,Y and drag by DX,DY")
     args = ap.parse_args()
 
     page = attach(match="localhost:3000")
@@ -230,7 +243,7 @@ def main():
             "(() => {"
             "document.documentElement.style.scrollBehavior='auto';"
             "history.scrollRestoration='manual';"
-            "const max = document.body.scrollHeight - window.innerHeight;"
+            "const max = document.documentElement.scrollHeight - window.innerHeight;"
             f"window.scrollTo(0, Math.round(max * {args.scroll}));"
             "return window.scrollY; })()"
         )
@@ -243,11 +256,41 @@ def main():
     if args.scroll is not None:
         page.evaluate(
             "(() => {"
-            "const max = document.body.scrollHeight - window.innerHeight;"
+            "const max = document.documentElement.scrollHeight - window.innerHeight;"
             f"window.scrollTo(0, Math.round(max * {args.scroll}));"
             "return window.scrollY; })()"
         )
         time.sleep(1.2)
+
+    if args.drag:
+        dx0, dy0, ddx, ddy = (float(v) for v in args.drag.split(","))
+        page.send("Input.dispatchMouseEvent", type="mouseMoved", x=dx0, y=dy0, button="none", buttons=0)
+        page.send("Input.dispatchMouseEvent", type="mousePressed", x=dx0, y=dy0, button="left", buttons=1, clickCount=1)
+        steps = 14
+        for i in range(1, steps + 1):
+            page.send(
+                "Input.dispatchMouseEvent",
+                type="mouseMoved",
+                x=dx0 + ddx * i / steps,
+                y=dy0 + ddy * i / steps,
+                button="left",
+                buttons=1,
+            )
+            time.sleep(0.02)
+        page.send("Input.dispatchMouseEvent", type="mouseReleased", x=dx0 + ddx, y=dy0 + ddy, button="left", buttons=0, clickCount=1)
+        time.sleep(1.4)
+
+    if args.mouse:
+        mx, my = (float(v) for v in args.mouse.split(","))
+        # Two moves: the first can land while the scene is still settling and
+        # r3f only re-raycasts on movement, so the second is the one that sticks.
+        page.send("Input.dispatchMouseEvent", type="mouseMoved", x=mx, y=my, button="none", buttons=0)
+        time.sleep(0.3)
+        page.send("Input.dispatchMouseEvent", type="mouseMoved", x=mx + 1, y=my, button="none", buttons=0)
+        if args.click:
+            page.send("Input.dispatchMouseEvent", type="mousePressed", x=mx + 1, y=my, button="left", buttons=1, clickCount=1)
+            page.send("Input.dispatchMouseEvent", type="mouseReleased", x=mx + 1, y=my, button="left", buttons=0, clickCount=1)
+        time.sleep(1.6)
 
     if args.expr:
         print("EVAL:", json.dumps(page.evaluate(args.expr)))

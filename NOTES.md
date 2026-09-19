@@ -16,8 +16,11 @@ lands it on the frame; the connections are welded off; the storey glazes and
 lights up as the build moves above it. Efe rates it by eye and it has to make
 people stop — portfolio, X, job visibility.
 
-**As of this session the building is working and Efe is happy with it.** The
-remaining work is polish and the parts that have not been started.
+**As of this session the building is working and Efe is happy with it.**
+Hovering a finished storey names its project, the orbit comes off its leash
+once the site tops out, and a phone gets its own framing of the model with a
+floor rail to travel in. What is left is in *Outstanding*, and the biggest
+thing on it is a game Efe wants to rebuild himself.
 
 ## Do not touch
 
@@ -152,6 +155,89 @@ building still lands inside its corner, and the plates were intersecting the
 slab. The plinth carries an **apron on the laydown side only** — mirroring it
 doubled the empty deck for nothing.
 
+### Hover: the finished tower is the navigation
+
+Point at a storey that is complete and it warms up, a line of light runs
+round the slab that caps it, its interior lamp comes up 75%, and the project
+name pins itself to the plate in 3D. Clicking jumps to that project, which
+it already did — nothing said so.
+
+- **The hovered storey is derived from part height, not from `Part.floor`.**
+  That field is a *timing* field and the two diverge by design: glazing on
+  storey N is placed by floor N + `CLAD_LAG`. `storeyOf` in `Building.tsx`
+  divides the part's own y by `FLOOR_HEIGHT`, which also puts a slab with
+  the storey below it — the one it caps, which is the band the eye reads.
+- **The label anchors to whichever plate corner projects furthest right**,
+  recomputed per frame. On a convex plate that corner is always on the
+  silhouette, so the card leaves the building along its outline. The near
+  corner, which is the obvious choice, projects into the middle of the
+  elevation and puts the card over the thing it is naming.
+- **The glass is deliberately not tinted.** `#0e141b` is about 0.004 in
+  linear, so a factor of twelve would be needed before anything showed.
+  The storey lights from the inside instead, where the lamp already is.
+- Instance colours are written white **on mount** so the shader compiles with
+  `USE_INSTANCING_COLOR` once at startup. Letting `setColorAt` create the
+  attribute on first hover swaps the program for every material in the scene
+  mid-interaction. The per-frame write is skipped unless the summed glow
+  moved, so a still building uploads nothing.
+
+### Free orbit, once it has topped out
+
+While the site is going up the drag stays on its old ±0.45 leash: the build
+has a front, the scaffolded faces and the laydown are not the shot, and the
+keyframes are directing. The topped-out latch unlocks a full turn and adds an
+elevation.
+
+**The tilt rotates radius and rise together.** They are the two legs of a
+right angle on the look point, so swinging the pair rides the camera over the
+model at constant distance; lifting `rise` alone drifts away from the subject
+as it climbs. Clamped to `PITCH_LOW`/`PITCH_HIGH` so it never goes under the
+plinth or all the way to a plan view.
+
+A press only becomes a drag past `DRAG_SLOP` pixels of travel. Without that,
+`orbit.dragging` went true on every pointerdown, the hover label blinked
+under the click, and a click on a storey was indistinguishable from a swing.
+
+## Mobile
+
+It was the desktop layout shrunk, and it did not survive the shrinking. The
+camera backed off 35% on every shot, the copy sat under a gradient covering
+more than half the screen, and the arrival was a strip of deck with black
+above and below.
+
+- **`fit` finally means what it says.** Every keyframe asked for the full
+  portrait correction. Vertical field of view does not change with aspect, so
+  a shot bound by the *height* of the tower needs almost none (roof: 0.6) and
+  a close shot of a floor *plate* needs most of it. **Check which dimension
+  binds before backing the camera off.**
+- **A keyframe may hand over a different shot upright**, through `tall`.
+  Blended continuously by `upright`, not switched at a breakpoint, or the
+  shot jumps while the device is being turned. The arrival is the case that
+  proves the mechanism: before a floor is up the only tall thing on site is
+  the crane, so upright it stands opposite the crane and the mast rises out
+  of the middle of the deck. Two closer variants were tried first and both
+  were worse — one left the yard a strip at the bottom, the other filled the
+  frame with the cabin.
+- **The copy cards are `fixed`, not `sticky`.** Sticky only ever pulls an
+  element back *up* toward an edge; this needs it held *down* at the foot of
+  the viewport while its section is still arriving. Left in flow, two cards
+  meet half-lit in the middle of the screen between floors. The hero needed
+  its own scroll fade as a result — nothing carries a fixed card away — and
+  `md:opacity-100!` pins the wide layout back to what it was.
+- **The floor rail** (`FloorRail.tsx`) is the phone's hover: a column of call
+  buttons down the right edge, roof at the top, the one you are on lit.
+  Anchors, not buttons, so the back button and the keyboard come free.
+- Night shift and Rebuild move to the **left edge as glyphs**, opposite the
+  rail. The bottom right is where the card lives now, and two pills sitting
+  on the copy was the first thing wrong with the small layout.
+- **The sideways slide eases out as the frame narrows.** A tablet held
+  upright still shows the copy column but has nowhere near the width to pay
+  for `HERO.shift`, and at full strength it walked the building off the right
+  edge at 768 × 1024. That width is the worst case: `md:` is min-width 768,
+  so it gets the wide *layout* with an almost fully portrait *camera*.
+- Cards clear the home indicator with
+  `bottom-[max(1.25rem,env(safe-area-inset-bottom))]`.
+
 ## Traps that cost real time
 
 - **The old `concreteTexture` fills with `#6a7480`.** That is 0.15 in linear,
@@ -195,21 +281,32 @@ the UI, and it drags Efe into resizing windows. A whole session was lost to
 it: rAF never fires when it is hidden, so any `await` on a frame times out and
 every damped value crawls.
 
-**Use the CDP driver instead.** It is in the session scratchpad as `cdp.py` —
-about 90 lines of pure-python WebSocket client, no packages. Recreate it if
-the scratchpad is gone.
+**Use the CDP driver instead.** It lives in the repo at `tools/cdp.py` —
+a pure-python WebSocket client, no packages. It used to be recreated in the
+scratchpad every session; it is committed now, so improve that copy.
+
+**Launch Chrome detached, from PowerShell `Start-Process`.** Backgrounding it
+from the Bash tool with `&` puts it in that call's process group and it is
+killed the moment the call returns — the debug port answers once and is gone
+by the next command.
+
+```powershell
+Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList @(
+  "--remote-debugging-port=9222",
+  "--user-data-dir=$scratch\chrome-profile",
+  "--no-first-run","--no-default-browser-check",
+  "--window-size=1480,1000","--window-position=40,40",
+  "--disable-features=CalculateNativeWinOcclusion",
+  "http://localhost:3000")
+```
 
 ```sh
-"/c/Program Files/Google/Chrome/Application/chrome.exe" \
-  --remote-debugging-port=9222 \
-  --user-data-dir="$SCRATCH/chrome-profile" \
-  --no-first-run --no-default-browser-check \
-  --window-size=1480,1000 --window-position=40,40 \
-  --disable-features=CalculateNativeWinOcclusion \
-  "http://localhost:3000" &
-
 python cdp.py --out shot.png --url http://localhost:3000 --scroll 0.45 --wait 5
-python cdp.py --out shot.png --scroll 0.8 --wait 4 --eval "window.scrollY"
+python cdp.py --out shot.png --w 390 --h 844 --scroll 1 --wait 5   # a phone
+python cdp.py --out shot.png --scroll 1 --mouse 900,520            # hover
+python cdp.py --out shot.png --scroll 1 --mouse 900,520 --click
+python cdp.py --out shot.png --scroll 1 --drag "950,450,-420,0"    # orbit
+python cdp.py --out shot.png --scroll 0.8 --eval "window.scrollY"
 ```
 
 Real GPU frames at any size, and Efe can work over the top of it. Things the
@@ -230,6 +327,24 @@ driver has to do, each learned the hard way:
   focused link into view during the settle and quietly move the shot.
 - Measuring fps needs an armed counter read back in a **second** call — a
   promise that waits on rAF never resolves when rAF is the thing stalling.
+  **Reload between runs.** Arming a second counter without one leaves the
+  first rAF loop incrementing the same object and the numbers come back above
+  the refresh rate. 38 fps in dev on this machine at every scroll position,
+  measured against 67da2b9 as a control — the 45 in these notes was a
+  different day, not a regression.
+- **`urllib` cannot reach `127.0.0.1:9222`.** Chrome binds the debug port on
+  `[::1]` only here, and `curl` resolving it is not evidence that Python
+  will. Use `localhost`.
+- **Scroll fractions are of `documentElement.scrollHeight`**, not
+  `body.scrollHeight`. The sections are pulled up under the canvas with
+  `-mt-[100vh]`, so the two differ by a viewport and `--scroll 1` lands a
+  whole section short of the roof.
+
+There is also `tools/measure.py`: a pure-stdlib PNG reader that
+prints the first and last rows holding a lit pixel within a column band. It
+is how the model's on-screen height was fitted to the phone stage. **Measure
+the capture rather than reading it by eye** — eyeballing storey spacing was
+out by 40% and sent a whole round of framing the wrong way.
 
 Efe scrolling the real window while a capture runs will move the shot and can
 trigger Rebuild. That is not a bug; ask before chasing it.
@@ -243,6 +358,13 @@ trigger Rebuild. That is not a bug; ask before chasing it.
   positions.
 - `src/components/scene/` — `Building`, `Crane`, `Welding`, `Workers`,
   `SiteYard`, `StudioEnvironment`, `CameraRig`, `SiteScene`, `Pointer`.
+- `src/lib/hover.ts`, `src/lib/orbit.ts` — module-level stores, the same
+  pattern as `cursor` in `pulses.ts`. Which storey the pointer is on, and
+  whether the camera is being dragged. **Not React state**: a pointer move
+  that re-renders hands every `instancedMesh` a fresh `args` array, which is
+  the rebuild that empties the matrix buffer.
+- `src/components/overlay/FloorRail.tsx`, `ToppedOut.tsx` — the phone's floor
+  navigation, and the one line that says the orbit is off its leash.
 
 ### Things that are load-bearing and easy to break
 
@@ -258,24 +380,24 @@ trigger Rebuild. That is not a bug; ask before chasing it.
 
 ## Outstanding
 
-In rough priority order. Nothing here is started.
+Hover navigation, free orbit and mobile are done — see the sections above.
+What is left:
 
-1. **Mobile.** Deliberately untouched, and Efe wants something different
-   there, not the desktop experience shrunk.
-2. **Hover on the finished building.** Clicking a storey already jumps to its
-   project (the pick volumes are in `Building.tsx`). The hover state — glass
-   opens, plate edge pulses, project name pinned to the slab in 3D — would
-   turn the finished tower into the navigation. The pick volumes are the hook
-   it hangs off.
-3. **Free orbit once finished.** Drag is clamped to ±0.45 rad with no vertical
-   control (`CameraRig.tsx`). The topped-out latch already gives it the flag
-   it needs to unlock against.
-4. **The night-shift game**, which Efe will rebuild as a whole game.
-5. Load time. 1.4s in production. Chase only if Efe finds it slow.
+1. **The night-shift game**, which Efe will rebuild as a whole game. Still do
+   not touch the files listed under *Do not touch*.
+2. Load time. 1.4s in production. Chase only if Efe finds it slow.
+3. The `metadataBase` warning in `next build`. One line in `layout.tsx` once
+   there is a real domain.
+4. `Instances.tsx` still fills from a `useLayoutEffect` rather than the frame
+   loop. It has not bitten, but it is the same hazard as the blank building.
 
 ## Recent history
 
 ```
+7dd62d2 a phone gets its own shot of the site, and a lift panel to travel in
+9615260 once it has topped out, the orbit comes off its leash
+ae47a4f point at a storey and it tells you whose floor it is
+67da2b9 a deck that has been worked on, and a mast that actually lights it
 272bc60 the laydown stands clear of the building, so the lift has a journey
 3c3de49 fewer lights and casters, and a balance that does not clip the slabs
 0652560 a studio environment, so the glass has something to give back
@@ -283,12 +405,6 @@ In rough priority order. Nothing here is started.
 c013892 a crane that stands on the site and stays in the shot while it works
 cced74e the core climbs off the slab, and the corners burn off as it lands
 dc82095 light the building properly, it was reading as a silhouette
-09a8b07 a site on the plinth, and a crane that lifts a plank off a real stack
-6a6277c clicking a storey jumps to its project again
-6eaed76 columns cast up out of the slab instead of arriving whole
-b971c3c the ground floor striped where the plinth and the slab shared a plane
-4907fbf a welder at the arc and a banksman on the slab, for scale
-6f3404d hold the whole object in frame, and glass that reads as glass
 ```
 
 ## What working with Efe is like
