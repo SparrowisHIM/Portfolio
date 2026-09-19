@@ -98,15 +98,69 @@ export function storey(index: number) {
   return { bottom: slabTop(index), top: slabTop(index + 1) - SLAB };
 }
 
-function coreFaces(core: Core): { position: Vec3; scale: Vec3 }[] {
+/** Lift door opening, per storey. */
+const DOOR_W = 1.55;
+const DOOR_H = 2.3;
+
+/**
+ * The core walls for one storey, as panels positioned relative to the slab
+ * they stand on.
+ *
+ * The face turned toward the camera is broken by a lift door on every level:
+ * two piers and a lintel over. Without it the core is one unbroken slab of
+ * concrete three storeys wide, and because it is the largest flat surface in
+ * the scene it catches the key light and out-reads the frame in front of it —
+ * the opposite of the reference, where the core sits behind the structure.
+ * The openings also let the lit floors show through, so the shaft reads as
+ * something you could walk into.
+ */
+function corePanels(core: Core, viewAngle: number, height: number): { position: Vec3; scale: Vec3 }[] {
   const hw = core.width / 2;
   const hd = core.depth / 2;
-  return [
-    { position: [core.x, 0, core.z - hd], scale: [core.width, 1, CORE_WALL] },
-    { position: [core.x, 0, core.z + hd], scale: [core.width, 1, CORE_WALL] },
-    { position: [core.x - hw, 0, core.z], scale: [CORE_WALL, 1, core.depth - CORE_WALL * 2] },
-    { position: [core.x + hw, 0, core.z], scale: [CORE_WALL, 1, core.depth - CORE_WALL * 2] },
+  const inner = core.depth - CORE_WALL * 2;
+  const nx = Math.sin(viewAngle);
+  const nz = Math.cos(viewAngle);
+
+  const faces = [
+    { n: [0, -1], axis: "x" as const, span: core.width, at: [core.x, core.z - hd] as [number, number] },
+    { n: [0, 1], axis: "x" as const, span: core.width, at: [core.x, core.z + hd] as [number, number] },
+    { n: [-1, 0], axis: "z" as const, span: inner, at: [core.x - hw, core.z] as [number, number] },
+    { n: [1, 0], axis: "z" as const, span: inner, at: [core.x + hw, core.z] as [number, number] },
   ];
+
+  // The face most turned toward the camera is the one worth opening.
+  let door = 0;
+  let best = -Infinity;
+  faces.forEach((f, i) => {
+    const d = f.n[0] * nx + f.n[1] * nz;
+    if (d > best) {
+      best = d;
+      door = i;
+    }
+  });
+
+  const out: { position: Vec3; scale: Vec3 }[] = [];
+  faces.forEach((f, i) => {
+    const size = (along: number, h: number): Vec3 =>
+      f.axis === "x" ? [along, h, CORE_WALL] : [CORE_WALL, h, along];
+    const place = (offset: number, y: number): Vec3 =>
+      f.axis === "x" ? [f.at[0] + offset, y, f.at[1]] : [f.at[0], y, f.at[1] + offset];
+
+    if (i !== door || f.span <= DOOR_W + 0.6) {
+      out.push({ position: place(0, height / 2), scale: size(f.span, height) });
+      return;
+    }
+    // Two piers and a lintel over the opening.
+    const pier = (f.span - DOOR_W) / 2;
+    const shift = (DOOR_W + pier) / 2;
+    out.push({ position: place(-shift, DOOR_H / 2), scale: size(pier, DOOR_H) });
+    out.push({ position: place(shift, DOOR_H / 2), scale: size(pier, DOOR_H) });
+    out.push({
+      position: place(0, (DOOR_H + height) / 2),
+      scale: size(f.span, height - DOOR_H),
+    });
+  });
+  return out;
 }
 
 /** The four curtain wall lines, set back to the column grid so the slab oversails. */
@@ -171,13 +225,13 @@ export function buildParts(site: Site): Part[] {
     // It climbs a storey ahead of the frame, the way a slip-formed core does.
     if (index < levels) {
       const { bottom } = storey(index);
-      for (const face of coreFaces(site.core)) {
+      for (const panel of corePanels(site.core, site.viewAngle, FLOOR_HEIGHT)) {
         push({
           kind: "core",
           floor: index,
           at: 0.02,
-          position: [face.position[0], bottom + FLOOR_HEIGHT / 2, face.position[2]],
-          scale: [face.scale[0], FLOOR_HEIGHT, face.scale[2]],
+          position: [panel.position[0], bottom + panel.position[1], panel.position[2]],
+          scale: panel.scale,
           rotationY: 0,
           drop: 0,
         });

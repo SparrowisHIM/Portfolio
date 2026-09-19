@@ -89,7 +89,7 @@ export function Building({ site, build, animate }: BuildingProps) {
     // it passes through, the way board-marked in-situ concrete does against
     // a precast slab.
     const coreConcrete = new THREE.MeshStandardMaterial({
-      color: "#dcd7cd",
+      color: "#b9b4aa",
       map,
       roughness: 0.96,
       metalness: 0.02,
