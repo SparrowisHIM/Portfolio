@@ -27,9 +27,9 @@ function create() {
     concrete: new THREE.MeshStandardMaterial({ color: "#3c4552", map: concreteMap, roughness: 0.92, metalness: 0.05 }),
     concreteDark: new THREE.MeshStandardMaterial({ color: "#252c38", map: concreteMap, roughness: 0.95 }),
     deck: new THREE.MeshStandardMaterial({ map: deckTexture(), color: "#4a5262", roughness: 0.6, metalness: 0.6 }),
-    steel: new THREE.MeshStandardMaterial({ color: palette.steel, roughness: 0.45, metalness: 0.7 }),
-    steelDark: new THREE.MeshStandardMaterial({ color: palette.steelDark, roughness: 0.4, metalness: 0.75 }),
-    galvanised: new THREE.MeshStandardMaterial({ color: "#4b5566", roughness: 0.35, metalness: 0.85 }),
+    steel: new THREE.MeshStandardMaterial({ color: palette.steel, roughness: 0.4, metalness: 0.75, envMapIntensity: 1.0 }),
+    steelDark: new THREE.MeshStandardMaterial({ color: palette.steelDark, roughness: 0.38, metalness: 0.8, envMapIntensity: 0.9 }),
+    galvanised: new THREE.MeshStandardMaterial({ color: "#4b5566", roughness: 0.3, metalness: 0.9, envMapIntensity: 1.2 }),
     /**
      * Crane structure: painted steel, lit.
      *
@@ -38,7 +38,7 @@ function create() {
      * crane next to lit concrete is the one thing in frame that still looks
      * like a wireframe. Let the key light model it like everything else.
      */
-    crane: new THREE.MeshStandardMaterial({ color: "#23272d", roughness: 0.66, metalness: 0.5 }),
+    crane: new THREE.MeshStandardMaterial({ color: "#23272d", roughness: 0.62, metalness: 0.55, envMapIntensity: 0.85 }),
     /** Hoist rope and slings: thin, taut, catching just enough light to read. */
     cable: new THREE.MeshStandardMaterial({ color: "#8d96a5", emissive: "#8fa0bb", emissiveIntensity: 0.12, roughness: 0.35, metalness: 0.7 }),
     /* ---- the crew ----------------------------------------------------
@@ -55,7 +55,7 @@ function create() {
     }),
     hardHat: new THREE.MeshStandardMaterial({ color: "#f2d02a", roughness: 0.4 }),
     /* ---- site dressing ---- */
-    cabin: new THREE.MeshStandardMaterial({ color: "#8a8f96", roughness: 0.68, metalness: 0.25 }),
+    cabin: new THREE.MeshStandardMaterial({ color: "#8a8f96", roughness: 0.6, metalness: 0.35, envMapIntensity: 0.8 }),
     skip: new THREE.MeshStandardMaterial({ color: "#8a4a22", roughness: 0.78, metalness: 0.2 }),
     rebar: new THREE.MeshStandardMaterial({ color: "#6a6257", roughness: 0.72, metalness: 0.45 }),
     timber: new THREE.MeshStandardMaterial({ color: "#7d7263", roughness: 0.9 }),
@@ -63,7 +63,7 @@ function create() {
     skin: new THREE.MeshStandardMaterial({ color: "#8a5a3c", roughness: 0.8 }),
     denim: new THREE.MeshStandardMaterial({ color: "#2b3a52", roughness: 0.9 }),
     /** The precast unit on the hook, matching the slabs it is being stacked onto. */
-    precast: new THREE.MeshStandardMaterial({ color: "#ffffff", map: boardConcreteTexture(9), roughness: 0.92, metalness: 0.02 }),
+    precast: new THREE.MeshStandardMaterial({ color: "#ffffff", map: boardConcreteTexture(9), roughness: 0.92, metalness: 0.02, envMapIntensity: 0.22 }),
   };
 }
 
