@@ -13,6 +13,7 @@ export const palette = {
   sodium: "#f5b043",
   safety: "#ff6a2b",
   chalk: "#f1ece3",
+  hiVis: "#ff8a1f",
 } as const;
 
 /**
@@ -40,6 +41,22 @@ function create() {
     crane: new THREE.MeshStandardMaterial({ color: "#23272d", roughness: 0.66, metalness: 0.5 }),
     /** Hoist rope and slings: thin, taut, catching just enough light to read. */
     cable: new THREE.MeshStandardMaterial({ color: "#8d96a5", emissive: "#8fa0bb", emissiveIntensity: 0.12, roughness: 0.35, metalness: 0.7 }),
+    /* ---- the crew ----------------------------------------------------
+       Two figures is all the reference has, and it is enough: at this
+       distance they are a silhouette and a flash of orange, and what they
+       buy is the scale of everything around them. */
+    hiVis: new THREE.MeshStandardMaterial({ color: palette.hiVis, roughness: 0.7 }),
+    /** The bands on the vest, which is what actually catches the eye at distance. */
+    reflective: new THREE.MeshStandardMaterial({
+      color: "#e8ecf0",
+      emissive: "#dfe6ee",
+      emissiveIntensity: 0.7,
+      roughness: 0.4,
+    }),
+    hardHat: new THREE.MeshStandardMaterial({ color: "#f2d02a", roughness: 0.4 }),
+    hardHatWhite: new THREE.MeshStandardMaterial({ color: "#e9ecef", roughness: 0.4 }),
+    skin: new THREE.MeshStandardMaterial({ color: "#8a5a3c", roughness: 0.8 }),
+    denim: new THREE.MeshStandardMaterial({ color: "#2b3a52", roughness: 0.9 }),
     /** The precast unit on the hook, matching the slabs it is being stacked onto. */
     precast: new THREE.MeshStandardMaterial({ color: "#ffffff", map: boardConcreteTexture(9), roughness: 0.92, metalness: 0.02 }),
   };

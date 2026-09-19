@@ -10,6 +10,7 @@ import { toppedOutAt } from "@/lib/construction";
 import { Building, InteriorLights, PlinthLights } from "./Building";
 import { Crane } from "./Crane";
 import { Welding } from "./Welding";
+import { Workers } from "./Workers";
 import { Pointer } from "./Pointer";
 import { CameraRig } from "./CameraRig";
 import { StackGame } from "./StackGame";
@@ -206,6 +207,7 @@ export function SiteScene({
       <InteriorLights site={site} build={build} />
       <Crane site={site} build={build} animate={animate} />
       <Welding site={site} build={build} animate={animate} />
+      <Workers site={site} build={build} animate={animate} />
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />

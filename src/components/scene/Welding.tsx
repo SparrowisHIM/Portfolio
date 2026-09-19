@@ -4,9 +4,7 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { floorProgress } from "@/lib/construction";
-import { slabTop, SLAB, COLUMN } from "@/lib/building";
-import { createRandom } from "@/lib/random";
+import { COLUMN, weldLevel, weldSpots } from "@/lib/building";
 
 /**
  * Welding at the connections.
@@ -109,23 +107,10 @@ export function Welding({
     [],
   );
 
-  // Where the arc runs on each level: a column head, chosen once per site so
-  // it does not jump about between frames.
-  const spots = useMemo(() => {
-    const rnd = createRandom(site.seed ^ 0x77e1d);
-    // Toward the camera, so the arc is never hidden behind the building —
-    // it is the best detail in the scene and it has to be in shot. Among the
-    // near columns the choice is seeded, so it still varies floor to floor.
-    const nx = Math.sin(site.viewAngle);
-    const nz = Math.cos(site.viewAngle);
-    return site.floors.map((floor, i) => {
-      const columns = i === site.floors.length - 1 ? site.topLevel.columns : floor.columns;
-      const ranked = [...columns].sort((a, b) => b[0] * nx + b[1] * nz - (a[0] * nx + a[1] * nz));
-      const near = ranked.slice(0, Math.max(1, Math.ceil(ranked.length / 3)));
-      const [cx, cz] = near[Math.floor(rnd.next() * near.length)] ?? [0, 0];
-      return new THREE.Vector3(cx, slabTop(i + 1) - SLAB - 0.1, cz);
-    });
-  }, [site]);
+  const spots = useMemo(
+    () => weldSpots(site).map((p) => new THREE.Vector3(p[0], p[1], p[2])),
+    [site],
+  );
 
   const arc = useRef({ on: false, until: 0.6, level: -1, heat: 0, flicker: 1 });
   const here = useRef(new THREE.Vector3());
@@ -139,14 +124,7 @@ export function Welding({
     const f = build.current ?? 0;
     const state = arc.current;
 
-    // Which level is being joined: the highest one still mid-build.
-    let level = -1;
-    for (let i = 1; i <= site.floors.length; i++) {
-      const p = floorProgress(i, f);
-      // Welding belongs to the window where columns are up and the slab is
-      // being landed and fixed.
-      if (p > 0.12 && p < 0.94) level = i - 1;
-    }
+    const level = weldLevel(site, f);
 
     if (level !== state.level) {
       state.level = level;
@@ -172,7 +150,12 @@ export function Welding({
     state.heat = burning ? 1 : Math.max(0, state.heat - delta * 0.55);
 
     if (light.current) {
-      light.current.visible = state.flicker > 0 || state.heat > 0.01;
+      // Never toggle `visible` on a light. three bakes the count of active
+      // lights into every shader program, so flipping one on and off makes
+      // the whole scene recompile — and an arc that flickers several times a
+      // second recompiles it several times a second. That is what took the
+      // site to one frame a second. Intensity zero costs a few instructions;
+      // a rebuild costs everything.
       if (spot) light.current.position.copy(spot);
       light.current.intensity = 55 * state.flicker + 6 * state.heat * state.heat;
     }
@@ -215,7 +198,7 @@ export function Welding({
     }
 
     // Integrate.
-    const slabBelow = spot ? spot.y - 0.24 : -999;
+    const slabBelow = spot ? spot.y - 0.42 : -999;
     for (let i = 0; i < SPARKS; i++) {
       const s = pool[i];
       if (s.life <= 0) {
@@ -265,7 +248,7 @@ export function Welding({
         <meshBasicMaterial color="#ff7a20" toneMapped={false} transparent opacity={0} />
       </mesh>
       {/* What makes it a light source rather than a sticker. */}
-      <pointLight ref={light} color="#cfe0ff" intensity={0} distance={11} decay={2} visible={false} />
+      <pointLight ref={light} color="#cfe0ff" intensity={0} distance={11} decay={2} />
     </group>
   );
 }

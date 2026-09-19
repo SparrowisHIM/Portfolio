@@ -1,4 +1,5 @@
 import { FLOOR_HEIGHT, SLAB_OVERHANG, type Core, type Site } from "./site-generator";
+import { floorProgress } from "./construction";
 import { createRandom, type Random } from "./random";
 
 /**
@@ -482,4 +483,45 @@ export function plinth(site: Site) {
   const w = site.floors[0].width + SLAB_OVERHANG * 2 + 2.8;
   const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 2.8;
   return { width: w, depth: d, height: 0.62, lip: 0.5 };
+}
+
+/**
+ * Which storey is currently being joined, or -1 when nothing is.
+ *
+ * Shared so the arc and the welder standing at it never disagree about where
+ * the work is.
+ */
+export function weldLevel(site: Site, f: number) {
+  let level = -1;
+  for (let i = 1; i <= site.floors.length; i++) {
+    const p = floorProgress(i, f);
+    // Columns up, slab coming down on them, connections being made.
+    if (p > 0.12 && p < 0.94) level = i - 1;
+  }
+  return level;
+}
+
+/**
+ * Where the arc runs on each storey: the foot of a column, just above the
+ * slab it is cast off.
+ *
+ * At the *top* of the column it would be three metres over the welder's head.
+ * A column-to-slab connection is knee height, which is why welders crouch,
+ * and it puts the sparks on a floor they can bounce off.
+ *
+ * Toward the camera, so the best detail in the scene is never hidden behind
+ * the building. Among the near columns the choice is seeded, so it still
+ * varies storey to storey.
+ */
+export function weldSpots(site: Site): Vec3[] {
+  const rnd = createRandom(site.seed ^ 0x77e1d);
+  const nx = Math.sin(site.viewAngle);
+  const nz = Math.cos(site.viewAngle);
+  return site.floors.map((floor, i) => {
+    const columns = i === site.floors.length - 1 ? site.topLevel.columns : floor.columns;
+    const ranked = [...columns].sort((a, b) => b[0] * nx + b[1] * nz - (a[0] * nx + a[1] * nz));
+    const near = ranked.slice(0, Math.max(1, Math.ceil(ranked.length / 3)));
+    const [cx, cz] = near[Math.floor(rnd.next() * near.length)] ?? [0, 0];
+    return [cx, slabTop(i) + 0.42, cz] as Vec3;
+  });
 }
