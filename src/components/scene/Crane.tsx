@@ -100,6 +100,8 @@ export function Crane({ site, build, animate }: CraneProps) {
   const load = useRef<THREE.Group>(null);
   const frame = useRef<THREE.Group>(null);
   const spreader = useRef<THREE.Group>(null);
+  /** Everything that turns with the plate: the gear, the plate, its anchors. */
+  const rig = useRef<THREE.Group>(null);
   const beam = useRef<THREE.Mesh>(null);
   const crossBeams = useRef<(THREE.Mesh | null)[]>([]);
   const bridle = useRef<(THREE.Mesh | null)[]>([]);
@@ -344,8 +346,17 @@ export function Crane({ site, build, animate }: CraneProps) {
       // Cut to the plate it is carrying. The unit box is already one slab
       // thick, so only the plan dimensions scale.
       frame.current.scale.set(pose.slab.width, 1, pose.slab.depth);
-      frame.current.rotation.y = pose.rotation ?? 0;
     }
+    /*
+      The plate, the spreader and the anchors all turn together.
+
+      Plates lie tangentially in the laydown and land square on the frame,
+      so a lift includes a quarter turn. Only the plate was being turned,
+      which meant the gear came down across the pile at right angles to the
+      plate it was picking, with its slings hanging off the edges into thin
+      air. The hook block itself stays put — a hook does not care about yaw.
+    */
+    if (rig.current) rig.current.rotation.y = pose.rotation ?? 0;
     /*
       The rigging shows from the moment the slings go on, not from the
       moment the weight moves. Before that change the plate simply appeared
@@ -537,6 +548,7 @@ export function Crane({ site, build, animate }: CraneProps) {
             <coneGeometry args={[0.038, 0.13, 8]} />
           </mesh>
         </group>
+        <group ref={rig}>
         <group ref={spreader}>
           {/* Bridle: two legs off the hook out to the ends of the beam. */}
           {[0, 1].map((i) => (
@@ -614,6 +626,7 @@ export function Crane({ site, build, animate }: CraneProps) {
               <torusGeometry args={[0.055, 0.017, 6, 12]} />
             </mesh>
           ))}
+        </group>
         </group>
       </group>
     </group>

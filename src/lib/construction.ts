@@ -179,7 +179,13 @@ export type CranePose = {
   hitched?: boolean;
   /** Footprint of the slab on the hook. */
   slab: { width: number; depth: number };
-  /** Yaw of the slab on the hook, matching its floor plate. */
+  /**
+   * Yaw of the plate and of the gear that is holding it.
+   *
+   * It is not constant across a lift. Plates lie tangentially in the
+   * laydown — `yardTurn` — and land square on the frame, so the load turns
+   * on the way over, with the slew.
+   */
   rotation?: number;
 };
 
@@ -366,7 +372,9 @@ export function cranePose(site: Site, f: number): CranePose {
     // poking out through the slab edges on the way back to the yard.
     hitched: loaded || (t >= SLINGS_AT && t < HITCH_AT),
     slab: PLANK,
-    rotation: overRoof ? 0 : floor.rotation,
+    rotation: overRoof
+      ? 0
+      : lerp(yardTurn(site), floor.rotation, smoothstep(0.28, 0.56, t)),
   };
 }
 

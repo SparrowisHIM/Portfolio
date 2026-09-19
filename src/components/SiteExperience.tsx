@@ -18,7 +18,6 @@ import { FloorRail } from "./overlay/FloorRail";
 import { Loader } from "./overlay/Loader";
 import { WalkIn } from "./overlay/WalkIn";
 import { NightShift } from "./overlay/NightShift";
-import { ToppedOut } from "./overlay/ToppedOut";
 import { endGame, startGame } from "@/lib/stack-game";
 
 const SiteScene = dynamic(
@@ -34,7 +33,6 @@ export function SiteExperience() {
   const [seed, setSeed] = useState(FIRST_SEED);
   const [ready, setReady] = useState(false);
   const [walkIn, setWalkIn] = useState<Project | null>(null);
-  const [topped, setTopped] = useState(false);
   const site = useMemo(() => generateSite(seed, projects), [seed]);
   const { progress, section } = useScrollProgress(SECTION_COUNT);
   const reduced = useReducedMotion() ?? false;
@@ -47,7 +45,6 @@ export function SiteExperience() {
   const rebuild = useCallback(() => {
     endGame();
     setPlaying(false);
-    setTopped(false);
     window.scrollTo({ top: 0, behavior: "auto" });
     setSeed(randomSeed());
   }, []);
@@ -77,7 +74,6 @@ export function SiteExperience() {
     };
   }, [playing]);
   const onReady = useCallback(() => setReady(true), []);
-  const onToppedOut = useCallback(() => setTopped(true), []);
   const closeWalkIn = useCallback(() => setWalkIn(null), []);
 
   return (
@@ -102,7 +98,6 @@ export function SiteExperience() {
           shiftX={wide ? HERO.shift : 0}
           shiftY={wide ? 0 : 0.155}
           onReady={onReady}
-          onToppedOut={onToppedOut}
           onSelectFloor={(index) => {
             document.getElementById(projects[index].slug)?.scrollIntoView({
               behavior: reduced ? "auto" : "smooth",
@@ -141,7 +136,6 @@ export function SiteExperience() {
 
       {!playing && <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} onPlay={clockOn} />}
       {!playing && <FloorRail section={section} sectionCount={SECTION_COUNT} />}
-      {!playing && <ToppedOut key={seed} topped={topped} />}
       <NightShift onAgain={again} onLeave={clockOff} />
       <WalkIn project={walkIn} onClose={closeWalkIn} />
     </div>

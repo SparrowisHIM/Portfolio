@@ -512,7 +512,7 @@ function addStorey(
  * is also how the base of a building like this is detailed anyway.
  */
 /** Deck the crane wants beyond its own centre: base, kentledge, hoarding. */
-const CRANE_PAD = 2.7;
+const CRANE_PAD = 3.1;
 
 export function plinth(site: Site) {
   const floor = site.floors[0];
@@ -522,8 +522,15 @@ export function plinth(site: Site) {
   // Long on the laydown side only. Mirroring the apron onto the far side
   // doubled the amount of empty deck for nothing — a site has a working
   // apron, not a margin.
-  const workSide = yardRadius(site) + PLANK.depth / 2 + 0.8;
-  const farSide = reach + 2.4;
+  /*
+    Room round the edges. Everything that stands on this deck — the laydown,
+    the scaffold, the cabin, the skip, the crane base — was fitted to a deck
+    sized before any of it existed, and with a fence round the outside the
+    compound had nothing spare anywhere. A metre and a bit on every face is
+    the difference between a site and a site that has been packed.
+  */
+  const workSide = yardRadius(site) + PLANK.depth / 2 + 2.0;
+  const farSide = reach + 3.6;
   const along = workSide + farSide;
   /*
     The other axis carries the crane, and the crane needs deck under its
@@ -538,7 +545,7 @@ export function plinth(site: Site) {
     much as the crane asks for on its side, the old margin on the other.
   */
   const sideOf = onX ? site.crane.position[2] : site.crane.position[0];
-  const margin = (onX ? floor.depth : floor.width) / 2 + SLAB_OVERHANG + 2.3;
+  const margin = (onX ? floor.depth : floor.width) / 2 + SLAB_OVERHANG + 3.5;
   const craneRoom = Math.max(margin, Math.abs(sideOf) + CRANE_PAD);
   const across = craneRoom + margin;
   // The base is no longer centred on the building; it is pushed out the way

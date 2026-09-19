@@ -215,6 +215,24 @@ With one pile to agree on, the lift is:
 `yardHookY` adds the lifted plate back onto the count while it is in the
 air, or the plate drops a whole pitch in the frame it is picked.
 
+### The plate turns on the way over
+
+Plates lie **tangentially** in the laydown — `yardTurn`, a quarter turn —
+and land **square** on the frame. So a lift includes a rotation, and the
+pose carries it: `rotation` eases from `yardTurn` to the floor's own over
+the swing, with the slew.
+
+Only the plate used to be turned by it. The gear was not, so the spreader
+came down across the pile at right angles to the plate it was picking,
+with its slings hanging off the edges into thin air. Efe spotted it in a
+screenshot inside a minute. The plate, the spreader and the anchors now sit
+in one `rig` group that carries the yaw; the hook block stays outside it,
+because a hook does not care which way a load is pointing.
+
+**The probe that found it** was worth more than the looking: the hook was
+exactly over the pile and the heights were exactly right, which ruled out
+everything except orientation.
+
 ### The lifting gear
 
 Hook block with an actual hook, a bridle, and a spreader frame two thirds
@@ -641,6 +659,12 @@ trigger Rebuild. That is not a bug; ask before chasing it.
   it is the same hazard.
 - Rewriting the tail of `building.ts` once truncated `weldLevel`/`weldSpots`
   off the end. TypeScript caught it; run it after any bulk file rewrite.
+
+## Things Efe has removed
+
+- **The topped-out hint.** A line that faded in at the end saying the orbit
+  was free. He did not like it; it is gone, component and all. The orbit is
+  still free — see *Free orbit*. Do not reintroduce a tutorial line.
 
 ## Outstanding
 
