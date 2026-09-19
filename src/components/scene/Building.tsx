@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useRef, type RefObject } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
+import { FLOOR_HEIGHT } from "@/lib/site-generator";
 import { floorProgress, smoothstep } from "@/lib/construction";
-import { buildParts, plinth, storey, CLAD_LAG, type Part, type PartKind, type Vec3 } from "@/lib/building";
+import { buildParts, plinth, slabTop, storey, CLAD_LAG, SLAB, type Part, type PartKind, type Vec3 } from "@/lib/building";
 import { boardConcreteTexture, siteDeckTexture } from "@/lib/textures";
+import { hover, resetHover } from "@/lib/hover";
+import { projects } from "@/lib/projects";
 
 /**
  * The building: one instanced draw per material, placed from the frame loop.
@@ -68,12 +72,50 @@ const MATERIAL_OF: Record<PartKind, string> = {
 /** Transparent groups draw after everything opaque. */
 const TRANSPARENT = new Set(["glass"]);
 
+/**
+ * How much each material lifts when its storey is hovered, as a multiplier
+ * on the instance colour.
+ *
+ * Multipliers rather than a colour, because the materials start from wildly
+ * different places: white concrete takes a warm nudge, while the near-black
+ * glass would need a factor of twelve before anything showed. The glass is
+ * deliberately left alone — the storey lights up from the inside instead,
+ * where the lamp already is, which is what a floor being handed over
+ * actually looks like.
+ */
+const HOVER_TINT: Record<string, [number, number, number]> = {
+  concrete: [1.42, 1.24, 0.98],
+  coreConcrete: [1.42, 1.24, 0.98],
+  lightStrip: [1.15, 1.1, 1.0],
+  frame: [1.9, 1.7, 1.3],
+  safety: [1.2, 1.12, 1.0],
+  fitout: [1.3, 1.2, 1.0],
+};
+
+/**
+ * Which storey a part stands in, from where it sits.
+ *
+ * Derived rather than stored, because `Part.floor` is a *timing* field — the
+ * floor whose progress places the part — and the two diverge by design:
+ * glazing on storey N is placed by floor N + CLAD_LAG. Height does not lie.
+ * A slab lands half its own thickness below the next storey line, so it
+ * falls to the storey underneath and caps it, which is the band the eye
+ * reads as that floor.
+ */
+function storeyOf(part: Part, levels: number) {
+  const i = Math.floor((part.position[1] + SLAB * 0.5) / FLOOR_HEIGHT - 0.001);
+  return Math.min(levels - 1, Math.max(0, i));
+}
+
 export function Building({ site, build, animate, onSelectFloor }: BuildingProps) {
   const parts = useMemo(() => buildParts(site), [site]);
   const base = useMemo(() => plinth(site), [site]);
 
-  // Grouped once, so each group is a single draw call.
+  // Grouped once, so each group is a single draw call. Each group carries
+  // the storey every one of its instances stands in, so the hover highlight
+  // is a lookup in the frame loop rather than a search.
   const groups = useMemo(() => {
+    const levels = site.floors.length;
     const by = new Map<string, Part[]>();
     for (const part of parts) {
       const key = MATERIAL_OF[part.kind];
@@ -81,8 +123,12 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
       if (list) list.push(part);
       else by.set(key, [part]);
     }
-    return [...by.entries()].map(([material, items]) => ({ material, items }));
-  }, [parts]);
+    return [...by.entries()].map(([material, items]) => ({
+      material,
+      items,
+      storeys: items.map((part) => storeyOf(part, levels)),
+    }));
+  }, [parts, site]);
 
   const materials = useMemo(() => {
     const map = boardConcreteTexture(5);
@@ -157,11 +203,16 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
   return (
     <group>
       <Plinth base={base} materials={materials} />
+      <HoverGlow site={site} animate={animate} />
       <FloorPicker site={site} build={build} onSelect={onSelectFloor} />
+      <SlabEdge site={site} />
+      <FloorTag site={site} />
       {groups.map((group) => (
         <PartGroup
           key={group.material}
           items={group.items}
+          storeys={group.storeys}
+          tint={HOVER_TINT[group.material]}
           material={materials[group.material as keyof typeof materials]}
           casts={CASTS_SHADOW.has(group.material)}
           order={TRANSPARENT.has(group.material) ? 2 : 0}
@@ -174,12 +225,39 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
 }
 
 /**
+ * Eases the per-storey highlight, once per frame, before anything reads it.
+ *
+ * Runs at -9: after the Smoother has advanced construction time and before
+ * the default-priority draws that tint themselves from the result, so a
+ * storey never lights on one value and outlines on another.
+ */
+function HoverGlow({ site, animate }: { site: Site; animate: boolean }) {
+  const levels = site.floors.length;
+  useEffect(() => {
+    resetHover(levels);
+    return () => resetHover(levels);
+  }, [levels, site]);
+
+  useFrame((_, delta) => {
+    const glow = hover.glow;
+    for (let i = 0; i < levels; i++) {
+      const want = hover.index === i ? 1 : 0;
+      const at = glow[i] ?? 0;
+      glow[i] = animate ? THREE.MathUtils.damp(at, want, 9, delta) : want;
+    }
+  }, -9);
+  return null;
+}
+
+/**
  * One instanced draw for every part sharing a material. Parts that have not
  * arrived yet are collapsed to zero scale rather than skipped, so an instance
  * keeps its slot and the buffer never has to be rebuilt mid-scroll.
  */
 function PartGroup({
   items,
+  storeys,
+  tint,
   material,
   casts,
   order,
@@ -187,6 +265,10 @@ function PartGroup({
   animate,
 }: {
   items: Part[];
+  /** Storey each instance stands in, parallel to `items`. */
+  storeys: number[];
+  /** Instance-colour multiplier at full hover, or undefined to stay put. */
+  tint?: [number, number, number];
   material: THREE.Material;
   casts: boolean;
   order: number;
@@ -196,11 +278,43 @@ function PartGroup({
   const mesh = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  const swatch = useMemo(() => new THREE.Color(), []);
+  /** Sum of the glows written last frame, so a still building writes nothing. */
+  const written = useRef(-1);
+
+  // The instance colours exist from the first frame, all white, so the
+  // shader is compiled with USE_INSTANCING_COLOR once at startup. Letting
+  // `setColorAt` create the attribute on first hover would instead swap the
+  // program for every material in the scene mid-interaction.
+  useEffect(() => {
+    const target = mesh.current;
+    if (!target || !tint) return;
+    const white = new THREE.Color(1, 1, 1);
+    for (let i = 0; i < items.length; i++) target.setColorAt(i, white);
+    if (target.instanceColor) target.instanceColor.needsUpdate = true;
+  }, [items, tint]);
 
   useFrame(() => {
     const target = mesh.current;
     if (!target) return;
     const f = build.current ?? 0;
+
+    // Hover tint. Skipped entirely while nothing is lit, and skipped again
+    // once the ease has settled, so the colour buffer is only uploaded on
+    // the frames where it actually changed.
+    if (tint) {
+      let total = 0;
+      for (let s = 0; s < hover.glow.length; s++) total += hover.glow[s];
+      if (Math.abs(total - written.current) > 0.0005) {
+        written.current = total;
+        for (let i = 0; i < items.length; i++) {
+          const g = hover.glow[storeys[i]] ?? 0;
+          swatch.setRGB(1 + (tint[0] - 1) * g, 1 + (tint[1] - 1) * g, 1 + (tint[2] - 1) * g);
+          target.setColorAt(i, swatch);
+        }
+        if (target.instanceColor) target.instanceColor.needsUpdate = true;
+      }
+    }
 
     for (let i = 0; i < items.length; i++) {
       const part = items[i];
@@ -282,6 +396,7 @@ function FloorPicker({
   build: RefObject<number>;
   onSelect?: (index: number) => void;
 }) {
+  const canvas = useThree((s) => s.gl.domElement);
   const boxes = useMemo(
     () =>
       site.floors.map((floor, i) => {
@@ -291,14 +406,44 @@ function FloorPicker({
     [site],
   );
 
+  // A storey only answers the pointer once it is genuinely finished. Lighting
+  // up thin air where a floor has not been built yet would promise something
+  // the click cannot deliver.
+  const done = (i: number) => floorProgress(i, build.current ?? 0) >= 1;
+
+  // The canvas asks for a grab cursor so the whole scene reads as draggable.
+  // Over a storey that is a lie: there is something to open there.
+  const setCursor = (value: string) => {
+    canvas.style.cursor = value;
+  };
+
+  useEffect(
+    () => () => {
+      hover.index = -1;
+      canvas.style.cursor = "";
+    },
+    [canvas],
+  );
+
   return (
     <group>
       {boxes.map((b) => (
         <mesh
           key={b.i}
           position={[0, b.y, 0]}
+          onPointerOver={(e) => {
+            if (!done(b.i)) return;
+            e.stopPropagation();
+            hover.index = b.i;
+            setCursor("pointer");
+          }}
+          onPointerOut={() => {
+            if (hover.index !== b.i) return;
+            hover.index = -1;
+            setCursor("");
+          }}
           onClick={(e) => {
-            if (floorProgress(b.i, build.current ?? 0) < 1) return;
+            if (!done(b.i)) return;
             e.stopPropagation();
             onSelect?.(b.i);
           }}
@@ -307,6 +452,181 @@ function FloorPicker({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+/**
+ * A line of light round the slab that caps the hovered storey.
+ *
+ * Four thin boxes rather than a wireframe: a one-pixel line is exactly the
+ * glowing line work this site was rebuilt to get away from, and it would not
+ * survive the bloom threshold. A strip with thickness reads as something
+ * fitted to the slab edge, catches the pulse, and holds up close.
+ */
+function SlabEdge({ site }: { site: Site }) {
+  const group = useRef<THREE.Group>(null);
+  const material = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: "#ffc46a",
+        toneMapped: false,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }),
+    [],
+  );
+  const bars = useRef<(THREE.Mesh | null)[]>([]);
+
+  useFrame((state) => {
+    const node = group.current;
+    if (!node) return;
+    let lit = 0;
+    let index = -1;
+    for (let i = 0; i < hover.glow.length; i++) {
+      if (hover.glow[i] > lit) {
+        lit = hover.glow[i];
+        index = i;
+      }
+    }
+    if (index < 0 || lit < 0.004) {
+      node.visible = false;
+      return;
+    }
+    node.visible = true;
+    // The slab that caps this storey, which is the one the eye reads as its
+    // ceiling — and the only horizontal line the storey owns on its own.
+    const cap = site.floors[Math.min(index + 1, site.floors.length - 1)];
+    const y = slabTop(index + 1) - SLAB / 2;
+    const hw = cap.width / 2 + 0.03;
+    const hd = cap.depth / 2 + 0.03;
+    node.position.y = y;
+    const ends = bars.current;
+    for (let b = 0; b < 4; b++) {
+      const bar = ends[b];
+      if (!bar) continue;
+      const alongX = b < 2;
+      const sign = b % 2 === 0 ? 1 : -1;
+      if (alongX) {
+        bar.position.set(0, 0, sign * hd);
+        bar.scale.set(cap.width + 0.06, 1, 1);
+      } else {
+        bar.position.set(sign * hw, 0, 0);
+        bar.scale.set(1, 1, cap.depth + 0.06);
+      }
+    }
+    // A slow breath rather than a blink: the line is a state, not an alert.
+    // Kept well under full, because the strip is unlit and outside the tone
+    // mapper — at opacity 1 it stops being a line of light on a slab edge
+    // and becomes a highlighter stripe drawn over the elevation.
+    const pulse = 0.62 + 0.18 * Math.sin(state.clock.elapsedTime * 2.4);
+    material.opacity = lit * pulse;
+  });
+
+  return (
+    <group ref={group} visible={false}>
+      {[0, 1, 2, 3].map((i) => (
+        <mesh
+          key={i}
+          material={material}
+          renderOrder={3}
+          ref={(node) => {
+            bars.current[i] = node;
+          }}
+        >
+          <boxGeometry args={[1, SLAB * 0.2, 1]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** The four plate corners, as signs. */
+const CORNERS = [
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+] as const;
+
+/**
+ * The project name, pinned to the hovered storey in 3D.
+ *
+ * Anchored to whichever corner of the plate projects furthest right, worked
+ * out per frame. On a convex plate that corner is always on the silhouette,
+ * so the label leaves the building along its outline and reads out into the
+ * black — the near corner, which is the obvious choice, projects into the
+ * middle of the elevation and puts the card over the thing it is naming.
+ * Running right also keeps it away from the copy column on the left.
+ */
+function FloorTag({ site }: { site: Site }) {
+  const [tag, setTag] = useState(0);
+  const [open, setOpen] = useState(false);
+  const group = useRef<THREE.Group>(null);
+  const shown = useRef(-1);
+  const probe = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(({ camera }) => {
+    const i = hover.index;
+    if (i !== shown.current) {
+      shown.current = i;
+      if (i >= 0) setTag(i);
+      setOpen(i >= 0);
+    }
+    const node = group.current;
+    if (!node || i < 0) return;
+    const floor = site.floors[i];
+    const { bottom, top } = storey(i);
+    const y = (bottom + top) / 2;
+    const hw = floor.width / 2 + 0.3;
+    const hd = floor.depth / 2 + 0.3;
+    let best = -Infinity;
+    let bx = hw;
+    let bz = hd;
+    for (const [sx, sz] of CORNERS) {
+      probe.set(sx * hw, y, sz * hd).project(camera);
+      if (probe.x > best) {
+        best = probe.x;
+        bx = sx * hw;
+        bz = sz * hd;
+      }
+    }
+    node.position.set(bx, y, bz);
+  });
+
+  const project = projects[tag];
+  if (!project) return null;
+
+  return (
+    <group ref={group}>
+      {/* Kept mounted and faded rather than mounted on hover, so a sweep up
+          the building is not a run of DOM mounts. */}
+      <Html zIndexRange={[8, 0]} style={{ pointerEvents: "none", userSelect: "none" }}>
+        <div
+          className={
+            "flex -translate-y-1/2 items-center whitespace-nowrap transition-all duration-200 ease-out " +
+            (open ? "translate-x-0 opacity-100" : "-translate-x-2 opacity-0")
+          }
+        >
+          {/* A tick off the slab corner, so the card is tied to the storey
+              rather than floating near it. */}
+          <span className="h-px w-8 bg-gradient-to-r from-sodium/70 to-sodium/30" />
+          <span className="flex items-center gap-3 rounded-full border border-sodium/35 bg-night-deep/85 py-2 pl-3 pr-4 backdrop-blur">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-sodium font-display text-[16px] font-bold leading-none text-night-deep">
+              {tag + 1}
+            </span>
+            <span className="leading-tight">
+              <span className="block font-display text-[15px] font-bold uppercase tracking-wide text-chalk">
+                {project.title}
+              </span>
+              <span className="block text-[11px] text-chalk-dim">
+                {project.finished ? "Handed over" : "Fit-out in progress"} — click to open
+              </span>
+            </span>
+          </span>
+        </div>
+      </Html>
     </group>
   );
 }
@@ -420,7 +740,12 @@ export function InteriorLights({ site, build }: { site: Site; build: RefObject<n
     for (let i = 0; i < lamps.length; i++) {
       const light = refs.current[i];
       if (!light) continue;
-      light.intensity = 26 * smoothstep(0.34, 0.72, floorProgress(lamps[i].cladBy, f));
+      // Pointing at a storey turns its lights up. The glass is left alone —
+      // brightening a near-black pane by any sane factor shows nothing, and
+      // a floor lit from inside is what being handed over actually looks
+      // like through glazing.
+      const lit = 1 + 0.75 * (hover.glow[lamps[i].key] ?? 0);
+      light.intensity = 26 * lit * smoothstep(0.34, 0.72, floorProgress(lamps[i].cladBy, f));
     }
   });
 
