@@ -26,6 +26,8 @@ import { boardConcreteTexture } from "@/lib/textures";
 
 type BuildingProps = {
   site: Site;
+  /** Clicking a storey jumps to that project. */
+  onSelectFloor?: (index: number) => void;
   /** Construction time: the same clock the crane and lights read. */
   build: RefObject<number>;
   animate: boolean;
@@ -33,6 +35,11 @@ type BuildingProps = {
 
 /** How long a part takes to settle once it starts arriving. */
 const SETTLE = 0.08;
+
+function easeOutCubic(t: number) {
+  const u = 1 - t;
+  return 1 - u * u * u;
+}
 
 function easeOutBack(t: number) {
   const c1 = 1.32;
@@ -61,7 +68,7 @@ const MATERIAL_OF: Record<PartKind, string> = {
 /** Transparent groups draw after everything opaque. */
 const TRANSPARENT = new Set(["glass"]);
 
-export function Building({ site, build, animate }: BuildingProps) {
+export function Building({ site, build, animate, onSelectFloor }: BuildingProps) {
   const parts = useMemo(() => buildParts(site), [site]);
   const base = useMemo(() => plinth(site), [site]);
 
@@ -132,6 +139,7 @@ export function Building({ site, build, animate }: BuildingProps) {
   return (
     <group>
       <Plinth base={base} materials={materials} />
+      <FloorPicker site={site} build={build} onSelect={onSelectFloor} />
       {groups.map((group) => (
         <PartGroup
           key={group.material}
@@ -179,7 +187,8 @@ function PartGroup({
     for (let i = 0; i < items.length; i++) {
       const part = items[i];
       const progress = floorProgress(part.floor, f);
-      let t = animate ? (progress - part.at) / SETTLE : progress >= part.at ? 1 : 0;
+      const span = part.growth ?? SETTLE;
+      let t = animate ? (progress - part.at) / span : progress >= part.at ? 1 : 0;
 
       // Taken away again: edge protection comes off as the glazing goes in.
       if (part.offFloor !== undefined && floorProgress(part.offFloor, f) >= (part.offAt ?? 1)) {
@@ -196,14 +205,26 @@ function PartGroup({
         continue;
       }
 
-      const e = t >= 1 ? 1 : easeOutBack(t);
-      const fall = part.drop * (1 - Math.min(1, t));
-      dummy.position.set(part.position[0], part.position[1] + fall, part.position[2]);
       dummy.rotation.set(0, part.rotationY, 0);
-      // Come in a touch over size and settle back, so a part lands rather
-      // than appears.
-      const s = t >= 1 ? 1 : 0.88 + 0.12 * e;
-      dummy.scale.set(part.scale[0] * s, part.scale[1] * s, part.scale[2] * s);
+
+      if (part.growth) {
+        // Rises out of its own base: the foot stays put on the slab below and
+        // the head climbs, which is what casting a column looks like. Running
+        // it backwards as you scroll down retracts it the same way.
+        const g = t >= 1 ? 1 : easeOutCubic(t);
+        const full = part.scale[1];
+        const foot = part.position[1] - full / 2;
+        dummy.position.set(part.position[0], foot + (full * g) / 2, part.position[2]);
+        dummy.scale.set(part.scale[0], full * g, part.scale[2]);
+      } else {
+        const e = t >= 1 ? 1 : easeOutBack(t);
+        const fall = part.drop * (1 - Math.min(1, t));
+        dummy.position.set(part.position[0], part.position[1] + fall, part.position[2]);
+        // Come in a touch over size and settle back, so a part lands rather
+        // than appears.
+        const s = t >= 1 ? 1 : 0.88 + 0.12 * e;
+        dummy.scale.set(part.scale[0] * s, part.scale[1] * s, part.scale[2] * s);
+      }
       dummy.updateMatrix();
       target.setMatrixAt(i, dummy.matrix);
     }
@@ -219,6 +240,56 @@ function PartGroup({
       renderOrder={order}
       frustumCulled={false}
     />
+  );
+}
+
+/**
+ * Invisible pick volumes, one per storey.
+ *
+ * The building is drawn as instanced boxes, and an instanced draw gives you
+ * one object to raycast rather than one per storey — so picking a floor needs
+ * its own volume. These are a box per storey at zero opacity: they still
+ * raycast, they cost nothing to draw, and they are the thing a hover state
+ * would hang off later.
+ *
+ * A storey is only pickable once its slab is actually down. Clicking thin air
+ * where a floor has not been built yet would be worse than not picking at all.
+ */
+function FloorPicker({
+  site,
+  build,
+  onSelect,
+}: {
+  site: Site;
+  build: RefObject<number>;
+  onSelect?: (index: number) => void;
+}) {
+  const boxes = useMemo(
+    () =>
+      site.floors.map((floor, i) => {
+        const { bottom, top } = storey(i);
+        return { i, y: (bottom + top) / 2, h: Math.max(0.2, top - bottom), w: floor.width, d: floor.depth };
+      }),
+    [site],
+  );
+
+  return (
+    <group>
+      {boxes.map((b) => (
+        <mesh
+          key={b.i}
+          position={[0, b.y, 0]}
+          onClick={(e) => {
+            if (floorProgress(b.i, build.current ?? 0) < 1) return;
+            e.stopPropagation();
+            onSelect?.(b.i);
+          }}
+        >
+          <boxGeometry args={[b.w, b.h, b.d]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 

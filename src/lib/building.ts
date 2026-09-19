@@ -79,6 +79,12 @@ export type Part = {
    */
   offFloor?: number;
   offAt?: number;
+  /**
+   * Progress over which the part rises out of its base instead of settling
+   * into place. A column is cast, so it grows; a slab arrives on a hook, so
+   * it falls. Leaving this undefined gives the short drop-and-settle.
+   */
+  growth?: number;
   position: Vec3;
   scale: Vec3;
   rotationY: number;
@@ -199,7 +205,13 @@ export function buildParts(site: Site): Part[] {
         push({
           kind: "column",
           floor: index,
-          at: 0.06,
+          at: 0.05,
+          // Cast up out of the slab below and topped out well before the
+          // slab lands on them at PLACED_AT. Appearing at full height the
+          // instant a floor starts is what made them look like they had
+          // grown past the level being built — they stood there finished
+          // while the crane was still flying the plate over.
+          growth: 0.46,
           position: [cx, base + height / 2, cz],
           scale: [COLUMN, height, COLUMN],
           rotationY: 0,
@@ -230,7 +242,8 @@ export function buildParts(site: Site): Part[] {
         push({
           kind: "core",
           floor: index,
-          at: 0.02,
+          at: 0.0,
+          growth: 0.4,
           position: [panel.position[0], bottom + panel.position[1], panel.position[2]],
           scale: panel.scale,
           rotationY: 0,
@@ -488,8 +501,10 @@ function addStorey(
  * is also how the base of a building like this is detailed anyway.
  */
 export function plinth(site: Site) {
-  const w = site.floors[0].width + SLAB_OVERHANG * 2 + 2.8;
-  const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 2.8;
+  // Wide enough for the site to stand on: a container is 2.4m across and
+  // the old 1.4m band round the building could not hold one.
+  const w = site.floors[0].width + SLAB_OVERHANG * 2 + 3.6;
+  const d = site.floors[0].depth + SLAB_OVERHANG * 2 + 3.6;
   return { width: w, depth: d, height: 0.62, lip: 0.5, top: -SLAB - 0.07 };
 }
 
