@@ -146,6 +146,27 @@ with the foot planted, and retracts the same way scrolling back down.
   then holds at `STACK_MIN`. It used to run to nothing by the top floor,
   which reads as a yard that has finished rather than one that is working.
 
+### The view angle is fixed, on purpose
+
+`VIEW_SIDE` and `CRANE_CORNER` in `site-generator.ts` are constants, not
+seeded. Efe picked this composition — crane on the left with the jib
+running right over the building, the tower corner-on, the laydown at the
+foot of the crane — and every load has to open on it. A seeded view side
+meant every rebuild was a different photograph of a different building.
+Rebuild still varies the lighting rig, the plate sizes, the crane
+distances, the scaffold sides and the yard jitter.
+
+### The top level is a lift like any other
+
+`craneJob` returns `idle`. Without it, "working the top level" and "nothing
+left to build" both came back as `index === floors.length`, the pose read
+the second, and the cap slab arrived with no crane involved — Efe's "the
+fifth floor has no animation, the roof just appears".
+
+The landing height for that lift is `topLevel.y`, not `floors[index].y`:
+there is one more slab than there are storeys, and the clamped index used
+to give the storey below the one being capped.
+
 ### The lift, and why it is one file's worth of constants
 
 The plate used to *appear* on the hook: `loaded` was true from t = 0, and
@@ -185,6 +206,29 @@ the underside of a plate is nothing at all. The whole assembly has to fit
 in `HOOK_ABOVE_SLAB` minus half a plate — about a metre — so the budget is
 block 0.30, hook 0.20, bridle 0.18, beam, slings 0.32. **Do not grow
 `HOOK_ABOVE_SLAB` without checking the hook still clears its own trolley.**
+
+### Two things that only broke because the crane got painted
+
+Both were invisible while `m.crane` was near black, and obvious the moment
+it was not. **When you change a material, look at everything that shares
+it.**
+
+- The **site lighting mast** used `m.crane`, so it turned into a gold post.
+  It has `m.lampMast` now. It also stood *inside* the laydown: the dressing
+  is placed on bearings off the open face and the laydown is snapped to an
+  axis, so the two could land in the same spot. `SiteYard` now puts the
+  mast on the opposite hand from the pile.
+- The **spreader** stayed on the hook after release — `hitched` had a lower
+  bound and no upper one — so it was left lying across the roof and poking
+  through slab edges on the way home.
+
+### Hover waits for topping out
+
+The ground floor is complete from the first frame, so on arrival — nothing
+built, a bare slab on an empty deck — pointing at it produced a card
+reading "Vault Market, handed over". The gate is `topped`, which is what
+the feature was for: *hover on the finished building*. Clicking is still
+gated only on the storey being complete, as it was before.
 
 ### The laydown
 
@@ -467,6 +511,7 @@ What is left:
 ## Recent history
 
 ```
+0bfb348 five things Efe circled, and the top floor gets a lift at last
 34ac10c a crane that reads as a machine, and a lift that starts on the pile
 7dd62d2 a phone gets its own shot of the site, and a lift panel to travel in
 9615260 once it has topped out, the orbit comes off its leash
