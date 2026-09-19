@@ -125,14 +125,22 @@ with the foot planted, and retracts the same way scrolling back down.
   clear of the base, planted in black beside the model at y = 0 while
   everything else sat at the plinth top — that was most of why it read as
   disconnected.
-- **It is painted.** `CRANE_PAINT` in `materials.ts`. It was `#23272d` at
-  metalness 0.55, which is about 0.018 in linear — darker than the studio it
-  stands in, and a dark metal in a dark room has nothing to reflect either.
-  The largest object in the frame had no local colour and read as an
-  armature. Real tower cranes are painted to be seen. `CRANE_PAINT_GREY` is
-  the other way to go and is a one-line swap. **The trap the old colour set
-  is the same one the concrete set: measure the linear value before blaming
-  the lights.**
+- **It is dark, and that is a decision, not the default.** `CRANE_PAINT` in
+  `materials.ts`. It was tried in a works yellow and in a light grey — both
+  read well, both made the crane a second subject beside the building. Efe
+  chose dark. `CRANE_PAINT_YELLOW` and `CRANE_PAINT_GREY` are kept there as
+  one-line swaps.
+
+  It is *not* the near-black it started as: `#23272d` at metalness 0.55 is
+  about 0.018 in linear, darker than the studio it stands in, and a dark
+  metal in a dark room has nothing to reflect either. A matt dark steel
+  catches the key on the chords and the platforms. **The repaint is not what
+  fixed the crane** — the geometry that went in with it did: the kentledge,
+  the ladder, the rest platforms and the machinery deck. On screen the two
+  darks are nearly the same; the crane before and after is not.
+- **The lifting gear stays painted** while the crane is dark, which is how
+  site gear is and the only way the spreader reads against the underside of
+  a plate.
 - Mast is `totalHeight + 3.5..4.3`. Half a metre taller than it was, because
   the hook hangs a full rigging below the trolley now and on a short mast
   over the top level the hoist height worked out *above* the rope's own
@@ -207,11 +215,14 @@ in `HOOK_ABOVE_SLAB` minus half a plate — about a metre — so the budget is
 block 0.30, hook 0.20, bridle 0.18, beam, slings 0.32. **Do not grow
 `HOOK_ABOVE_SLAB` without checking the hook still clears its own trolley.**
 
-### Two things that only broke because the crane got painted
+### Two things the repaint uncovered
 
-Both were invisible while `m.crane` was near black, and obvious the moment
-it was not. **When you change a material, look at everything that shares
-it.**
+Neither was caused by it. Both were invisible while `m.crane` was near
+black and obvious the moment it was not, and both would still be wrong with
+the crane dark — just unseeable. They are fixed on their own merits, and
+the crane has since gone back to dark without either returning. **When you
+change a material, look at everything that shares it — and when something
+appears with a colour change, ask whether it was always there.**
 
 - The **site lighting mast** used `m.crane`, so it turned into a gold post.
   It has `m.lampMast` now. It also stood *inside* the laydown: the dressing

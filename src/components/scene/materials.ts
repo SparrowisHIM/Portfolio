@@ -19,16 +19,25 @@ export const palette = {
 /**
  * What the crane is painted.
  *
- * It was #23272d with metalness 0.55 — about 0.018 in linear, which is
- * darker than the background it stands against, and a dark metal in a dark
- * studio has nothing to reflect either. So the largest object in the frame
- * had no local colour at all and read as an armature rather than a machine.
- * Real tower cranes are painted to be seen. This is a works yellow knocked
- * back so it sits with the sodium rather than shouting over it, and the
- * metalness comes down because paint is not metal.
+ * Dark, by Efe's eye. It was tried in a works yellow and in a light grey —
+ * both read well, and both made the crane a second subject beside the
+ * building. Dark keeps the building the subject.
+ *
+ * It is not quite the near-black it started as. That was #23272d at
+ * metalness 0.55, which is about 0.018 in linear — darker than the studio
+ * it stands in, and a dark metal in a dark room has nothing to reflect
+ * either, so it had no local colour at all. This is a matt dark steel: far
+ * enough up to catch the key on the chords and the rest platforms, matt
+ * because paint is not metal. On screen the difference from the original is
+ * slight; what actually stopped the crane reading as an armature was the
+ * geometry that went in with the repaint — the kentledge, the ladder, the
+ * platforms and the machinery deck.
+ *
+ * The lifting gear stays painted. See `rigging`.
  */
-const CRANE_PAINT = "#cfae55";
-/** The other way to go: unpainted grey steel. Swap CRANE_PAINT for it. */
+const CRANE_PAINT = "#454a53";
+/** Tried and set aside: a works yellow, and a light unpainted grey. */
+export const CRANE_PAINT_YELLOW = "#cfae55";
 export const CRANE_PAINT_GREY = "#b9bec4";
 
 /**
@@ -53,16 +62,17 @@ function create() {
      * crane next to lit concrete is the one thing in frame that still looks
      * like a wireframe. Let the key light model it like everything else.
      */
-    crane: new THREE.MeshStandardMaterial({ color: CRANE_PAINT, roughness: 0.66, metalness: 0.08, envMapIntensity: 0.55 }),
+    crane: new THREE.MeshStandardMaterial({ color: CRANE_PAINT, roughness: 0.62, metalness: 0.22, envMapIntensity: 0.6 }),
     /** Machinery housings and the counter jib deck: unpainted, oily steel. */
     craneDark: new THREE.MeshStandardMaterial({ color: "#2b3038", roughness: 0.5, metalness: 0.7, envMapIntensity: 0.9 }),
     /**
      * The lifting gear: hook block cheek plates and the spreader beam.
      *
-     * Painted, like the crane, and for the same reason — dark steel against
-     * the underside of a plate is nothing at all, and the beam is the part
-     * that actually explains the lift. Lighter than the crane paint so the
-     * gear separates from the jib it hangs off.
+     * Painted even though the crane is not, which is both how site lifting
+     * gear actually is and the only way it reads: dark steel against the
+     * underside of a plate is nothing at all, and the beam is the part that
+     * explains the lift. Against a dark crane it is now the one warm thing
+     * in the air, which is exactly where the eye should be.
      */
     rigging: new THREE.MeshStandardMaterial({ color: "#dcb864", roughness: 0.6, metalness: 0.12, envMapIntensity: 0.6 }),
     /**
