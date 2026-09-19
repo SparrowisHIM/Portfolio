@@ -153,6 +153,13 @@ with the foot planted, and retracts the same way scrolling back down.
 - Picks off a **real stack** that draws down as the building goes up and
   then holds at `STACK_MIN`. It used to run to nothing by the top floor,
   which reads as a yard that has finished rather than one that is working.
+  **`STACK_MIN` sets the height of the whole pile**, not just its floor:
+  the drawdown is one plate per lift and there are four lifts, so the pile
+  always starts four taller than it ends. At a floor of four it started at
+  eight — over three metres on a seven by three footprint, which reads as a
+  monolith and was the biggest thing on the deck at the arrival. Two.
+  If it ever needs to hold more than it is tall, split it into two stacks
+  side by side rather than raising the floor.
 
 ### The arrival is framed on the crane, not the deck
 

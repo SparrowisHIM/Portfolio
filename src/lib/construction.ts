@@ -70,8 +70,14 @@ export const STACK_PITCH = PLATE_T + DUNNAGE_H;
  * The pile used to run down to nothing, which reads as a site that has
  * finished rather than one that is working. It draws down as the building
  * goes up and then holds: there is always more ready to go.
+ *
+ * The floor sets the height of the whole pile, because the drawdown is
+ * fixed at one plate per lift — four of them — so the pile always starts
+ * four taller than it ends. At a floor of four it started at eight, which
+ * is over three metres on a seven by three footprint and reads as a
+ * monolith rather than a stack of floor plates.
  */
-export const STACK_MIN = 4;
+export const STACK_MIN = 2;
 
 /** Plates in the laydown right now. */
 export function stackCount(site: Site, f: number) {
