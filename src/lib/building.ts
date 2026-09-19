@@ -1,5 +1,5 @@
 import { FLOOR_HEIGHT, SLAB_OVERHANG, type Core, type Site } from "./site-generator";
-import { PLANK, floorProgress, yardAxis, yardRadius } from "./construction";
+import { DECK_Y, PLANK, PLATE_T, floorProgress, yardAxis, yardRadius } from "./construction";
 import { createRandom, type Random } from "./random";
 
 /**
@@ -26,7 +26,8 @@ import { createRandom, type Random } from "./random";
 /** Concrete column, square. */
 export const COLUMN = 0.44;
 /** Slab thickness. The strongest horizontal in the building. */
-export const SLAB = 0.34;
+/** One plate thick. Defined in construction.ts, where the laydown needs it. */
+export const SLAB = PLATE_T;
 /** Core wall. */
 export const CORE_WALL = 0.3;
 /** Edge protection: top rail height above the slab. */
@@ -530,7 +531,7 @@ export function plinth(site: Site) {
     depth: onX ? across : along,
     height: 0.62,
     lip: 0.5,
-    top: -SLAB - 0.07,
+    top: DECK_Y,
     offsetX: onX ? shift : 0,
     offsetZ: onX ? 0 : shift,
   };

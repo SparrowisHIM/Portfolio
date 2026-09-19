@@ -17,6 +17,21 @@ export const palette = {
 } as const;
 
 /**
+ * What the crane is painted.
+ *
+ * It was #23272d with metalness 0.55 — about 0.018 in linear, which is
+ * darker than the background it stands against, and a dark metal in a dark
+ * studio has nothing to reflect either. So the largest object in the frame
+ * had no local colour at all and read as an armature rather than a machine.
+ * Real tower cranes are painted to be seen. This is a works yellow knocked
+ * back so it sits with the sodium rather than shouting over it, and the
+ * metalness comes down because paint is not metal.
+ */
+const CRANE_PAINT = "#cfae55";
+/** The other way to go: unpainted grey steel. Swap CRANE_PAINT for it. */
+export const CRANE_PAINT_GREY = "#b9bec4";
+
+/**
  * Shared materials for the parts that still use the standard pipeline: the
  * crane, the scaffold and the game's stacked storeys. Dark, low-key, so the
  * only light in the scene is the light that means something.
@@ -38,9 +53,22 @@ function create() {
      * crane next to lit concrete is the one thing in frame that still looks
      * like a wireframe. Let the key light model it like everything else.
      */
-    crane: new THREE.MeshStandardMaterial({ color: "#23272d", roughness: 0.62, metalness: 0.55, envMapIntensity: 0.85 }),
+    crane: new THREE.MeshStandardMaterial({ color: CRANE_PAINT, roughness: 0.66, metalness: 0.08, envMapIntensity: 0.55 }),
+    /** Machinery housings and the counter jib deck: unpainted, oily steel. */
+    craneDark: new THREE.MeshStandardMaterial({ color: "#2b3038", roughness: 0.5, metalness: 0.7, envMapIntensity: 0.9 }),
+    /**
+     * The lifting gear: hook block cheek plates and the spreader beam.
+     *
+     * Painted, like the crane, and for the same reason — dark steel against
+     * the underside of a plate is nothing at all, and the beam is the part
+     * that actually explains the lift. Lighter than the crane paint so the
+     * gear separates from the jib it hangs off.
+     */
+    rigging: new THREE.MeshStandardMaterial({ color: "#dcb864", roughness: 0.6, metalness: 0.12, envMapIntensity: 0.6 }),
+    /** Cast ballast: the kentledge at the foot and the counterweights. */
+    kentledge: new THREE.MeshStandardMaterial({ color: "#8e8a83", map: concreteMap, roughness: 0.95, metalness: 0.02 }),
     /** Hoist rope and slings: thin, taut, catching just enough light to read. */
-    cable: new THREE.MeshStandardMaterial({ color: "#8d96a5", emissive: "#8fa0bb", emissiveIntensity: 0.12, roughness: 0.35, metalness: 0.7 }),
+    cable: new THREE.MeshStandardMaterial({ color: "#b3bcca", emissive: "#8fa0bb", emissiveIntensity: 0.18, roughness: 0.35, metalness: 0.7 }),
     /* ---- the crew ----------------------------------------------------
        Two figures is all the reference has, and it is enough: at this
        distance they are a silhouette and a flash of orange, and what they

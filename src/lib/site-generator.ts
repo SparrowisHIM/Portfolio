@@ -245,7 +245,10 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     // Just enough to hoist a plate over the top columns. Any taller and the
     // jib spends the whole scroll above the frame, which is most of why the
     // crane read as something happening somewhere else.
-    mastHeight: totalHeight + rnd.range(2.9, 3.7),
+    // Half a metre taller than it was. The hook hangs a full rigging below
+    // the trolley now, and on a short mast over the top level that worked
+    // out above the rope's own anchor.
+    mastHeight: totalHeight + rnd.range(3.5, 4.3),
     jibLength: craneDistance + rnd.range(7, 10),
     counterJibLength: rnd.range(4.5, 6),
     angle: toTower + rnd.range(-0.35, 0.35),

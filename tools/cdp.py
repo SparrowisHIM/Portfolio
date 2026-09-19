@@ -192,6 +192,8 @@ def main():
     ap.add_argument("--mouse", help="X,Y to move the pointer to just before capture")
     ap.add_argument("--click", action="store_true", help="press and release at --mouse")
     ap.add_argument("--drag", help="X,Y,DX,DY: press at X,Y and drag by DX,DY")
+    ap.add_argument("--clip", help="X,Y,W,H in CSS pixels: capture just this rectangle")
+    ap.add_argument("--zoom", type=float, default=1.0, help="scale the clipped capture up")
     args = ap.parse_args()
 
     page = attach(match="localhost:3000")
@@ -295,7 +297,20 @@ def main():
     if args.expr:
         print("EVAL:", json.dumps(page.evaluate(args.expr)))
 
-    shot = page.send("Page.captureScreenshot", format="png", captureBeyondViewport=False)
+    args_shot = {"format": "png", "captureBeyondViewport": False}
+    if args.clip:
+        cx, cy, cw, chh = (float(v) for v in args.clip.split(","))
+        # A clip with a scale is the only way to get a close look at a small
+        # part of the scene: the renderer keeps drawing at the pinned
+        # viewport, so nothing about the framing or the LOD changes.
+        #
+        # Clip is in DOCUMENT coordinates, but every coordinate you read off
+        # a screenshot is a viewport one, so the scroll offset goes back on
+        # here. Without it a clip taken part way down the page comes back as
+        # a black rectangle from somewhere above the fold.
+        top = page.evaluate("window.scrollY") or 0
+        args_shot["clip"] = {"x": cx, "y": cy + top, "width": cw, "height": chh, "scale": args.zoom}
+    shot = page.send("Page.captureScreenshot", **args_shot)
     raw = base64.b64decode(shot["data"])
     with open(args.out, "wb") as fh:
         fh.write(raw)

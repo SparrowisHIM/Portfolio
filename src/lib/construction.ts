@@ -1,4 +1,4 @@
-import { FLOOR_HEIGHT, SLAB_THICKNESS, type Floor, type Site, type Vec3 } from "./site-generator";
+import { FLOOR_HEIGHT, type Floor, type Site, type Vec3 } from "./site-generator";
 
 /**
  * The construction timeline.
@@ -9,6 +9,8 @@ import { FLOOR_HEIGHT, SLAB_THICKNESS, type Floor, type Site, type Vec3 } from "
  * 0..1 through these stages:
  *
  *   columns rise        0.00 - 0.30
+ *   hook down on pile   0.00 - 0.06  (empty; the plate is still stacked)
+ *   slings on           0.06 - 0.12  (HITCH_AT: the hook takes the weight)
  *   frame lifted        0.12 - 0.32
  *   frame swung over    0.28 - 0.52
  *   frame lowered       0.52 - 0.62  (hovers just above its plate)
@@ -36,7 +38,57 @@ import { FLOOR_HEIGHT, SLAB_THICKNESS, type Floor, type Site, type Vec3 } from "
  */
 export const PLANK = { width: 7.4, depth: 3.2 };
 
+/**
+ * Thickness of one precast plate, and of the slabs it becomes.
+ *
+ * `building.ts` re-exports this as `SLAB`. They were two literals that
+ * happened to agree until they didn't: the yard stacked 0.34 plates while
+ * the crane worked out where to put its hook from 0.32, which is most of why
+ * the plate appeared on the hook instead of leaving the pile.
+ */
+export const PLATE_T = 0.34;
+
+/**
+ * Top of the plinth, in building coordinates — a reveal below the ground
+ * slab soffit, so the two do not share a plane and stripe.
+ *
+ * It lives here rather than in `plinth()` because the crane needs it to
+ * find the laydown and cannot import from `building.ts` without closing a
+ * cycle. `plinth().top` returns this.
+ */
+export const DECK_Y = -(PLATE_T + 0.07);
+
+/** Timber bearers the pile stands on. */
+export const BEARER_H = 0.12;
+/** Timber between each pair of plates, so the pile is not a solid block. */
+export const DUNNAGE_H = 0.07;
+export const STACK_PITCH = PLATE_T + DUNNAGE_H;
+
+/**
+ * Plates left in the laydown when every floor has been lifted.
+ *
+ * The pile used to run down to nothing, which reads as a site that has
+ * finished rather than one that is working. It draws down as the building
+ * goes up and then holds: there is always more ready to go.
+ */
+export const STACK_MIN = 4;
+
+/** Plates in the laydown right now. */
+export function stackCount(site: Site, f: number) {
+  return STACK_MIN + remainingSlabs(site, f);
+}
+
+/** Centre height of plate `i` in the pile, counting from the bottom. */
+export function stackPlateY(i: number) {
+  return DECK_Y + BEARER_H + PLATE_T / 2 + i * STACK_PITCH;
+}
+
 export const PLACED_AT = 0.66;
+
+/** When the hook takes the weight and the plate leaves the pile. */
+export const HITCH_AT = 0.12;
+/** When the slings go on. Between here and HITCH_AT the crane is hitching. */
+export const SLINGS_AT = 0.06;
 
 /** The frame hovers this far above its plate before it is released. */
 export const HOVER = 0.55;
@@ -97,15 +149,40 @@ export type CranePose = {
   hook: Vec3;
   /** Whether a slab hangs from the hook. */
   loaded: boolean;
+  /**
+   * Whether the slings are on the plate. True through the hitch as well as
+   * the lift, so the rigging is connected before the weight moves rather
+   * than appearing with it.
+   *
+   * Optional so the night shift can keep building its pose literal exactly
+   * as it was — that block is not to be touched.
+   */
+  hitched?: boolean;
   /** Footprint of the slab on the hook. */
   slab: { width: number; depth: number };
   /** Yaw of the slab on the hook, matching its floor plate. */
   rotation?: number;
 };
 
-const HOOK_ABOVE_SLAB = 1.25;
-/** Clearance over the columns already standing on the level being built. */
-const HOIST_CLEAR = FLOOR_HEIGHT * 0.55;
+/**
+ * Drop from the hook block to the middle of the plate: the rigging.
+ *
+ * Shared with `Crane.tsx`, which draws the hook, the bridle, the spreader
+ * and the slings inside it. It was a literal in both files.
+ */
+export const HOOK_ABOVE_SLAB = 1.25;
+/** Trolley height above the slew base, so the hook knows where its rope ends. */
+export const TROLLEY_Y = 0.66;
+/** The shortest length of rope that still reads as rope. */
+const MIN_ROPE = 0.9;
+/**
+ * Clearance the plate travels at over the level being built.
+ *
+ * Down from 0.55 of a storey. The rigging is a metre and a quarter deep now
+ * and the hook has to fit under its own trolley with rope to spare, and the
+ * plate was riding two metres over a landing it clears by a metre anyway.
+ */
+const HOIST_CLEAR = FLOOR_HEIGHT * 0.36;
 
 /** Centre of a floor plate in world x/z, cantilevers and setbacks included. */
 export function plateCentre(floor: Floor): [number, number] {
@@ -194,22 +271,32 @@ export function cranePose(site: Site, f: number): CranePose {
   const floorY = overRoof ? site.totalHeight : floor.y;
   const restY = floorY + HOVER + HOOK_ABOVE_SLAB;
   const hoistY = floorY + HOIST_CLEAR + HOOK_ABOVE_SLAB;
-  const yardHookY = 0.16 + SLAB_THICKNESS * (remainingSlabs(site, f) + 1) + HOOK_ABOVE_SLAB;
+
+  // Where the hook sits over the laydown: on the plate it is about to take.
+  //
+  // `remainingSlabs` drops the moment the hook takes the weight, so while
+  // this lift is in the air the count is one short of the pile it came off
+  // and has to be put back — otherwise the plate leaves the pile and drops
+  // a whole pitch in the same frame. Once it has been placed and the hook
+  // is coming home empty, the shorter pile is the right one to land on.
+  const carrying = t >= HITCH_AT && t < 0.78;
+  const onPile = stackCount(site, f) + (carrying ? 1 : 0);
+  const yardHookY = stackPlateY(onPile - 1) + HOOK_ABOVE_SLAB;
 
   let angle = toYard;
   let trolley = rYard;
   let y = yardHookY;
-  let loaded = true;
+  let loaded = t >= HITCH_AT;
 
-  if (t < 0.12) {
-    // Hook resting on the next frame in the yard.
+  if (t < HITCH_AT) {
+    // Hook down on the pile, slings going on. The plate is still stacked.
   } else if (t < PLACED_AT) {
     // Lift, then swing while the last of the lift finishes, then lower onto
     // the hover. The dip at the end is the overshoot before the snap.
     const swing = smoothstep(0.28, 0.52, t);
     angle = lerp(toYard, toTower, swing);
     trolley = lerp(rYard, rTower, swing);
-    const lift = smoothstep(0.12, 0.32, t);
+    const lift = smoothstep(HITCH_AT, 0.32, t);
     const lower = smoothstep(0.52, 0.62, t);
     const dip = Math.sin(Math.PI * smoothstep(0.6, PLACED_AT, t)) * 0.1;
     y = lerp(lerp(yardHookY, hoistY, lift), restY, lower) - dip;
@@ -235,21 +322,28 @@ export function cranePose(site: Site, f: number): CranePose {
     loaded = true;
   }
 
+  // A hook cannot rise past its own trolley. On a short mast over the top
+  // level the hoist height worked out above the rope's own anchor, which
+  // inverted the falls — visible as two hairlines crossing the jib.
+  const ropeTop = DECK_Y + crane.mastHeight + TROLLEY_Y;
+  y = Math.min(y, ropeTop - MIN_ROPE);
+
   return {
     angle,
     trolley,
     hook: [crane.position[0] + Math.sin(angle) * trolley, y, crane.position[2] + Math.cos(angle) * trolley],
     loaded,
+    hitched: loaded || (t >= SLINGS_AT && !overRoof),
     slab: PLANK,
     rotation: overRoof ? 0 : floor.rotation,
   };
 }
 
-/** Frames still stacked in the yard. */
+/** Lifts still to come: plates in the pile that are spoken for. */
 export function remainingSlabs(site: Site, f: number) {
   let n = 0;
   for (let i = 1; i < site.floors.length; i++) {
-    if (floorProgress(i, f) < 0.12) n++;
+    if (floorProgress(i, f) < HITCH_AT) n++;
   }
   return n;
 }

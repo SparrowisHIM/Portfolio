@@ -4,7 +4,16 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { PLANK, remainingSlabs, yardPosition, yardTurn } from "@/lib/construction";
+import {
+  BEARER_H,
+  DUNNAGE_H,
+  PLANK,
+  STACK_MIN,
+  stackCount,
+  stackPlateY,
+  yardPosition,
+  yardTurn,
+} from "@/lib/construction";
 import { plinth, SLAB } from "@/lib/building";
 import { createRandom } from "@/lib/random";
 import { materials } from "./materials";
@@ -66,28 +75,70 @@ export function SiteYard({
   const yard = useMemo(() => yardPosition(site), [site]);
   const turn = useMemo(() => yardTurn(site), [site]);
   const plates = useRef<THREE.InstancedMesh>(null);
+  const dunnage = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const maxPlates = site.floors.length;
+  /*
+    The pile draws down as the building goes up and then holds at STACK_MIN.
+    It used to run to nothing by the top floor, which reads as a yard that
+    has finished rather than one that is working — there is always more
+    ready to go.
+  */
+  const maxPlates = STACK_MIN + site.floors.length;
+  /** Two bearers under every plate, so the gap is filled with timber. */
+  const maxBearers = maxPlates * 2;
 
   useFrame(() => {
     const mesh = plates.current;
-    if (!mesh) return;
-    // The pile is exactly what has not been lifted yet.
-    const left = remainingSlabs(site, build.current ?? 0);
+    const bearers = dunnage.current;
+    if (!mesh || !bearers) return;
+    const left = stackCount(site, build.current ?? 0);
     for (let i = 0; i < maxPlates; i++) {
+      const y = stackPlateY(i);
       if (i < left) {
-        dummy.position.set(yard[0], deck + SLAB / 2 + i * (SLAB + 0.04), yard[2]);
-        dummy.rotation.set(0, turn + i * 0.012, 0);
+        dummy.position.set(yard[0], y, yard[2]);
+        dummy.rotation.set(0, turn + i * 0.008, 0);
         dummy.scale.set(PLATE.w, SLAB, PLATE.d);
       } else {
         dummy.scale.set(0, 0, 0);
-        dummy.position.set(yard[0], deck, yard[2]);
+        dummy.position.set(yard[0], y, yard[2]);
         dummy.rotation.set(0, 0, 0);
       }
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
+
+      /*
+        Timber between every pair of plates — which is how precast is
+        actually stacked, and also the fix for the black line that ran
+        between each plate and the next. The gap was there so the pile did
+        not read as one solid block; empty, all it did was put a shadowed
+        void between two lit faces, and the pile read as striped.
+      */
+      for (let b = 0; b < 2; b++) {
+        const k = i * 2 + b;
+        if (i < left) {
+          // Out near the edges and running past the ends, so the timber
+          // reads from any face. Tucked into the middle of the plate it was
+          // only visible through the gap it was supposed to be filling.
+          const off = (b === 0 ? -1 : 1) * PLATE.d * 0.42;
+          const a = turn + i * 0.008;
+          dummy.position.set(
+            yard[0] - Math.cos(a) * off,
+            y - SLAB / 2 - DUNNAGE_H / 2,
+            yard[2] + Math.sin(a) * off,
+          );
+          dummy.rotation.set(0, a, 0);
+          dummy.scale.set(PLATE.w * 1.04, DUNNAGE_H, 0.22);
+        } else {
+          dummy.scale.set(0, 0, 0);
+          dummy.position.set(yard[0], y, yard[2]);
+          dummy.rotation.set(0, 0, 0);
+        }
+        dummy.updateMatrix();
+        bearers.setMatrixAt(k, dummy.matrix);
+      }
     }
     mesh.instanceMatrix.needsUpdate = true;
+    bearers.instanceMatrix.needsUpdate = true;
   });
 
   return (
@@ -102,11 +153,19 @@ export function SiteYard({
       >
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
-      {/* Bearers under the stack, so it is not resting on the deck. */}
-      <group position={[yard[0], deck + 0.06, yard[2]]} rotation={[0, turn, 0]}>
+      <instancedMesh
+        ref={dunnage}
+        args={[undefined, m.timber, maxBearers]}
+        receiveShadow
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+      </instancedMesh>
+      {/* Ground bearers, so the bottom plate is not resting on the deck. */}
+      <group position={[yard[0], deck + BEARER_H / 2, yard[2]]} rotation={[0, turn, 0]}>
         {[-1.15, 1.15].map((o) => (
           <mesh key={o} position={[0, 0, o]} castShadow material={m.timber}>
-            <boxGeometry args={[PLATE.w * 0.92, 0.12, 0.18]} />
+            <boxGeometry args={[PLATE.w * 0.92, BEARER_H, 0.22]} />
           </mesh>
         ))}
       </group>

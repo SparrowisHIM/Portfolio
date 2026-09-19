@@ -4,9 +4,10 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { cranePose } from "@/lib/construction";
+import { HOOK_ABOVE_SLAB, TROLLEY_Y, cranePose } from "@/lib/construction";
 import { box, lattice, strut, truss, type Instance, type Vec3 } from "@/lib/geometry";
 import { plinth, SLAB } from "@/lib/building";
+import { PLANK } from "@/lib/construction";
 import { wind } from "@/lib/wind";
 import { game } from "@/lib/stack-game";
 import { emitBurst, emitPulse, workHue } from "@/lib/pulses";
@@ -23,9 +24,24 @@ type CraneProps = {
 const MAST = 1.6;
 const PANEL = 1.9;
 const JIB_Y = 0.9;
-const TROLLEY_Y = 0.66;
-const HOOK_ABOVE_SLAB = 1.25;
 const APEX = 4.6;
+
+/*
+  The rigging, measured down from the rope attachment on the hook block.
+  Everything has to fit between the hook and the top of the plate, which is
+  HOOK_ABOVE_SLAB - PLATE/2 below — about a metre. Compact, but the spreader
+  beam is nearly five metres across and it is the beam that carries the read
+  at this distance; the hook underneath it is a shape, not a detail.
+*/
+const BLOCK_H = 0.3;
+const HOOK_EYE = -0.46;
+const BRIDLE_Y = -0.68;
+/** Beam length and cross-beam depth, as fractions of the plate. */
+const BEAM_SPAN = 0.66;
+const BEAM_CROSS = 0.58;
+/** Where the slings land on the plate, as fractions of it. */
+const ANCHOR_X = 0.35;
+const ANCHOR_Z = 0.31;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -59,6 +75,10 @@ export function Crane({ site, build, animate }: CraneProps) {
   const load = useRef<THREE.Group>(null);
   const frame = useRef<THREE.Group>(null);
   const spreader = useRef<THREE.Group>(null);
+  const beam = useRef<THREE.Mesh>(null);
+  const crossBeams = useRef<(THREE.Mesh | null)[]>([]);
+  const bridle = useRef<(THREE.Mesh | null)[]>([]);
+  const anchors = useRef<THREE.Group>(null);
   const ropes = useRef<THREE.Mesh[]>([]);
   const slings = useRef<THREE.Mesh[]>([]);
   const beacon = useRef<THREE.MeshStandardMaterial>(null);
@@ -75,7 +95,33 @@ export function Crane({ site, build, animate }: CraneProps) {
 
   const parts = useMemo(() => {
     const mast = lattice({ x: 0, z: 0, y0: 0.4, y1: crane.mastHeight, width: MAST, panel: PANEL, chord: 0.11, brace: 0.05 });
-    const base: Instance[] = [box([0, 0.2, 0], [MAST + 0.9, 0.5, MAST + 0.9]), box([0, 0.06, 0], [4.4, 0.16, 0.26]), box([0, 0.06, 0], [0.26, 0.16, 4.4])];
+    // Cruciform base: the pedestal, the two cross girders, and the feet
+    // they bear on. A tower crane is held down by weight, not by the deck.
+    const base: Instance[] = [
+      box([0, 0.2, 0], [MAST + 0.9, 0.5, MAST + 0.9]),
+      box([0, 0.14, 0], [4.8, 0.3, 0.34]),
+      box([0, 0.14, 0], [0.34, 0.3, 4.8]),
+    ];
+    for (const [fx, fz] of [
+      [2.1, 0],
+      [-2.1, 0],
+      [0, 2.1],
+      [0, -2.1],
+    ]) {
+      base.push(box([fx, 0.09, fz], [0.8, 0.18, 0.8]));
+    }
+    // Kentledge: four cast blocks on the feet. The single cheapest thing
+    // that stops the mast reading as a stick pushed into the deck.
+    const kentledge: Instance[] = [];
+    for (const [kx, kz, w, d] of [
+      [2.1, 0, 1.0, 2.2],
+      [-2.1, 0, 1.0, 2.2],
+      [0, 2.1, 2.2, 1.0],
+      [0, -2.1, 2.2, 1.0],
+    ]) {
+      kentledge.push(box([kx, 0.42, kz], [w, 0.48, d]));
+      kentledge.push(box([kx, 0.88, kz], [w * 0.94, 0.44, d * 0.94]));
+    }
 
     const towerTop: Instance[] = [];
     const h = MAST / 2;
@@ -107,7 +153,72 @@ export function Crane({ site, build, animate }: CraneProps) {
     const panels = Math.floor((crane.mastHeight - 0.4) / PANEL);
     for (let p = 3; p < panels; p += 5) lights.push([h, 0.4 + p * PANEL, h]);
 
-    return { mast: [...mast.chords, ...mast.braces], base, towerTop: [...towerTop, ...jib.chords, ...jib.braces, ...counter.chords, ...counter.braces], pendants, ballast, lights };
+    /*
+      The ladder, and a rest platform every few lifts.
+
+      A tower crane is a thing people climb, and the ladder is the detail
+      that says so — it runs the full height inside one face of the mast,
+      which is also why it reads: a second, finer rhythm inside the lattice
+      that the bracing alone does not give.
+    */
+    const access: Instance[] = [];
+    const lx = h * 0.34;
+    const lz = -h + 0.12;
+    access.push(strut([-lx, 0.5, lz], [-lx, crane.mastHeight - 0.3, lz], 0.035));
+    access.push(strut([lx, 0.5, lz], [lx, crane.mastHeight - 0.3, lz], 0.035));
+    for (let y = 0.9; y < crane.mastHeight - 0.4; y += 0.34) {
+      access.push(strut([-lx, y, lz], [lx, y, lz], 0.022));
+    }
+    for (let y = 3.2; y < crane.mastHeight - 1.2; y += PANEL * 3) {
+      access.push(box([0, y, 0], [MAST + 0.34, 0.06, MAST + 0.34]));
+      for (const [gx, gz] of [
+        [0, (MAST + 0.34) / 2],
+        [0, -(MAST + 0.34) / 2],
+      ]) {
+        access.push(box([gx, y + 0.42, gz], [MAST + 0.34, 0.04, 0.04]));
+      }
+    }
+
+    /*
+      Machinery on the counter jib: the hoist drum, its motor, and a walkway
+      with a handrail along the deck. The counter jib was a bare truss with
+      three ballast blocks on the end, which is the half of the crane that
+      does the work and looked like the half that does nothing.
+    */
+    const machinery: Instance[] = [];
+    const deckZ = -0.8 - crane.counterJibLength * 0.42;
+    machinery.push(box([0, JIB_Y + 0.5, deckZ], [1.5, 0.66, 1.5]));
+    machinery.push(box([0, JIB_Y + 0.42, deckZ + 1.15], [1.1, 0.5, 0.8]));
+    for (const side of [-1, 1]) {
+      machinery.push(
+        strut(
+          [side * 0.78, JIB_Y + 0.28, -0.8],
+          [side * 0.78, JIB_Y + 0.28, -0.8 - crane.counterJibLength],
+          0.05,
+        ),
+      );
+      machinery.push(
+        strut(
+          [side * 0.78, JIB_Y + 0.92, -0.8],
+          [side * 0.78, JIB_Y + 0.92, -0.8 - crane.counterJibLength],
+          0.035,
+        ),
+      );
+    }
+    // The jib tip: a sheave case, so the jib ends in something.
+    machinery.push(box([0, JIB_Y + 0.12, 0.8 + crane.jibLength - 0.2], [0.34, 0.5, 0.6]));
+
+    return {
+      mast: [...mast.chords, ...mast.braces],
+      base,
+      kentledge,
+      access,
+      machinery,
+      towerTop: [...towerTop, ...jib.chords, ...jib.braces, ...counter.chords, ...counter.braces],
+      pendants,
+      ballast,
+      lights,
+    };
   }, [crane]);
 
   useFrame(({ clock }, delta) => {
@@ -168,7 +279,32 @@ export function Crane({ site, build, animate }: CraneProps) {
       frame.current.scale.set(pose.slab.width, 1, pose.slab.depth);
       frame.current.rotation.y = pose.rotation ?? 0;
     }
-    if (spreader.current) spreader.current.visible = pose.loaded;
+    /*
+      The rigging shows from the moment the slings go on, not from the
+      moment the weight moves. Before that change the plate simply appeared
+      on the hook with its gear already attached; now the empty hook comes
+      down on the pile, the spreader lands on it, and the lift starts.
+    */
+    const rigged = pose.hitched ?? pose.loaded;
+    if (spreader.current) spreader.current.visible = rigged;
+    if (anchors.current) anchors.current.visible = rigged;
+    // The beam spans the plate it is carrying, so it scales with it.
+    const span = pose.slab.width * BEAM_SPAN;
+    const cross = pose.slab.depth * BEAM_CROSS;
+    if (beam.current) beam.current.scale.x = span;
+    for (let i = 0; i < 2; i++) {
+      const arm = crossBeams.current[i];
+      if (!arm) continue;
+      arm.position.x = (i === 0 ? -1 : 1) * span * 0.5;
+      arm.scale.z = cross;
+    }
+    for (let i = 0; i < 2; i++) {
+      const leg = bridle.current[i];
+      if (!leg) continue;
+      tmpA.current.set(0, HOOK_EYE - 0.04, 0);
+      tmpB.current.set((i === 0 ? -1 : 1) * span * 0.5, BRIDLE_Y, 0);
+      aim(leg, tmpA.current, tmpB.current, 0.055, tmpC.current, tmpQ.current);
+    }
     if (wasLoaded.current && !pose.loaded && animate && !playing) {
       emitPulse(pos.x, pos.y - HOOK_ABOVE_SLAB, pos.z, workHue());
       emitBurst(pos.x, pos.y - HOOK_ABOVE_SLAB, pos.z, "amber", 16);
@@ -190,24 +326,29 @@ export function Crane({ site, build, animate }: CraneProps) {
       }
     }
 
-    // Slings from the spreader to the module corners.
-    if (pose.loaded) {
-      const w = pose.slab.width * 0.46;
-      const d = pose.slab.depth * 0.46;
-      const corners = [
-        [-w, -d],
-        [w, -d],
-        [-w, d],
-        [w, d],
-      ];
-      corners.forEach(([cx, cz], i) => {
+    /*
+      Four slings, from the ends of the cross beams down to anchors cast
+      into the plate.
+
+      They used to run from a short bar near the hook out to the plate
+      corners, which over a seven metre plate is a couple of degrees off
+      horizontal — they read as scratches lying on the concrete rather than
+      as anything holding it. Hung from a beam that is itself two thirds of
+      the plate wide, they are near vertical, which is both what a spreader
+      is for and the thing that makes the lift legible.
+    */
+    if (rigged) {
+      const top = -HOOK_ABOVE_SLAB + SLAB / 2;
+      for (let i = 0; i < 4; i++) {
         const sling = slings.current[i];
-        if (!sling) return;
+        if (!sling) continue;
         sling.visible = true;
-        tmpA.current.set(Math.sign(cx) * 1.05, -0.5, 0);
-        tmpB.current.set(cx, -HOOK_ABOVE_SLAB, cz);
-        aim(sling, tmpA.current, tmpB.current, 0.035, tmpC.current, tmpQ.current);
-      });
+        const sx = i < 2 ? -1 : 1;
+        const sz = i % 2 === 0 ? -1 : 1;
+        tmpA.current.set(sx * span * 0.5, BRIDLE_Y - 0.06, sz * cross * 0.5);
+        tmpB.current.set(sx * pose.slab.width * ANCHOR_X, top, sz * pose.slab.depth * ANCHOR_Z);
+        aim(sling, tmpA.current, tmpB.current, 0.042, tmpC.current, tmpQ.current);
+      }
     } else {
       for (const sling of slings.current) if (sling) sling.visible = false;
     }
@@ -222,7 +363,9 @@ export function Crane({ site, build, animate }: CraneProps) {
     <group>
       <group position={[crane.position[0], deck, crane.position[2]]}>
         <Instances items={parts.base} material={m.steelDark} />
+        <Instances items={parts.kentledge} material={m.kentledge} />
         <Instances items={parts.mast} material={m.crane} />
+        <Instances items={parts.access} material={m.galvanised} />
         {parts.lights.map((p, i) => (
           <mesh key={i} position={p}>
             <sphereGeometry args={[0.06, 8, 8]} />
@@ -236,7 +379,8 @@ export function Crane({ site, build, animate }: CraneProps) {
           </mesh>
           <Instances items={parts.towerTop} material={m.crane} />
           <Instances items={parts.pendants} material={m.galvanised} />
-          <Instances items={parts.ballast} material={m.steelDark} />
+          <Instances items={parts.machinery} material={m.steelDark} />
+          <Instances items={parts.ballast} material={m.kentledge} />
 
           {/* Cab: a dark box with one faint amber window. */}
           <group position={[1.25, 0.9, 0.7]}>
@@ -270,6 +414,12 @@ export function Crane({ site, build, animate }: CraneProps) {
             <mesh material={m.steelDark}>
               <boxGeometry args={[1.05, 0.34, 0.78]} />
             </mesh>
+            {/* Two sheaves under the trolley, where the falls actually turn. */}
+            {[-0.1, 0.1].map((x) => (
+              <mesh key={x} position={[x, -0.2, 0]} rotation={[0, 0, Math.PI / 2]} material={m.galvanised}>
+                <cylinderGeometry args={[0.1, 0.1, 0.07, 10]} />
+              </mesh>
+            ))}
           </group>
         </group>
       </group>
@@ -287,21 +437,68 @@ export function Crane({ site, build, animate }: CraneProps) {
         </mesh>
       ))}
       <group ref={load}>
-        {/* Hook block: sheaves, cheek plates and the hook itself. Small
-            enough to be honest, big enough to read at this distance. */}
-        <mesh position={[0, 0.06, 0]} castShadow material={m.steelDark}>
-          <boxGeometry args={[0.46, 0.52, 0.22]} />
-        </mesh>
-        <mesh position={[0, 0.06, 0]} rotation={[0, 0, Math.PI / 2]} material={m.galvanised}>
-          <cylinderGeometry args={[0.17, 0.17, 0.26, 12]} />
-        </mesh>
-        <mesh position={[0, -0.34, 0]} material={m.galvanised}>
-          <cylinderGeometry args={[0.055, 0.055, 0.34, 8]} />
-        </mesh>
-        <group ref={spreader}>
-          <mesh position={[0, -0.5, 0]} material={m.steelDark}>
-            <boxGeometry args={[2.4, 0.11, 0.14]} />
+        {/*
+          The hook block.
+
+          It was a box, a disc and a stub of cylinder — honest about mass and
+          silent about what it was. A block is cheek plates with the sheaves
+          turning between them, a swivel under that, and then the hook: a C
+          with a point on it. The C is the whole thing. At this distance it
+          is five or six pixels, and it is still the only shape in the frame
+          that can only be one object.
+        */}
+        <group>
+          {[-0.13, 0.13].map((x) => (
+            <mesh key={x} position={[x, -BLOCK_H / 2 + 0.04, 0]} castShadow material={m.rigging}>
+              <boxGeometry args={[0.06, BLOCK_H, 0.3]} />
+            </mesh>
+          ))}
+          {[-0.07, 0.07].map((z) => (
+            <mesh key={z} position={[0, -0.08, z]} rotation={[0, 0, Math.PI / 2]} material={m.galvanised}>
+              <cylinderGeometry args={[0.1, 0.1, 0.2, 12]} />
+            </mesh>
+          ))}
+          {/* Swivel and shank. */}
+          <mesh position={[0, -BLOCK_H - 0.05, 0]} material={m.galvanised}>
+            <cylinderGeometry args={[0.085, 0.085, 0.12, 10]} />
           </mesh>
+          {/* The hook: three quarters of a ring, opening forward. */}
+          <mesh position={[0, HOOK_EYE + 0.02, 0]} rotation={[Math.PI / 2, 0, -Math.PI / 2]} material={m.galvanised}>
+            <torusGeometry args={[0.15, 0.038, 8, 18, Math.PI * 1.45]} />
+          </mesh>
+          <mesh position={[0.095, HOOK_EYE - 0.11, 0]} rotation={[0, 0, Math.PI * 0.75]} material={m.galvanised}>
+            <coneGeometry args={[0.038, 0.13, 8]} />
+          </mesh>
+        </group>
+        <group ref={spreader}>
+          {/* Bridle: two legs off the hook out to the ends of the beam. */}
+          {[0, 1].map((i) => (
+            <mesh
+              key={`b${i}`}
+              ref={(mesh) => {
+                bridle.current[i] = mesh;
+              }}
+              material={m.cable}
+            >
+              <boxGeometry args={[1, 1, 1]} />
+            </mesh>
+          ))}
+          {/* The spreader itself: a main beam with a cross beam at each end. */}
+          <mesh ref={beam} position={[0, BRIDLE_Y, 0]} castShadow material={m.rigging}>
+            <boxGeometry args={[1, 0.16, 0.14]} />
+          </mesh>
+          {[0, 1].map((i) => (
+            <mesh
+              key={`c${i}`}
+              ref={(mesh) => {
+                crossBeams.current[i] = mesh;
+              }}
+              position={[0, BRIDLE_Y, 0]}
+              material={m.rigging}
+            >
+              <boxGeometry args={[0.13, 0.13, 1]} />
+            </mesh>
+          ))}
           {[0, 1, 2, 3].map((i) => (
             <mesh
               key={i}
@@ -324,6 +521,32 @@ export function Crane({ site, build, animate }: CraneProps) {
           <mesh position={[0, -HOOK_ABOVE_SLAB, 0]} material={m.precast} castShadow>
             <boxGeometry args={[1, SLAB, 1]} />
           </mesh>
+        </group>
+        {/*
+          Lifting anchors, cast into the plate's top face. Four small loops
+          for the slings to end on — without them the slings stop in mid air
+          a hair above the concrete and nothing is holding anything.
+        */}
+        <group ref={anchors}>
+          {[
+            [-1, -1],
+            [-1, 1],
+            [1, -1],
+            [1, 1],
+          ].map(([sx, sz], i) => (
+            <mesh
+              key={i}
+              position={[
+                sx * PLANK.width * ANCHOR_X,
+                -HOOK_ABOVE_SLAB + SLAB / 2 + 0.03,
+                sz * PLANK.depth * ANCHOR_Z,
+              ]}
+              rotation={[0, 0, 0]}
+              material={m.galvanised}
+            >
+              <torusGeometry args={[0.055, 0.017, 6, 12]} />
+            </mesh>
+          ))}
         </group>
       </group>
     </group>
