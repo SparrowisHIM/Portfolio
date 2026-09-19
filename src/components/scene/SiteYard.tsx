@@ -17,6 +17,7 @@ import {
 import { plinth, SLAB } from "@/lib/building";
 import { createRandom } from "@/lib/random";
 import { materials } from "./materials";
+import { insideHoarding } from "./Hoarding";
 
 /**
  * The site on the plinth.
@@ -66,23 +67,27 @@ export function SiteYard({
     const clearOfPile = toPile >= 0 ? -1 : 1;
     // Polar placement relative to the open face, so the near side of the
     // plinth stays clear and the dressing reads behind and beside.
-    const at = (offset: number, out: number): [number, number] => {
+    // Placed on a bearing off the open face, then pulled inside the fence:
+    // the bearing decides where a thing belongs, the deck decides whether it
+    // fits. `keep` is the footprint radius of whatever is being placed.
+    const at = (offset: number, out: number, keep = 0.6): [number, number] => {
       const a = site.viewAngle + offset;
-      return [Math.sin(a) * (half + out), Math.cos(a) * (half + out)];
+      const p: [number, number] = [Math.sin(a) * (half + out), Math.cos(a) * (half + out)];
+      return insideHoarding(base, p, keep);
     };
     return {
-      cabin: at(2.45, 2.8),
+      cabin: at(2.45, 2.8, 2.2),
       cabinTurn: site.viewAngle + 2.45,
-      skip: at(-2.15, 2.7),
+      skip: at(-2.15, 2.7, 1.2),
       skipTurn: site.viewAngle - 2.15,
-      rebar: at(1.5, 2.6),
+      rebar: at(1.5, 2.6, 1.4),
       rebarTurn: site.viewAngle + 1.5,
-      mast: at(clearOfPile * 1.35, 3.1),
-      cones: [at(-0.6, 2.2), at(0.55, 2.4), at(1.05, 1.9)],
-      pallets: [at(-1.75, 2.6), at(2.95, 2.8)],
+      mast: at(clearOfPile * 1.35, 3.1, 0.5),
+      cones: [at(-0.6, 2.2, 0.3), at(0.55, 2.4, 0.3), at(1.05, 1.9, 0.3)],
+      pallets: [at(-1.75, 2.6, 0.9), at(2.95, 2.8, 0.9)],
       jitter: rnd.range(-0.15, 0.15),
     };
-  }, [site]);
+  }, [site, base]);
 
   const yard = useMemo(() => yardPosition(site), [site]);
   const turn = useMemo(() => yardTurn(site), [site]);

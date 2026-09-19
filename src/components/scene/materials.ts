@@ -83,6 +83,19 @@ function create() {
      * standing in the middle of the laydown.
      */
     lampMast: new THREE.MeshStandardMaterial({ color: "#5a616c", roughness: 0.45, metalness: 0.6, envMapIntensity: 0.9 }),
+    /*
+      Site hoarding: painted ply on posts.
+
+      Blue, which is what the reference site used and what half the hoarding
+      in the country is. It is the one large painted surface in the scene and
+      it sits at the boundary rather than in the middle of it, so it frames
+      the deck instead of competing with the building — the opposite of what
+      happened when the crane was painted.
+    */
+    hoarding: new THREE.MeshStandardMaterial({ color: "#2f4a66", roughness: 0.82, metalness: 0.04 }),
+    hoardingPost: new THREE.MeshStandardMaterial({ color: "#20262e", roughness: 0.62, metalness: 0.35 }),
+    /** Warning plates on the outside of the hoarding: small, and the only bright thing on it. */
+    hoardingSign: new THREE.MeshStandardMaterial({ color: "#d8d2c4", roughness: 0.7, emissive: "#6a6354", emissiveIntensity: 0.25 }),
     /** Cast ballast: the kentledge at the foot and the counterweights. */
     kentledge: new THREE.MeshStandardMaterial({ color: "#8e8a83", map: concreteMap, roughness: 0.95, metalness: 0.02 }),
     /** Hoist rope and slings: thin, taut, catching just enough light to read. */

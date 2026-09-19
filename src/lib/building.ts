@@ -511,6 +511,9 @@ function addStorey(
  * striped and shimmered as the camera moved. A shadow gap is the fix and it
  * is also how the base of a building like this is detailed anyway.
  */
+/** Deck the crane wants beyond its own centre: base, kentledge, hoarding. */
+const CRANE_PAD = 2.7;
+
 export function plinth(site: Site) {
   const floor = site.floors[0];
   const axis = yardAxis(site);
@@ -522,18 +525,34 @@ export function plinth(site: Site) {
   const workSide = yardRadius(site) + PLANK.depth / 2 + 0.8;
   const farSide = reach + 2.4;
   const along = workSide + farSide;
-  const across = (onX ? floor.depth : floor.width) + SLAB_OVERHANG * 2 + 4.6;
+  /*
+    The other axis carries the crane, and the crane needs deck under its
+    base, its kentledge, and the hoarding that runs outside all of it. It
+    stands as close to the building as it can while clearing it, which on a
+    symmetric deck left it a metre and a half from the edge — so the base
+    hung off the plinth into the black, invisible from the front where the
+    crane always is and obvious the moment there was a fence to run through
+    or an orbit to walk round.
+
+    So this axis is asymmetric too, the same way the laydown side is: as
+    much as the crane asks for on its side, the old margin on the other.
+  */
+  const sideOf = onX ? site.crane.position[2] : site.crane.position[0];
+  const margin = (onX ? floor.depth : floor.width) / 2 + SLAB_OVERHANG + 2.3;
+  const craneRoom = Math.max(margin, Math.abs(sideOf) + CRANE_PAD);
+  const across = craneRoom + margin;
   // The base is no longer centred on the building; it is pushed out the way
-  // the work happens.
+  // the work happens, and back the way the crane stands.
   const shift = ((workSide - farSide) / 2) * (onX ? axis.nx : axis.nz);
+  const back = ((margin - craneRoom) / 2) * Math.sign(sideOf || 1);
   return {
     width: onX ? along : across,
     depth: onX ? across : along,
     height: 0.62,
     lip: 0.5,
     top: DECK_Y,
-    offsetX: onX ? shift : 0,
-    offsetZ: onX ? 0 : shift,
+    offsetX: onX ? shift : back,
+    offsetZ: onX ? back : shift,
   };
 }
 

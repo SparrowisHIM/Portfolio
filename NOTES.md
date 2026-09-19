@@ -399,6 +399,38 @@ Left dormant, because they undo the presentation Efe approved:
   netting/banners with wind and pointer interaction; the scaffold netting is
   a static sheet for now and Cloth is the upgrade if it needs to move.
 
+### The hoarding, and what it exposed
+
+`Hoarding.tsx`. Painted ply on posts with a capping rail, warning plates,
+and a gated opening on the face the laydown is served across. Up from the
+first frame — you hoard a site before you start. Blue, which is what half
+the hoarding in the country is and what the reference site used; it sits at
+the boundary rather than in the middle of it, so it frames the deck instead
+of competing with the building, which is the opposite of what happened when
+the crane was painted.
+
+**A fence at the edge of the deck is a test of whether anything is actually
+on the deck**, and two things were not:
+
+- **The crane base.** It stands as close to the building as it can while
+  clearing it, and the plinth only carried an apron on the laydown side, so
+  the kentledge hung a metre and a quarter out in the black. Invisible from
+  the front, where the crane always is. `plinth()` is now asymmetric on the
+  crane axis as well as the laydown one — as much as the crane asks for on
+  its side, the old margin on the other — and `Crane.tsx` clamps its base
+  to the deck that is left, minus room for the fence to pass outside it.
+- **The site dressing.** Cabin, skip, rebar, mast, cones and pallets are
+  placed on bearings off the open face at radii that know nothing about the
+  shape of the deck. Efe caught the cabin standing half in and half out of
+  the fence. `insideHoarding` pulls each one in by its own footprint: the
+  bearing decides where a thing belongs, the deck decides whether it fits.
+
+Gate leaves were the first idea and cannot work. There is only 380mm of
+deck outside the line, so a swung leaf hangs off the plinth — the exact
+fault just fixed on the crane base — and swung inward it lands in the
+laydown, because the gate belongs on the side the pile is served across. An
+opening with a header over it reads as a gate on its own.
+
 ### The scaffold
 
 Rebuilt, not switched on. The old one drew a single run with only the

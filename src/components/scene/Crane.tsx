@@ -75,6 +75,26 @@ export function Crane({ site, build, animate }: CraneProps) {
   const m = materials();
   // The crane stands on the plinth with everything else, not on y = 0.
   const deck = useMemo(() => plinth(site).top, [site]);
+  /*
+    How far the base may reach before it runs out of deck.
+
+    The crane stands close to the edge on the side it works from — it has to
+    clear the building, and the plinth only carries an apron on the laydown
+    side — so a cruciform sized by eye put the kentledge a metre and a
+    quarter out in the black. Invisible from the front, where the crane
+    always is; not invisible from a free orbit, and not once there is a
+    fence along that edge to run through.
+  */
+  const reach = useMemo(() => {
+    const b = plinth(site);
+    const room = (c: number, centre: number, half: number) =>
+      Math.min(centre + half - c, c - (centre - half));
+    const x = room(crane.position[0], b.offsetX, b.width / 2);
+    const z = room(crane.position[2], b.offsetZ, b.depth / 2);
+    // Back off far enough that the hoarding can pass outside the base as
+    // well: its line is set in from the edge and its posts stand proud.
+    return Math.max(1.1, Math.min(x, z) - 0.8);
+  }, [site, crane]);
   const slew = useRef<THREE.Group>(null);
   const trolley = useRef<THREE.Group>(null);
   const load = useRef<THREE.Group>(null);
@@ -104,27 +124,38 @@ export function Crane({ site, build, animate }: CraneProps) {
     const mast = lattice({ x: 0, z: 0, y0: 0.4, y1: crane.mastHeight, width: MAST, panel: PANEL, chord: 0.11, brace: 0.05 });
     // Cruciform base: the pedestal, the two cross girders, and the feet
     // they bear on. A tower crane is held down by weight, not by the deck.
+    const arm = reach;
     const base: Instance[] = [
       box([0, 0.2, 0], [MAST + 0.9, 0.5, MAST + 0.9]),
-      box([0, 0.14, 0], [4.8, 0.3, 0.34]),
-      box([0, 0.14, 0], [0.34, 0.3, 4.8]),
+      box([0, 0.14, 0], [arm * 2, 0.3, 0.34]),
+      box([0, 0.14, 0], [0.34, 0.3, arm * 2]),
     ];
+    const foot = Math.min(0.8, arm * 0.7);
     for (const [fx, fz] of [
-      [2.1, 0],
-      [-2.1, 0],
-      [0, 2.1],
-      [0, -2.1],
+      [arm - foot / 2, 0],
+      [-(arm - foot / 2), 0],
+      [0, arm - foot / 2],
+      [0, -(arm - foot / 2)],
     ]) {
-      base.push(box([fx, 0.09, fz], [0.8, 0.18, 0.8]));
+      base.push(box([fx, 0.09, fz], [foot, 0.18, foot]));
     }
     // Kentledge: four cast blocks on the feet. The single cheapest thing
     // that stops the mast reading as a stick pushed into the deck.
+    /*
+      Kentledge on the four feet, sized to whatever deck is left. It is what
+      holds a tower crane down, and the cheapest thing that stops the mast
+      reading as a stick pushed into the deck — but only while it is on the
+      deck.
+    */
     const kentledge: Instance[] = [];
+    const kd = Math.min(0.9, arm * 0.62);
+    const kw = Math.min(2.2, arm * 1.5);
+    const kc = arm - kd / 2;
     for (const [kx, kz, w, d] of [
-      [2.1, 0, 1.0, 2.2],
-      [-2.1, 0, 1.0, 2.2],
-      [0, 2.1, 2.2, 1.0],
-      [0, -2.1, 2.2, 1.0],
+      [kc, 0, kd, kw],
+      [-kc, 0, kd, kw],
+      [0, kc, kw, kd],
+      [0, -kc, kw, kd],
     ]) {
       kentledge.push(box([kx, 0.42, kz], [w, 0.48, d]));
       kentledge.push(box([kx, 0.88, kz], [w * 0.94, 0.44, d * 0.94]));
@@ -226,7 +257,7 @@ export function Crane({ site, build, animate }: CraneProps) {
       ballast,
       lights,
     };
-  }, [crane]);
+  }, [crane, reach]);
 
   useFrame(({ clock }, delta) => {
     const dt = Math.min(delta, 1 / 30);

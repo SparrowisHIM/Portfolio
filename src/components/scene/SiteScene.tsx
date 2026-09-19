@@ -14,6 +14,7 @@ import { Welding } from "./Welding";
 import { Workers } from "./Workers";
 import { SiteYard } from "./SiteYard";
 import { Scaffold } from "./Scaffold";
+import { Hoarding } from "./Hoarding";
 import { Bursts } from "./Bursts";
 import { Pointer } from "./Pointer";
 import { CameraRig } from "./CameraRig";
@@ -220,6 +221,7 @@ export function SiteScene({
       <Crane site={site} build={build} animate={animate} />
       <Welding site={site} build={build} animate={animate} />
       <Workers site={site} build={build} animate={animate} />
+      <Hoarding site={site} />
       <Scaffold site={site} build={build} />
       <SiteYard site={site} build={build} />
       {/*
