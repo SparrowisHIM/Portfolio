@@ -106,7 +106,23 @@ rules, which still hold:
 - `src/components/scene/Workers.tsx` — two figures: a welder at the arc, a
   banksman on the highest slab with his arm up while the load is on the hook.
 - `src/components/scene/SiteYard.tsx` — the laydown stack, cabin, skip, rebar,
-  lighting mast, cones, pallets.
+  lighting mast, cones, pallets, and the light shafts off the mast heads.
+
+  **The beams are cones, not haze.** There is nothing in the air here to
+  scatter in and adding some means shading every pixel in the frame for it.
+  The cone fades on two axes: along its length from the lamp, so the shaft
+  is gone before it reaches the deck and the ellipse it would cut there
+  goes with it; and across it by `abs(dot(normal, view))`, so the middle is
+  brightest. **Get that second one backwards** — using `1 - abs(dot(...))`,
+  which is the rim-light reflex — **and you get a hollow tube with two
+  bright edges, which reads as a cone-shaped object rather than as light.**
+
+  Back faces only. Both walls shades the shaft twice and doubles it against
+  itself down the middle; the far wall alone gives the same gradient.
+
+  They are aimed short of the tower, at the deck in front of it. The mast
+  stands outside the scaffold runs, so anything it points at the building
+  is cut off by them within a couple of metres.
 - `src/components/scene/StudioEnvironment.tsx` — a lighting rig built in code
   and pre-filtered into a cube map, so the glass has something to reflect.
 - `Crane.tsx`, `CameraRig.tsx`, `SiteScene.tsx`, `Pointer.tsx`.

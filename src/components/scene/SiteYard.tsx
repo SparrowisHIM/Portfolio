@@ -287,8 +287,117 @@ function RebarStack({ position, turn, m }: { position: [number, number, number];
   );
 }
 
+const beamVertex = /* glsl */ `
+varying float vAlong;
+varying vec3 vNormal;
+varying vec3 vView;
+uniform float uLength;
+void main() {
+  // The cone's apex is at +h/2 and its base at -h/2, so this runs 0 at the
+  // ground end to 1 at the lamp.
+  vAlong = clamp(position.y / uLength + 0.5, 0.0, 1.0);
+  vNormal = normalize(normalMatrix * normal);
+  vec4 view = modelViewMatrix * vec4(position, 1.0);
+  vView = -view.xyz;
+  gl_Position = projectionMatrix * view;
+}
+`;
+
+/*
+  A beam of lit air.
+
+  There is no haze in this scene to scatter in and adding some would mean
+  shading every pixel of the frame for it, so the beam is the cone itself:
+  additive, never writing depth, and faded on two axes.
+
+  Along its length it falls off from the lamp, so the shaft is brightest at
+  the source and gone by the time it reaches the ground — which also hides
+  the ellipse the cone would otherwise cut where it meets the deck.
+
+  Across it, brightness follows how squarely the surface faces the camera.
+  That is the opposite of a rim: a cone seen from the side is thickest
+  along its own axis, so the middle should be the brightest part of the
+  shaft and the silhouette the faintest. Getting that backwards gives you
+  a hollow tube with two bright edges, which reads as a cone-shaped object
+  rather than as light.
+*/
+const beamFragment = /* glsl */ `
+varying float vAlong;
+varying vec3 vNormal;
+varying vec3 vView;
+uniform vec3 uColor;
+uniform float uStrength;
+void main() {
+  float lengthFade = pow(vAlong, 1.7);
+  float facing = abs(dot(normalize(vNormal), normalize(vView)));
+  gl_FragColor = vec4(uColor, lengthFade * pow(facing, 1.3) * uStrength);
+}
+`;
+
+/** The shaft from one lamp head, aimed at a point. */
+function Beam({ from, to, spread }: { from: THREE.Vector3; to: THREE.Vector3; spread: number }) {
+  const { position, quaternion, length, material } = useMemo(() => {
+    const axis = new THREE.Vector3().subVectors(from, to);
+    const len = axis.length();
+    const q = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      axis.clone().normalize(),
+    );
+    return {
+      position: new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5),
+      quaternion: q,
+      length: len,
+      material: new THREE.ShaderMaterial({
+        vertexShader: beamVertex,
+        fragmentShader: beamFragment,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        /*
+          Back faces only. Drawing both walls of the cone shades the shaft
+          twice over and doubles it against itself down the middle; the far
+          wall on its own gives the same gradient for half the fill, which
+          on a transparent additive surface is the whole cost.
+        */
+        side: THREE.BackSide,
+        uniforms: {
+          uColor: { value: new THREE.Color("#ffca8c") },
+          uStrength: { value: 0.62 },
+          uLength: { value: len },
+        },
+      }),
+    };
+  }, [from, to]);
+
+  return (
+    <mesh position={position} quaternion={quaternion} material={material} renderOrder={2}>
+      <coneGeometry args={[length * spread, length, 22, 1, true]} />
+    </mesh>
+  );
+}
+
 /** A lighting mast at the edge of the deck, aimed in at the work. */
 function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
+  /*
+    Where the heads are pointing, in the mast's own space. The spot already
+    aims at the world origin — the middle of the site — so the shafts have
+    to agree with it or the light will be coming from somewhere the beam is
+    not.
+  */
+  const aim = useMemo(() => {
+    /*
+      Aimed short of the tower, at the deck in front of it. Aimed at the
+      building the shaft is cut off by the scaffold within a couple of
+      metres — the mast stands outside the runs, so anything it points at
+      the frame goes through them first.
+    */
+    const target = new THREE.Vector3(-position[0] * 0.42, 0.2 - position[1], -position[2] * 0.42);
+    return [-0.26, 0.26].map((o) => ({
+      from: new THREE.Vector3(o, 4.35, 0.27),
+      to: target.clone().add(new THREE.Vector3(o * 2.4, 0, 0)),
+    }));
+  }, [position]);
+
   return (
     <group position={position}>
       <mesh position={[0, 0.12, 0]} castShadow material={m.steelDark}>
@@ -326,6 +435,9 @@ function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
         distance={42}
         decay={1.25}
       />
+      {aim.map((a, i) => (
+        <Beam key={i} from={a.from} to={a.to} spread={0.3} />
+      ))}
     </group>
   );
 }
