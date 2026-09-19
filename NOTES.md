@@ -125,13 +125,75 @@ with the foot planted, and retracts the same way scrolling back down.
   clear of the base, planted in black beside the model at y = 0 while
   everything else sat at the plinth top — that was most of why it read as
   disconnected.
-- Mast is `totalHeight + 2.9..3.7`. Taller and the jib spends the whole
-  scroll above the frame.
+- **It is painted.** `CRANE_PAINT` in `materials.ts`. It was `#23272d` at
+  metalness 0.55, which is about 0.018 in linear — darker than the studio it
+  stands in, and a dark metal in a dark room has nothing to reflect either.
+  The largest object in the frame had no local colour and read as an
+  armature. Real tower cranes are painted to be seen. `CRANE_PAINT_GREY` is
+  the other way to go and is a one-line swap. **The trap the old colour set
+  is the same one the concrete set: measure the linear value before blaming
+  the lights.**
+- Mast is `totalHeight + 3.5..4.3`. Half a metre taller than it was, because
+  the hook hangs a full rigging below the trolley now and on a short mast
+  over the top level the hoist height worked out *above* the rope's own
+  anchor. `cranePose` also clamps the hook a `MIN_ROPE` below the trolley.
+  Taller still and the jib spends the whole scroll above the frame.
 - Carries a **precast plate 7.4 × 3.2m**, about a quarter of the floor. It
   used to carry a plate the size of the entire floor plate, which was the
   largest object in the hero frame; then a 3.4m plank, which was too small to
   look like it was building anything.
-- Picks off a **real stack** that shrinks as the building goes up.
+- Picks off a **real stack** that draws down as the building goes up and
+  then holds at `STACK_MIN`. It used to run to nothing by the top floor,
+  which reads as a yard that has finished rather than one that is working.
+
+### The lift, and why it is one file's worth of constants
+
+The plate used to *appear* on the hook: `loaded` was true from t = 0, and
+the hook's height over the yard was `0.16 + SLAB_THICKNESS * (n + 1)` — a
+guess. The yard meanwhile stacked `SLAB` (0.34) plates on `plinth().top`.
+Two thicknesses, two ideas of where the deck was, so the plate on the hook
+was never where the pile was.
+
+`construction.ts` now owns `PLATE_T`, `DECK_Y`, `STACK_PITCH` and
+`stackPlateY(i)`, and `building.ts` takes `SLAB` and `plinth().top` from
+them. The import only goes that way — `building.ts` already imports from
+`construction.ts` for `plinth()`, so construction can never import back.
+
+With one pile to agree on, the lift is:
+
+```
+0.00 – 0.06   empty hook comes down onto the top plate
+0.06          SLINGS_AT: spreader lands, slings onto the anchors
+0.12          HITCH_AT: weight transfers; the plate leaves the pile from
+              exactly where it sat, and `remainingSlabs` drops by one
+0.12 – 0.32   hoist
+```
+
+`yardHookY` adds the lifted plate back onto the count while it is in the
+air, or the plate drops a whole pitch in the frame it is picked.
+
+### The lifting gear
+
+Hook block with an actual hook, a bridle, and a spreader frame two thirds
+of the plate wide with four slings hanging near vertical onto anchors cast
+into the plate. It was a box, a disc, and four slings running from a short
+bar out to the plate corners — over a seven metre plate that is two degrees
+off horizontal, and they read as scratches lying on the concrete.
+
+Painted (`m.rigging`), for the same reason as the crane: dark steel against
+the underside of a plate is nothing at all. The whole assembly has to fit
+in `HOOK_ABOVE_SLAB` minus half a plate — about a metre — so the budget is
+block 0.30, hook 0.20, bridle 0.18, beam, slings 0.32. **Do not grow
+`HOOK_ABOVE_SLAB` without checking the hook still clears its own trolley.**
+
+### The laydown
+
+Timber between every pair of plates. The gap was there so the pile did not
+read as one solid block; empty, all it did was put a shadowed void between
+two lit faces, and Efe saw it straight away as a black line running through
+the stack. The dunnage runs past the ends of the plates and sits out near
+the edges, so it reads from any face — tucked into the middle it was only
+visible through the gap it was meant to be filling.
 
 ### The hero lighting pass
 
@@ -307,7 +369,14 @@ python cdp.py --out shot.png --scroll 1 --mouse 900,520            # hover
 python cdp.py --out shot.png --scroll 1 --mouse 900,520 --click
 python cdp.py --out shot.png --scroll 1 --drag "950,450,-420,0"    # orbit
 python cdp.py --out shot.png --scroll 0.8 --eval "window.scrollY"
+python cdp.py --out shot.png --scroll 0.3 --clip "600,540,300,190" --zoom 4
 ```
+
+`--clip` takes a viewport rectangle and a scale, which is the only way to
+get a close look at something small: the renderer keeps drawing at the
+pinned viewport, so nothing about the framing or the detail changes. It is
+how the hook and the laydown were judged. Clip is in *document*
+coordinates, so the driver adds the scroll offset for you.
 
 Real GPU frames at any size, and Efe can work over the top of it. Things the
 driver has to do, each learned the hard way:
@@ -383,17 +452,22 @@ trigger Rebuild. That is not a bug; ask before chasing it.
 Hover navigation, free orbit and mobile are done — see the sections above.
 What is left:
 
-1. **The night-shift game**, which Efe will rebuild as a whole game. Still do
-   not touch the files listed under *Do not touch*.
-2. Load time. 1.4s in production. Chase only if Efe finds it slow.
-3. The `metadataBase` warning in `next build`. One line in `layout.tsx` once
+1. **Mobile.** Built and pushed, then parked: Efe has not decided what he
+   wants there yet. It is behind `md:` and the `tall` keyframe overrides, so
+   it is self-contained if it needs reworking.
+2. **The night-shift game**, which Efe will rebuild as a whole game. Still do
+   not touch the files listed under *Do not touch*. `CranePose.hitched` is
+   optional precisely so that block stayed byte-for-byte.
+3. Load time. 1.4s in production. Chase only if Efe finds it slow.
+4. The `metadataBase` warning in `next build`. One line in `layout.tsx` once
    there is a real domain.
-4. `Instances.tsx` still fills from a `useLayoutEffect` rather than the frame
+5. `Instances.tsx` still fills from a `useLayoutEffect` rather than the frame
    loop. It has not bitten, but it is the same hazard as the blank building.
 
 ## Recent history
 
 ```
+34ac10c a crane that reads as a machine, and a lift that starts on the pile
 7dd62d2 a phone gets its own shot of the site, and a lift panel to travel in
 9615260 once it has topped out, the orbit comes off its leash
 ae47a4f point at a storey and it tells you whose floor it is
