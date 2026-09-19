@@ -52,6 +52,18 @@ export function SiteYard({
   const layout = useMemo(() => {
     const rnd = createRandom(site.seed ^ 0x51de);
     const half = Math.max(site.floors[0].width, site.floors[0].depth) / 2;
+    /*
+      Which hand the laydown is on, as a bearing off the open face. The
+      dressing is placed on bearings and the laydown is snapped to an axis,
+      so the two were free to land on the same spot — and the lighting mast
+      did, standing up through the middle of the pile.
+    */
+    const pile = yardPosition(site);
+    const toPile = Math.atan2(
+      Math.sin(Math.atan2(pile[0], pile[2]) - site.viewAngle),
+      Math.cos(Math.atan2(pile[0], pile[2]) - site.viewAngle),
+    );
+    const clearOfPile = toPile >= 0 ? -1 : 1;
     // Polar placement relative to the open face, so the near side of the
     // plinth stays clear and the dressing reads behind and beside.
     const at = (offset: number, out: number): [number, number] => {
@@ -65,7 +77,7 @@ export function SiteYard({
       skipTurn: site.viewAngle - 2.15,
       rebar: at(1.5, 2.6),
       rebarTurn: site.viewAngle + 1.5,
-      mast: at(-1.3, 3.0),
+      mast: at(clearOfPile * 1.35, 3.1),
       cones: [at(-0.6, 2.2), at(0.55, 2.4), at(1.05, 1.9)],
       pallets: [at(-1.75, 2.6), at(2.95, 2.8)],
       jitter: rnd.range(-0.15, 0.15),
@@ -277,7 +289,7 @@ function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
       <mesh position={[0, 0.12, 0]} castShadow material={m.steelDark}>
         <boxGeometry args={[0.7, 0.24, 0.7]} />
       </mesh>
-      <mesh position={[0, 2.2, 0]} castShadow material={m.crane}>
+      <mesh position={[0, 2.2, 0]} castShadow material={m.lampMast}>
         <cylinderGeometry args={[0.1, 0.14, 4.4, 8]} />
       </mesh>
       {[-0.26, 0.26].map((o) => (

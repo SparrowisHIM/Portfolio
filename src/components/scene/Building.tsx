@@ -35,6 +35,8 @@ type BuildingProps = {
   onSelectFloor?: (index: number) => void;
   /** Construction time: the same clock the crane and lights read. */
   build: RefObject<number>;
+  /** Latched once the last level is complete. Hover waits for it. */
+  topped: RefObject<boolean>;
   animate: boolean;
 };
 
@@ -108,7 +110,7 @@ function storeyOf(part: Part, levels: number) {
   return Math.min(levels - 1, Math.max(0, i));
 }
 
-export function Building({ site, build, animate, onSelectFloor }: BuildingProps) {
+export function Building({ site, build, topped, animate, onSelectFloor }: BuildingProps) {
   const parts = useMemo(() => buildParts(site), [site]);
   const base = useMemo(() => plinth(site), [site]);
 
@@ -205,7 +207,7 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
     <group>
       <Plinth base={base} materials={materials} />
       <HoverGlow site={site} animate={animate} />
-      <FloorPicker site={site} build={build} onSelect={onSelectFloor} />
+      <FloorPicker site={site} build={build} topped={topped} onSelect={onSelectFloor} />
       <SlabEdge site={site} />
       <FloorTag site={site} />
       {groups.map((group) => (
@@ -394,10 +396,12 @@ function PartGroup({
 function FloorPicker({
   site,
   build,
+  topped,
   onSelect,
 }: {
   site: Site;
   build: RefObject<number>;
+  topped: RefObject<boolean>;
   onSelect?: (index: number) => void;
 }) {
   const canvas = useThree((s) => s.gl.domElement);
@@ -410,9 +414,15 @@ function FloorPicker({
     [site],
   );
 
-  // A storey only answers the pointer once it is genuinely finished. Lighting
-  // up thin air where a floor has not been built yet would promise something
-  // the click cannot deliver.
+  /*
+    A storey only answers the pointer once the whole site has topped out.
+
+    The ground floor is complete from the first frame, so on arrival —
+    nothing built, a bare slab on an empty deck — pointing at it produced a
+    card reading "Vault Market, handed over". The finished tower is the
+    navigation; a building still going up is not offering anything yet.
+  */
+  const finished = () => topped.current ?? false;
   const done = (i: number) => floorProgress(i, build.current ?? 0) >= 1;
 
   // The canvas asks for a grab cursor so the whole scene reads as draggable.
@@ -436,7 +446,7 @@ function FloorPicker({
           key={b.i}
           position={[0, b.y, 0]}
           onPointerOver={(e) => {
-            if (!done(b.i) || orbit.dragging) return;
+            if (!finished() || !done(b.i) || orbit.dragging) return;
             e.stopPropagation();
             hover.index = b.i;
             setCursor("pointer");

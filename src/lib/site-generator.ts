@@ -13,6 +13,14 @@ export const LIFT = FLOOR_HEIGHT / 2;
 
 export type Vec3 = [number, number, number];
 
+/**
+ * The face the building is read from, and the corner the crane works off.
+ *
+ * Deliberately constants. See `generateSite`.
+ */
+const VIEW_SIDE: Side = "+z";
+const CRANE_CORNER: 1 | -1 = -1;
+
 /** The ground-level shot: where the visitor stands when they arrive. */
 export const HERO = {
   /** Orbit angle relative to the site's view angle. */
@@ -173,10 +181,17 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   const baseDepth = rnd.range(9.4, 10.2);
   const count = floorFlags.length;
 
-  // The open face is the one the visitor looks at. The crane stands behind
-  // the building, off one corner, so it is beside the silhouette and never
-  // between the camera and the structure. Scaffolding takes the side faces.
-  const viewSide = rnd.pick(SIDES);
+  /*
+    The open face is the one the visitor looks at. The crane stands behind
+    the building, off one corner, so it is beside the silhouette and never
+    between the camera and the structure. Scaffolding takes the side faces.
+
+    Fixed, not seeded. Rebuild changes the site; it does not change where
+    you stand to look at it. Every load has to open on the same composition,
+    and a seeded view side meant every rebuild was a different photograph of
+    a different building.
+  */
+  const viewSide: Side = VIEW_SIDE;
   const craneSide = OPPOSITE[viewSide];
   const lateralSides = SIDES.filter((s) => s !== viewSide && s !== craneSide);
   const scaffoldSides = lateralSides.filter(() => rnd.chance(0.55));
@@ -188,7 +203,9 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   // the base entirely, in the black beside the model, which is why it never
   // looked like it was working on anything.
   const craneDistance = (craneHorizontal ? baseDepth : baseWidth) / 2 + rnd.range(1.4, 2.0);
-  const craneCorner = rnd.chance(0.5) ? 1 : -1;
+  // Which corner the crane stands off, and so which hand the laydown is on.
+  // Fixed with the view, for the same reason.
+  const craneCorner = CRANE_CORNER;
   const craneAlong = craneCorner * ((craneHorizontal ? baseWidth : baseDepth) / 2 + rnd.range(0.5, 2));
   const cranePosition: Vec3 = craneHorizontal
     ? [craneAlong, 0, craneSign * craneDistance]

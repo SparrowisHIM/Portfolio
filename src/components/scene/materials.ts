@@ -65,6 +65,14 @@ function create() {
      * gear separates from the jib it hangs off.
      */
     rigging: new THREE.MeshStandardMaterial({ color: "#dcb864", roughness: 0.6, metalness: 0.12, envMapIntensity: 0.6 }),
+    /**
+     * The site lighting mast.
+     *
+     * Its own material, not the crane's. It shared it while the crane was
+     * near black and nobody noticed; painted, the mast became a gold post
+     * standing in the middle of the laydown.
+     */
+    lampMast: new THREE.MeshStandardMaterial({ color: "#5a616c", roughness: 0.45, metalness: 0.6, envMapIntensity: 0.9 }),
     /** Cast ballast: the kentledge at the foot and the counterweights. */
     kentledge: new THREE.MeshStandardMaterial({ color: "#8e8a83", map: concreteMap, roughness: 0.95, metalness: 0.02 }),
     /** Hoist rope and slings: thin, taut, catching just enough light to read. */

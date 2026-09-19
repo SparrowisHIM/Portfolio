@@ -126,18 +126,26 @@ export function toppedOutAt(site: Site) {
   return window(site.floors.length).end;
 }
 
-/** Which level the crane is working on, and how far along it is. */
+/**
+ * Which level the crane is working on, and how far along it is.
+ *
+ * `idle` is the difference between working the top level and having nothing
+ * left to work. Both used to come back as `index === floors.length`, and the
+ * pose could not tell them apart — so the last lift was read as "stand by
+ * holding a plate overhead" and the roof slab simply appeared on the frame
+ * with no crane involved. The top floor is a lift like any other.
+ */
 export function craneJob(site: Site, f: number) {
   const count = site.floors.length;
   for (let i = 1; i <= count; i++) {
     const t = floorProgress(i, f);
-    if (t > 0 && t < 1) return { index: i, t };
+    if (t > 0 && t < 1) return { index: i, t, idle: false };
   }
   // Nothing mid-build. Either waiting on the next frame, or holding the last
   // one over the roof for whoever builds the next floor.
   const next = site.floors.findIndex((_, i) => i > 0 && floorProgress(i, f) === 0);
-  if (next !== -1) return { index: next, t: 0 };
-  return { index: count, t: 0.42 };
+  if (next !== -1) return { index: next, t: 0, idle: false };
+  return { index: count, t: 0.42, idle: true };
 }
 
 export type CranePose = {
@@ -257,7 +265,8 @@ export function cranePose(site: Site, f: number): CranePose {
   const { crane } = site;
   const job = craneJob(site, f);
   const floor = site.floors[Math.min(job.index, site.floors.length - 1)];
-  const overRoof = job.index >= site.floors.length;
+  // Standing by with a plate overhead, rather than placing one.
+  const overRoof = job.idle;
   const t = job.t;
 
   // The hook aims at the plate itself, not the tower axis: plates shift.
@@ -268,7 +277,14 @@ export function cranePose(site: Site, f: number): CranePose {
   const toYard = Math.atan2(yard[0] - crane.position[0], yard[2] - crane.position[2]);
   const rYard = Math.hypot(yard[0] - crane.position[0], yard[2] - crane.position[2]);
 
-  const floorY = overRoof ? site.totalHeight : floor.y;
+  /*
+    Where this lift lands. The levels are the storeys, but there is one more
+    slab than there are storeys — the cap — and it sits at `topLevel.y`. The
+    old line read `floor.y` off a clamped index, which for the last lift is
+    the storey below the one being capped: a whole floor out.
+  */
+  const landing = job.index < site.floors.length ? site.floors[job.index].y : site.topLevel.y;
+  const floorY = overRoof ? site.totalHeight : landing;
   const restY = floorY + HOVER + HOOK_ABOVE_SLAB;
   const hoistY = floorY + HOIST_CLEAR + HOOK_ABOVE_SLAB;
 
@@ -333,7 +349,11 @@ export function cranePose(site: Site, f: number): CranePose {
     trolley,
     hook: [crane.position[0] + Math.sin(angle) * trolley, y, crane.position[2] + Math.cos(angle) * trolley],
     loaded,
-    hitched: loaded || (t >= SLINGS_AT && !overRoof),
+    // On through the hitch and the carry, off the moment the structure
+    // takes the plate. Without the upper bound the spreader stayed on the
+    // hook for the rest of the cycle and was left lying across the roof and
+    // poking out through the slab edges on the way back to the yard.
+    hitched: loaded || (t >= SLINGS_AT && t < HITCH_AT),
     slab: PLANK,
     rotation: overRoof ? 0 : floor.rotation,
   };

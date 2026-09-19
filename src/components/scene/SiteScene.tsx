@@ -212,7 +212,7 @@ export function SiteScene({
       */}
       <directionalLight position={[-4, 8, 24]} intensity={0.85} color="#a6aebc" />
       <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} onToppedOut={onToppedOut} />
-      <Building site={site} build={build} animate={animate} onSelectFloor={onSelectFloor} />
+      <Building site={site} build={build} topped={topped} animate={animate} onSelectFloor={onSelectFloor} />
       <PlinthLights site={site} />
       <InteriorLights site={site} build={build} />
       <Crane site={site} build={build} animate={animate} />
