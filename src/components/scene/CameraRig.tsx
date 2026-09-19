@@ -56,53 +56,49 @@ function lerp(a: number, b: number, t: number) {
 }
 
 /**
- * How far back each floor stands, 0 for right under the work and 1 for a
- * pace back to take in the stack. A run of identical shots reads as one
- * long shot; alternating gives the climb a rhythm.
+ * How far back each floor stands, 0 for close on the work and 1 for the full
+ * elevation. Alternating gives the climb a rhythm; a run of identical shots
+ * reads as one long shot.
  */
-const RHYTHM = [0, 0.85, 0.3, 1, 0.15];
+const RHYTHM = [0.35, 1, 0.5, 0.9, 0.3];
 
 export function buildKeyframes(site: Site): Keyframe[] {
-  // Walk round the open face as the stack grows. The swing is wide enough
-  // that the massing reads through parallax — setbacks, the cantilever and
-  // the twist only show when the silhouette changes as you climb.
-  const sweep = 0.95;
+  // A three-quarter view, held. The building is an object on a plinth now,
+  // not a tower you stand under, and an object shot wants the whole of its
+  // subject in frame — the old rig deliberately cropped, because cropping is
+  // what made thin line work read as big. Solid concrete does not need that,
+  // and the proportion is only worth having if it is visible.
+  const sweep = 0.55;
   const start = site.viewAngle - sweep / 2;
   const step = sweep / (site.floors.length + 1);
+  // Enough distance to hold roughly twenty-four units of height at this fov.
+  // The old ceiling of about twenty-five units was set by 4cm steel going
+  // sub-pixel; the smallest thing here is a 5cm handrail against a 44cm
+  // column, so standing back no longer costs the drawing.
+  const far = 35;
   const frames: Keyframe[] = [
-    // Arrival: standing on the ground at the hoarding, looking up at the
-    // first frame going in. Eye height, close enough that the site fills
-    // the view — you are on it, not looking at a model of it.
-    // Aimed at 5.6 with the eye at 2.3, the only finished thing on the site —
-    // the lit ground plate — fell out of the bottom of the frame and under
-    // the buttons, leaving a third of the shot as empty sky. Drop the aim and
-    // come in: the plate sits in the lower third whole, the mast and the hook
-    // take the top, and you are still looking up at the work.
-    { lookY: 4.0, rise: -1.4, radius: 14.5, angle: site.viewAngle + HERO.angleOffset, fit: 0.8 },
+    // Arrival: the whole object, seen slightly from above, sitting on its
+    // plinth with the uplights catching the underside of the base slab.
+    { lookY: 6.5, rise: 5.2, radius: far * 0.86, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
   ];
-  // Floors: the camera climbs with the build and stays just under the slab
-  // being set, so the finished stack falls away out of the bottom of the
-  // frame. Being cropped is what makes the thing read as big.
+  // Floors: rise with the build so the working level stays around the upper
+  // third, without ever losing the base.
   site.floors.forEach((floor, i) => {
     const back = RHYTHM[i % RHYTHM.length];
     frames.push({
-      // Close beats stand under the work; stand-back beats drop to the
-      // middle of the stack and look level at it, so the whole tower is in
-      // frame without retreating past the range where 4cm steel reads.
-      lookY: lerp(floor.y + 1.1, floor.y * 0.62, back),
-      rise: lerp(-2.4, 1.4, back) + i * 0.2,
-      radius: lerp(13.5, 16.5 + floor.y * 0.5, back) + i * 0.4,
+      lookY: lerp(floor.y * 0.5 + 3.4, site.totalHeight * 0.44, back),
+      rise: lerp(3.2, 6.4, back) + i * 0.35,
+      radius: lerp(far * 0.82, far, back) + i * 0.5,
       angle: start + step * (i + 1),
       fit: 1,
     });
   });
-  // Roof: the payoff is drama, not an elevation. Low, looking up the last
-  // columns at the slab still on the hook, the tower running out of frame.
+  // Roof: the finished elevation, square on to the clear face.
   frames.push({
-    lookY: site.totalHeight * 0.98,
-    rise: -6.2,
-    radius: 21,
-    angle: start + sweep + 0.15,
+    lookY: site.totalHeight * 0.46,
+    rise: 6.8,
+    radius: far * 1.1,
+    angle: start + sweep,
     fit: 1,
   });
   return frames;
@@ -183,8 +179,8 @@ export function CameraRig({ site, section, build, sectionCount, animate, started
       const p = floorProgress(active, build.current ?? f);
       const framing = smoothstep(0.2, 0.62, p) * (1 - smoothstep(0.66, 0.95, p));
       const done = smoothstep(0.66, 0.98, p);
-      target.radius *= 1 - 0.12 * framing + 0.16 * done;
-      target.rise += 0.6 * done;
+      target.radius *= 1 - 0.05 * framing + 0.06 * done;
+      target.rise += 0.3 * done;
     }
 
     // Night shift: hold on the top of the stack and drift slowly round it.
