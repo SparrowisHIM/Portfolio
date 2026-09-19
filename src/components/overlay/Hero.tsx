@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { projects } from "@/lib/projects";
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -35,14 +36,26 @@ const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eig
 export function Hero({ started }: { started: boolean }) {
   const reduced = useReducedMotion();
   const floors = WORDS[projects.length] ?? String(projects.length);
+  const section = useRef<HTMLElement>(null);
+  // Fixed to the foot of a phone screen, the card has to be told when to
+  // leave: nothing carries it off the way the flow used to. Above the
+  // breakpoint the stylesheet pins the opacity back to 1, so the wide
+  // layout keeps scrolling its hero away exactly as it did.
+  const { scrollYProgress } = useScroll({ target: section, offset: ["start end", "end start"] });
+  const travel = useTransform(scrollYProgress, [0.5, 0.72], [1, 0]);
+  const catches = useTransform(travel, (v) => (v > 0.5 ? "auto" : "none"));
 
   return (
     <section
+      ref={section}
       id="ground"
-      className="flex h-screen items-end px-5 pb-28 md:items-center md:px-8 md:pb-0 md:pt-24"
+      className="h-screen md:flex md:items-center md:px-8 md:pt-24"
     >
-      <div className="pointer-events-auto max-w-[34rem]">
-        <h1 className="select-none font-display text-[clamp(88px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">
+      <motion.div
+        style={{ opacity: travel, pointerEvents: catches }}
+        className="pointer-events-auto fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-xl border border-steel-dim/45 bg-night-deep/80 p-4 backdrop-blur-md md:static md:inset-x-auto md:bottom-auto md:w-auto md:max-w-[34rem] md:rounded-none md:border-0 md:bg-transparent md:p-0 md:opacity-100! md:backdrop-blur-none"
+      >
+        <h1 className="select-none font-display text-[clamp(58px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">
           <Line delay={1.3} started={started}>
             Build
           </Line>
@@ -55,16 +68,16 @@ export function Hero({ started }: { started: boolean }) {
           animate={{ opacity: started || reduced ? 1 : 0 }}
           transition={{ duration: 0.8, delay: 1.9 }}
         >
-          <p className="mt-6 max-w-[26rem] text-[17px] leading-relaxed text-chalk">
+          <p className="mt-3 max-w-[26rem] text-[15px] leading-relaxed text-chalk md:mt-6 md:text-[17px]">
             A portfolio under construction.
           </p>
-          <p className="mt-2 max-w-[26rem] text-[15px] leading-relaxed text-chalk-dim">
+          <p className="mt-1.5 max-w-[26rem] text-[13px] leading-relaxed text-chalk-dim md:mt-2 md:text-[15px]">
             I&apos;m Efe, a design engineer. Scroll to climb: {floors} floors
             of work are up and the crane is still running.
           </p>
           <a
             href={`#${projects[0].slug}`}
-            className="group mt-10 inline-flex items-center gap-3 text-[14px] text-chalk-dim transition-colors hover:text-sodium"
+            className="group mt-4 inline-flex items-center gap-3 text-[14px] text-chalk-dim transition-colors hover:text-sodium md:mt-10"
           >
             <span className="relative block h-10 w-px overflow-hidden bg-steel-dim">
               <span className="climb-line absolute inset-x-0 top-0 h-4 bg-sodium" />
@@ -72,7 +85,7 @@ export function Hero({ started }: { started: boolean }) {
             Climb
           </a>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 }

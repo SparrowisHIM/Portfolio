@@ -34,13 +34,20 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
     <section
       ref={section}
       id={project.slug}
-      className="flex h-screen items-end px-5 pb-32 md:items-center md:px-8 md:pb-0 md:pt-24"
+      className="h-screen md:flex md:items-center md:px-8 md:pt-24"
       aria-label={`Floor ${number}: ${project.title}`}
     >
       {/* Pinned clear of the wordmark: the copy parks in its band and fades
-          out rather than sliding up through the header. */}
+          out rather than sliding up through the header.
+
+          On a phone it is fixed to the foot of the screen instead. Sticky
+          cannot do this job: sticky only ever pulls an element back up
+          toward an edge, and what is wanted here is the opposite — hold the
+          card down at the bottom of the viewport while its section is still
+          arriving. Left in flow the cards ride their sections, and two of
+          them meet half-lit in the middle of the screen between floors. */}
       <motion.div
-        className="sticky top-[34vh] max-w-[26rem] md:top-[22vh]"
+        className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:bottom-auto md:top-[22vh] md:w-auto md:max-w-[26rem]"
         style={{ opacity: travel, pointerEvents: active ? "auto" : "none" }}
       >
         <motion.div
@@ -51,24 +58,25 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
               ? { duration: 0.2 }
               : { duration: 0.55, times: [0, 0.2, 0.35, 1], ease: "linear" }
           }
+          className="rounded-xl border border-steel-dim/45 bg-night-deep/80 p-4 backdrop-blur-md md:rounded-none md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
         >
         <p className="flex items-baseline gap-3">
-          <span className="select-none font-display text-[84px] font-extrabold leading-none text-sodium">
+          <span className="select-none font-display text-[46px] font-extrabold leading-none text-sodium md:text-[84px]">
             {number}
           </span>
           <span className="text-[14px] text-chalk-dim">Floor</span>
         </p>
-        <h2 className="select-none mt-4 font-display text-[40px] font-bold uppercase leading-none tracking-wide text-chalk">
+        <h2 className="select-none mt-2 font-display text-[28px] font-bold uppercase leading-none tracking-wide text-chalk md:mt-4 md:text-[40px]">
           {project.title}
         </h2>
-        <p className="mt-4 text-[15px] leading-relaxed text-chalk-dim">
+        <p className="mt-2.5 text-[13px] leading-relaxed text-chalk-dim md:mt-4 md:text-[15px]">
           {project.description}
         </p>
-        <p className="mt-4 text-[13px] text-steel">
+        <p className="mt-2.5 text-[12px] text-steel md:mt-4 md:text-[13px]">
           {project.stack.join(", ")}
           {project.finished ? "" : " (still in progress)"}
         </p>
-        <div className="mt-6 flex flex-wrap gap-6 text-[14px]">
+        <div className="mt-4 flex flex-wrap gap-6 text-[14px] md:mt-6">
           {project.live ? (
             <>
               <a

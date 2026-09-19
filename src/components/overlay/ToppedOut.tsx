@@ -34,7 +34,7 @@ export function ToppedOut({ topped }: { topped: boolean }) {
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
           transition={{ duration: reduced ? 0.2 : 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="pointer-events-none fixed inset-x-0 bottom-24 z-20 mx-auto flex w-fit items-center gap-2.5 rounded-full border border-steel-dim bg-night-deep/80 py-2 pl-3 pr-4 text-[13px] text-chalk-dim backdrop-blur md:bottom-28"
+          className="pointer-events-none fixed inset-x-0 bottom-[43%] z-20 mx-auto flex w-fit max-w-[92vw] items-center gap-2.5 rounded-full border border-steel-dim bg-night-deep/80 py-2 pl-3 pr-4 text-[13px] text-chalk-dim backdrop-blur md:bottom-28"
         >
           <span className="grid h-6 w-6 place-items-center rounded-full bg-sodium/15 text-sodium">
             {/* Drag: a span with a head at each end. An orbit ring reads as
@@ -46,7 +46,7 @@ export function ToppedOut({ topped }: { topped: boolean }) {
             </svg>
           </span>
           <span>
-            <span className="text-chalk">Topped out.</span> Drag to walk round it, or point at a floor.
+            <span className="text-chalk">Topped out.</span> Drag to walk round it, or pick a floor.
           </span>
         </motion.p>
       )}

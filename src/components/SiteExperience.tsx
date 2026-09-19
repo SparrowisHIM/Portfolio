@@ -14,6 +14,7 @@ import { Hero } from "./overlay/Hero";
 import { FloorPanel } from "./overlay/FloorPanel";
 import { Roof } from "./overlay/Roof";
 import { RebuildButton } from "./overlay/RebuildButton";
+import { FloorRail } from "./overlay/FloorRail";
 import { Loader } from "./overlay/Loader";
 import { WalkIn } from "./overlay/WalkIn";
 import { NightShift } from "./overlay/NightShift";
@@ -99,7 +100,7 @@ export function SiteExperience() {
           started={ready}
           rich={wide}
           shiftX={wide ? HERO.shift : 0}
-          shiftY={wide ? 0 : 0.18}
+          shiftY={wide ? 0 : 0.155}
           onReady={onReady}
           onToppedOut={onToppedOut}
           onSelectFloor={(index) => {
@@ -116,7 +117,7 @@ export function SiteExperience() {
         {/* On small screens the copy sits over the ground, so shade it. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[54%] bg-gradient-to-t from-background via-background/80 to-transparent md:hidden"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] bg-gradient-to-t from-background via-background/45 to-transparent md:hidden"
         />
       </div>
 
@@ -139,6 +140,7 @@ export function SiteExperience() {
       </div>
 
       {!playing && <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} onPlay={clockOn} />}
+      {!playing && <FloorRail section={section} sectionCount={SECTION_COUNT} />}
       {!playing && <ToppedOut key={seed} topped={topped} />}
       <NightShift onAgain={again} onLeave={clockOff} />
       <WalkIn project={walkIn} onClose={closeWalkIn} />

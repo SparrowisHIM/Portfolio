@@ -24,6 +24,19 @@ type Keyframe = {
    * the finished tower is tall and barely does.
    */
   fit: number;
+  /**
+   * What this shot becomes on a phone held upright, blended in by how narrow
+   * the screen is.
+   *
+   * A shot composed for a landscape frame does not simply crop to a portrait
+   * one. The arrival is the case that proves it: nothing is built yet, so the
+   * subject is a four metre deck, and in a frame twice as tall as it is wide
+   * no amount of backing off or sliding up turns that into a composition —
+   * it is a strip of light with black above and below. The phone needs a
+   * different shot of the same site, and the tall thing on a site before
+   * anything is built is the crane.
+   */
+  tall?: Partial<Omit<Keyframe, "tall">>;
 };
 
 type CameraRigProps = {
@@ -75,6 +88,33 @@ function lerp(a: number, b: number, t: number) {
 }
 
 /**
+ * A keyframe eased toward its portrait version by `p`.
+ *
+ * Written into a scratch object rather than returned fresh, because this
+ * runs twice a frame for the whole life of the page.
+ */
+function shape(out: Keyframe, k: Keyframe, p: number) {
+  const t = k.tall;
+  out.lookY = t?.lookY === undefined ? k.lookY : lerp(k.lookY, t.lookY, p);
+  out.rise = t?.rise === undefined ? k.rise : lerp(k.rise, t.rise, p);
+  out.radius = t?.radius === undefined ? k.radius : lerp(k.radius, t.radius, p);
+  out.fit = t?.fit === undefined ? k.fit : lerp(k.fit, t.fit, p);
+  // Angles take the short way round, or turning the phone walks the camera
+  // the long way about the site.
+  out.angle =
+    t?.angle === undefined
+      ? k.angle
+      : k.angle + shortestTurn(t.angle - k.angle) * p;
+  return out;
+}
+
+/** The same turn expressed as the smaller of the two ways round. */
+function shortestTurn(delta: number) {
+  const wrapped = ((delta + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  return wrapped;
+}
+
+/**
  * How far back each floor stands, 0 for close on the work and 1 for the full
  * elevation. Alternating gives the climb a rhythm; a run of identical shots
  * reads as one long shot.
@@ -95,26 +135,62 @@ export function buildKeyframes(site: Site): Keyframe[] {
   // sub-pixel; the smallest thing here is a 5cm handrail against a 44cm
   // column, so standing back no longer costs the drawing.
   const far = 43;
+  // Standing opposite the crane puts its mast behind the tower instead of
+  // beside it. On a landscape screen there is room for both; upright there
+  // is not, and a crane cropped off the edge of the frame is a crane that
+  // has stopped working.
+  const facingCrane = Math.atan2(-site.crane.position[0], -site.crane.position[2]);
   const frames: Keyframe[] = [
     // Arrival: the whole object, seen slightly from above, sitting on its
     // plinth with the uplights catching the underside of the base slab.
     // Nothing is built yet, so the subject is four metres tall, not twenty.
     // Aiming at mid-tower left it sitting in the bottom corner of an empty
     // frame; come down and in so the site fills the shot it opens on.
-    { lookY: 3.0, rise: 3.2, radius: far * 0.88, angle: site.viewAngle + HERO.angleOffset * 0.5, fit: 1 },
+    // Most of the correction: nothing is built yet, so the subject is the
+    // deck and the laydown, which is the one genuinely wide shot in the run.
+    {
+      lookY: 3.0,
+      rise: 3.2,
+      radius: far * 0.88,
+      angle: site.viewAngle + HERO.angleOffset * 0.5,
+      fit: 0.9,
+      // Upright, the arrival turns to face the crane down the barrel: stand
+      // opposite it and it rises out of the middle of the deck instead of
+      // running off the left edge, which gives the shot the one vertical
+      // the site has before a single floor is up.
+      tall: {
+        lookY: 14.8,
+        rise: 3.0,
+        radius: far * 1.54,
+        fit: 0,
+        angle: facingCrane,
+      },
+    },
   ];
   // Floors: rise with the build so the working level stays around the upper
   // third, without ever losing the base.
   site.floors.forEach((floor, i) => {
     const back = RHYTHM[i % RHYTHM.length];
+    // Aimed a little high, so the jib and the hook stay in the shot with
+    // the level being worked on. A crane you cannot see is not working.
+    const lookY = lerp(floor.y * 0.5 + 4.6, site.totalHeight * 0.54, back);
+    const radius = lerp(far * 0.82, far, back) + i * 0.5;
     frames.push({
-      // Aimed a little high, so the jib and the hook stay in the shot with
-      // the level being worked on. A crane you cannot see is not working.
-      lookY: lerp(floor.y * 0.5 + 4.6, site.totalHeight * 0.54, back),
+      lookY,
       rise: lerp(2.2, 4.6, back) + i * 0.3,
-      radius: lerp(far * 0.82, far, back) + i * 0.5,
+      radius,
       angle: start + step * (i + 1),
-      fit: 1,
+      // A close shot on a floor is looking at a plate, which is wide; a long
+      // one is looking at the stack, which is tall. Only the first needs the
+      // camera back on a narrow screen.
+      fit: lerp(0.85, 0.55, back),
+      // Upright, every floor lifts and stands back a little. The copy card
+      // has the bottom third of the screen, so the shot has to hold both the
+      // level being worked and the hook over it inside what is left — and
+      // the three-quarter view is worth keeping to do it, because swinging
+      // round to put the mast behind the tower flattens the elevation and
+      // still leaves the jib above the frame.
+      tall: { lookY: lookY + 3.4, radius: radius * 1.12 },
     });
   });
   // Roof: the finished elevation, square on to the clear face.
@@ -123,7 +199,10 @@ export function buildKeyframes(site: Site): Keyframe[] {
     rise: 5.0,
     radius: far * 1.1,
     angle: start + sweep,
-    fit: 1,
+    // Almost none. Vertical field of view does not change with aspect, and
+    // this shot is bound by the height of the tower, not its width — backing
+    // off for a portrait screen here only makes the subject a thumbnail.
+    fit: 0.6,
   });
   return frames;
 }
@@ -141,6 +220,9 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
   const pointer = useRef({ x: 0, y: 0 });
   const current = useRef<Keyframe | null>(null);
   const look = useRef(new THREE.Vector3());
+  // Scratch for the two keyframes being blended toward their portrait forms.
+  const shapeA = useMemo<Keyframe>(() => ({ lookY: 0, rise: 0, radius: 0, angle: 0, fit: 0 }), []);
+  const shapeB = useMemo<Keyframe>(() => ({ lookY: 0, rise: 0, radius: 0, angle: 0, fit: 0 }), []);
   const drag = useRef({
     active: false,
     lastX: 0,
@@ -212,11 +294,16 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
     const f = section.current ?? 0;
     const i = Math.min(frames.length - 2, Math.max(0, Math.floor(f)));
     const t = f - i;
-    const a = frames[i];
-    const b = frames[i + 1];
     // Portrait screens see a narrower slice. How far to back off depends on
-    // the shot: each keyframe says how much of the correction it wants.
+    // the shot: each keyframe says how much of the correction it wants, and
+    // may hand over a different shot entirely.
     const aspect = state.size.width / state.size.height;
+    // 0 on anything landscape, 1 on a phone held upright, and a real blend
+    // across the tablet widths in between — a shot that snapped at a
+    // breakpoint would jump while the device was being turned.
+    const upright = THREE.MathUtils.clamp((1.3 - aspect) / 0.68, 0, 1);
+    const a = upright > 0 ? shape(shapeA, frames[i], upright) : frames[i];
+    const b = upright > 0 ? shape(shapeB, frames[i + 1], upright) : frames[i + 1];
     // A portrait shot crops the sides of a floor plate rather than backing
     // off until the tower is a thumbnail: close and cropped reads, distant
     // and complete does not.
@@ -299,11 +386,17 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
     camera.position.set(Math.sin(angle) * radius, c.lookY + rise + pointer.current.y * 0.5, Math.cos(angle) * radius);
     look.current.set(0, c.lookY, 0);
     camera.lookAt(look.current);
+
     // Slide along the camera's own axes; orientation stays the same. Scaled
     // by the orbit radius actually in use, or tilting overhead would drag
     // the model sideways out of the frame as the radius closed up.
     const shift = game.active ? 0 : 1;
-    camera.translateX(-radius * shiftX * shift);
+    // The sideways slide exists to clear a copy column beside the tower.
+    // A tablet held upright still shows that column but has nowhere near
+    // the width to pay for it, and the full slide walks the building off
+    // the right edge — so it eases out as the frame narrows, and the
+    // gradient behind the copy does the rest.
+    camera.translateX(-radius * shiftX * (1 - upright * 0.8) * shift);
     camera.translateY(-radius * shiftY * shift);
   });
 
