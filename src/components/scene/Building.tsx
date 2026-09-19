@@ -91,6 +91,9 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
       map,
       roughness: 0.94,
       metalness: 0.02,
+      // Concrete is not reflective. It takes a trace so the shadow side is
+      // not dead, and no more.
+      envMapIntensity: 0.22,
     });
     // The core reads a shade deeper so the shaft separates from the plates
     // it passes through, the way board-marked in-situ concrete does against
@@ -112,16 +115,19 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
         in the ones in front of them.
       */
       glass: new THREE.MeshPhysicalMaterial({
-        color: "#10171f",
-        roughness: 0.12,
-        metalness: 0.1,
+        color: "#0e141b",
+        // Low roughness plus a real environment is what makes a pane read as
+        // glass: it has to have something to give back.
+        roughness: 0.06,
+        metalness: 0.15,
+        envMapIntensity: 1.9,
         transparent: true,
-        opacity: 0.46,
+        opacity: 0.44,
         depthWrite: false,
         side: THREE.DoubleSide,
       }),
       /** Curtain wall framing: near black, faintly metallic. */
-      frame: new THREE.MeshStandardMaterial({ color: "#191c21", roughness: 0.45, metalness: 0.65 }),
+      frame: new THREE.MeshStandardMaterial({ color: "#191c21", roughness: 0.4, metalness: 0.7, envMapIntensity: 1.1 }),
       /*
         Ceiling runs. Unlit and out of the tone mapper so they stay a clean
         warm line however dark the storey around them is.
@@ -131,8 +137,8 @@ export function Building({ site, build, animate, onSelectFloor }: BuildingProps)
       safety: new THREE.MeshStandardMaterial({ color: "#d4632a", roughness: 0.6, metalness: 0.1 }),
       rebar: new THREE.MeshStandardMaterial({ color: "#6a6257", roughness: 0.75, metalness: 0.5 }),
       timber: new THREE.MeshStandardMaterial({ color: "#7d7263", roughness: 0.9 }),
-      plinth: new THREE.MeshStandardMaterial({ color: "#14161a", roughness: 0.42, metalness: 0.35 }),
-      plinthTop: new THREE.MeshStandardMaterial({ color: "#1b1e23", roughness: 0.28, metalness: 0.5 }),
+      plinth: new THREE.MeshStandardMaterial({ color: "#14161a", roughness: 0.4, metalness: 0.4, envMapIntensity: 0.7 }),
+      plinthTop: new THREE.MeshStandardMaterial({ color: "#1b1e23", roughness: 0.26, metalness: 0.55, envMapIntensity: 0.9 }),
     };
   }, []);
 
@@ -330,8 +336,24 @@ export function PlinthLights({ site }: { site: Site }) {
     const out: [number, number][] = [];
     const hw = base.width / 2 - 0.5;
     const hd = base.depth / 2 - 0.5;
+    // Two, not four. Every point light is evaluated for every lit fragment in
+    // a forward renderer, and the uplights are a grace note on the base — the
+    // emissive discs below carry most of the look on their own.
+    out.push([hw, hd]);
+    out.push([-hw, hd]);
+    return out;
+  }, [base]);
+
+  // Eight lit discs round the edge, but only two of them are real lights.
+  const discs = useMemo(() => {
+    const out: [number, number][] = [];
+    const hw = base.width / 2 - 0.5;
+    const hd = base.depth / 2 - 0.5;
     for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) out.push([sx * hw, sz * hd]);
+      for (const sz of [-1, 1]) {
+        out.push([sx * hw, sz * hd]);
+        out.push([sx * hw * 0.34, sz * hd]);
+      }
     }
     return out;
   }, [base]);
@@ -348,7 +370,7 @@ export function PlinthLights({ site }: { site: Site }) {
           decay={2}
         />
       ))}
-      {spots.map(([x, z], i) => (
+      {discs.map(([x, z], i) => (
         <mesh key={`l${i}`} position={[x, base.top + 0.02, z]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.13, 12]} />
           <meshBasicMaterial color="#ffcd91" toneMapped={false} />
@@ -386,7 +408,7 @@ export function InteriorLights({ site, build }: { site: Site; build: RefObject<n
     for (let i = 0; i < lamps.length; i++) {
       const light = refs.current[i];
       if (!light) continue;
-      light.intensity = 34 * smoothstep(0.34, 0.72, floorProgress(lamps[i].cladBy, f));
+      light.intensity = 26 * smoothstep(0.34, 0.72, floorProgress(lamps[i].cladBy, f));
     }
   });
 

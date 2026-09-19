@@ -8,6 +8,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { toppedOutAt } from "@/lib/construction";
 import { Building, InteriorLights, PlinthLights } from "./Building";
+import { StudioEnvironment } from "./StudioEnvironment";
 import { Crane } from "./Crane";
 import { Welding } from "./Welding";
 import { Workers } from "./Workers";
@@ -144,7 +145,7 @@ export function SiteScene({
   return (
     <Canvas
       shadows="percentage"
-      dpr={[1, rich ? 1.75 : 1.5]}
+      dpr={[1, rich ? 1.5 : 1.25]}
       camera={{ position: [30, 12, 30], fov: 43, near: 0.4, far: 220 }}
       gl={{
         antialias: true,
@@ -154,7 +155,7 @@ export function SiteScene({
         // asphalt value however much light was thrown at it. Neutral holds
         // the mid greys and still rolls the highlights off.
         toneMapping: THREE.NeutralToneMapping,
-        toneMappingExposure: 1.7,
+        toneMappingExposure: 1.4,
       }}
       onCreated={({ gl }) => {
         // Let vertical touch drags scroll the page; horizontal ones orbit.
@@ -169,9 +170,10 @@ export function SiteScene({
         No fog: the reference keeps the tower crisp all the way to the top.
       */}
       <color attach="background" args={["#08090b"]} />
+      <StudioEnvironment />
       {/* Barely there, and cool, so the concrete has somewhere to sit in shadow. */}
-      <ambientLight intensity={0.8} color="#4f4b43" />
-      <hemisphereLight args={["#635e54", "#0d0f13", 1.15]} />
+      <ambientLight intensity={0.35} color="#4f4b43" />
+      <hemisphereLight args={["#635e54", "#0d0f13", 0.55]} />
       {/*
         One key from high and in front, which does all the modelling. Tight
         shadow camera: the whole subject is about 22 units tall and 16 across,
@@ -180,7 +182,7 @@ export function SiteScene({
       */}
       <directionalLight
         position={[14, 26, 16]}
-        intensity={6.4}
+        intensity={4.3}
         color="#f8f3ea"
         castShadow
         shadow-mapSize={[1024, 1024]}
@@ -194,13 +196,13 @@ export function SiteScene({
         shadow-camera-bottom={-6}
       />
       {/* A cool rim from behind so the frame separates from the background. */}
-      <directionalLight position={[-18, 12, -14]} intensity={1.3} color="#7a8eae" />
+      <directionalLight position={[-18, 12, -14]} intensity={0.85} color="#7a8eae" />
       {/*
         Soft fill from roughly where the viewer stands. Without it every
         camera-facing soffit and column face is pure black, because the key
         only ever rakes across them.
       */}
-      <directionalLight position={[-4, 8, 24]} intensity={1.35} color="#a6aebc" />
+      <directionalLight position={[-4, 8, 24]} intensity={0.85} color="#a6aebc" />
       <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} />
       <Building site={site} build={build} animate={animate} onSelectFloor={onSelectFloor} />
       <PlinthLights site={site} />
@@ -212,7 +214,7 @@ export function SiteScene({
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
-      <PerformanceMonitor bounds={() => [40, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
+      <PerformanceMonitor bounds={() => [32, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
         <AdaptiveDpr pixelated />
       </PerformanceMonitor>
       {/*
