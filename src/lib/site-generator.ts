@@ -116,18 +116,38 @@ export const LAMPS: Lamp[] = [
   { name: "arc", color: "#7fb4ff" },
 ];
 
-/** The column grid of the whole building: four corners and a mid column on the long faces. */
+/** Bays across the plan in each direction. Three reads as a frame; two reads as a shed. */
+export const BAYS_X = 3;
+export const BAYS_Z = 3;
+/** How far the slab oversails the column centre line. */
+export const SLAB_OVERHANG = 0.55;
+
+/**
+ * The column grid: a regular lattice on the plan, with the middle left out
+ * where the core stands.
+ *
+ * A frame is only beautiful when the load path is legible, so the grid is
+ * the same on every storey and the columns run dead straight from the base
+ * to the top. The previous generator slid, cantilevered and twisted each
+ * plate, which left columns landing on nothing — the eye reads that as
+ * wrong long before it can say why.
+ */
 function columnGrid(width: number, depth: number): [number, number][] {
-  const hx = width / 2 - 0.35;
-  const hz = depth / 2 - 0.35;
-  return [
-    [-hx, -hz],
-    [hx, -hz],
-    [-hx, hz],
-    [hx, hz],
-    [0, -hz],
-    [0, hz],
-  ];
+  const out: [number, number][] = [];
+  const hx = width / 2 - SLAB_OVERHANG;
+  const hz = depth / 2 - SLAB_OVERHANG;
+  for (let i = 0; i <= BAYS_X; i++) {
+    for (let j = 0; j <= BAYS_Z; j++) {
+      const x = -hx + (2 * hx * i) / BAYS_X;
+      const z = -hz + (2 * hz * j) / BAYS_Z;
+      // The two middle intersections in each direction belong to the core.
+      const innerX = i > 0 && i < BAYS_X;
+      const innerZ = j > 0 && j < BAYS_Z;
+      if (innerX && innerZ) continue;
+      out.push([x, z]);
+    }
+  }
+  return out;
 }
 
 /** World position on a given side of the tower, `along` the face and `out` from it. */
@@ -144,36 +164,13 @@ export function onSide(side: Side, along: number, out: number, y = 0): Vec3 {
   }
 }
 
-/** The grid columns that fall inside a plate, plus the plate's own corners where the grid does not reach. */
-function columnsFor(grid: [number, number][], offset: [number, number], rotation: number, width: number, depth: number): [number, number][] {
-  const c = Math.cos(rotation);
-  const s = Math.sin(rotation);
-  const inside: [number, number][] = grid.filter(([x, z]) => {
-    const dx = x - offset[0];
-    const dz = z - offset[1];
-    const lx = dx * c + dz * s;
-    const lz = -dx * s + dz * c;
-    return Math.abs(lx) <= width / 2 - 0.1 && Math.abs(lz) <= depth / 2 - 0.1;
-  });
-  const hx = width / 2 - 0.35;
-  const hz = depth / 2 - 0.35;
-  for (const [lx, lz] of [
-    [-hx, -hz],
-    [hx, -hz],
-    [-hx, hz],
-    [hx, hz],
-  ]) {
-    const wx = offset[0] + lx * c - lz * s;
-    const wz = offset[1] + lx * s + lz * c;
-    if (inside.every(([x, z]) => Math.hypot(x - wx, z - wz) > 0.9)) inside.push([wx, wz]);
-  }
-  return inside;
-}
 
 export function generateSite(seed: number, floorFlags: { finished: boolean }[]): Site {
   const rnd = createRandom(seed);
-  const baseWidth = rnd.range(6.4, 7.4);
-  const baseDepth = rnd.range(4.8, 5.8);
+  // A chunkier plate than the old tower. The building is read as an object
+  // on a plinth, not a spire: about two to one overall.
+  const baseWidth = rnd.range(10.4, 11.4);
+  const baseDepth = rnd.range(9.4, 10.2);
   const count = floorFlags.length;
 
   // The open face is the one the visitor looks at. The crane stands behind
@@ -201,93 +198,39 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   away = Math.atan2(Math.sin(away), Math.cos(away));
   const viewAngle = SIDE_ANGLE[viewSide] + (away >= 0 ? -0.4 : 0.4);
 
-  // Massing: three moves that read as decisions, not per-floor noise.
-  //   podium    floors 0..podiumTop         on axis, full footprint
-  //   shifted   floors podiumTop+1..upperFrom-1  slide sideways as one block; the
-  //             top of them cantilevers toward the camera; one loses a bay
-  //   upper     floors upperFrom..count-1   a narrower mass set to one side, the
-  //             topmost plate twisted
-  // Two masses, not three. Five storeys cannot carry three zones — you get
-  // one floor each and none of them reads. A wide lower mass and a clearly
-  // narrower upper one set to a single edge is a silhouette you can name.
-  const podiumTop = 0;
-  const upperFrom = Math.max(2, count - 2);
-  const viewHorizontal = viewSide === "+z" || viewSide === "-z";
-  // The camera stands to one side of the open face; that side face is in shot.
-  const camX = Math.sin(viewAngle);
-  const camZ = Math.cos(viewAngle);
-  const sideFace: Side = viewHorizontal ? (camX >= 0 ? "+x" : "-x") : camZ >= 0 ? "+z" : "-z";
-  // Lateral is along the open face, so the shift reads as a slide across the shot.
-  const lateral: [number, number] = viewHorizontal ? [1, 0] : [0, 1];
-  const normal: [number, number] = viewHorizontal ? [0, 1] : [1, 0];
-  const shiftSign = rnd.chance(0.5) ? 1 : -1;
-  // A move only reads as a decision if it is big against the footprint. The
-  // old slide was about a twelfth of the width, which looks like a mistake.
-  // But it cannot be so big that the upper mass leaves the grid underneath
-  // it: the columns would stop and restart somewhere else, and the building
-  // reads as floating trays instead of one structure.
-  const shiftAmount = rnd.range(1.4, 1.9) * shiftSign;
-  const drift = rnd.range(-0.3, 0.3);
-  const shift: [number, number] = [lateral[0] * shiftAmount + normal[0] * drift, lateral[1] * shiftAmount + normal[1] * drift];
-  const lateralBase = viewHorizontal ? baseWidth : baseDepth;
-  const upperScale = rnd.range(0.48, 0.58);
-  const upperLateral = lateralBase * upperScale;
-  // The upper mass goes flush with the edge the block already slid toward,
-  // so the slide and the setback are one gesture rather than two.
-  const flush = shiftSign * ((lateralBase - upperLateral) / 2);
-  const upperOffset: [number, number] = [shift[0] + lateral[0] * flush, shift[1] + lateral[1] * flush];
-  const cantileverFloor = upperFrom - 1;
-  const cantilever = rnd.range(3.2, 4.4);
-  // The void runs through two storeys so it reads as a slot cut through the
-  // building rather than a gap in one line.
-  const voidFloor = Math.max(1, cantileverFloor - 1);
-  // Compounding, so a gentle angle per plate still spirals by the top.
-  const twist = rnd.range(0.05, 0.08) * (rnd.chance(0.5) ? 1 : -1);
-
-  // One slot, same place on both storeys, so it lines up into a hole.
-  const voidAlong = rnd.range(-0.22, 0.22);
-  const voidWidth = rnd.range(3.0, 4.2);
-
+  // Massing: one consistent frame, repeated.
+  //
+  // Every storey has the same plate on the same grid, and the columns run
+  // dead straight from the base to the top. That is a deliberate reversal of
+  // the previous generator, which slid, cantilevered and twisted each plate
+  // to "read as decisions". It read as an impossible building instead: plates
+  // floating, columns landing on nothing. The eye knows where load goes.
+  //
+  // What makes this worth looking at is not an irregular silhouette, it is
+  // the state change running up it — finished and glazed below, bare frame
+  // above, the work happening at the boundary.
   const grid = columnGrid(baseWidth, baseDepth);
 
-  const floors: Floor[] = floorFlags.map((flag, index) => {
-    const upper = index >= upperFrom;
-    const mid = !upper && index > podiumTop;
-    const width = upper && viewHorizontal ? upperLateral : baseWidth;
-    const depth = upper && !viewHorizontal ? upperLateral : baseDepth;
-    const offset: [number, number] = upper ? upperOffset : mid ? shift : [0, 0];
-    const extend: Floor["extend"] = [0, 0, 0, 0];
-    if (index === cantileverFloor) extend[SIDE_FACE[viewSide]] = cantilever;
-    // The upper mass turns a little more with every plate, so the corners
-    // spiral instead of one storey sitting askew.
-    const rotation = upper ? twist * (index - upperFrom + 1) : 0;
-    return {
-      index,
-      y: index * FLOOR_HEIGHT,
-      width,
-      depth,
-      offset,
-      extend,
-      void:
-        index === voidFloor || index === voidFloor + 1
-          ? { face: SIDE_FACE[sideFace], along: voidAlong, width: voidWidth }
-          : null,
-      rotation,
-      // Columns are dead vertical and take the mass offset but not the
-      // twist: the grid runs straight through the stack and the plates turn
-      // around it. Rotating the columns too gave every floor its own corner
-      // posts, standing on nothing, which is what made the building read as
-      // a pile of floating trays.
-      columns: columnsFor(grid, offset, 0, width, depth),
-      finished: flag.finished,
-    };
-  });
+  const floors: Floor[] = floorFlags.map((flag, index) => ({
+    index,
+    y: index * FLOOR_HEIGHT,
+    width: baseWidth,
+    depth: baseDepth,
+    // Kept at rest so the timeline, crane and pointer keep their contract
+    // while the shape stays honest.
+    offset: [0, 0] as [number, number],
+    extend: [0, 0, 0, 0] as Floor["extend"],
+    void: null,
+    rotation: 0,
+    columns: grid,
+    finished: flag.finished,
+  }));
 
   const topY = count * FLOOR_HEIGHT;
   const last = floors[count - 1];
   const topLevel = {
     y: topY,
-    columns: last.columns.filter(() => rnd.chance(0.75)),
+    columns: last.columns,
     width: last.width,
     depth: last.depth,
   };
@@ -324,30 +267,19 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     };
   });
 
-  // The spine (lift core) rises through every plate, so it sits inside the
-  // footprint they all share, pushed to the back away from the open face.
-  let xMin = -Infinity;
-  let xMax = Infinity;
-  let zMin = -Infinity;
-  let zMax = Infinity;
-  for (const f of floors) {
-    xMin = Math.max(xMin, f.offset[0] - f.width / 2);
-    xMax = Math.min(xMax, f.offset[0] + f.width / 2);
-    zMin = Math.max(zMin, f.offset[1] - f.depth / 2);
-    zMax = Math.min(zMax, f.offset[1] + f.depth / 2);
-  }
-  const coreSize = { width: 2.0, depth: 1.8 };
-  const back = { x: -camX, z: -camZ };
-  const wantX = (xMin + xMax) / 2 + back.x * (xMax - xMin) * 0.3;
-  const wantZ = (zMin + zMax) / 2 + back.z * (zMax - zMin) * 0.3;
-  const clampIn = (v: number, lo: number, hi: number, half: number) => Math.min(Math.max(v, lo + half + 0.45), hi - half - 0.45);
+  // The lift core stands dead centre, in the hole the column grid leaves for
+  // it. Every plate is the same, so there is nothing to solve: it simply
+  // rises through all of them.
   const core: Core = {
-    x: clampIn(wantX, xMin, xMax, coreSize.width / 2),
-    z: clampIn(wantZ, zMin, zMax, coreSize.depth / 2),
-    ...coreSize,
+    x: 0,
+    z: 0,
+    width: baseWidth * 0.34,
+    depth: baseDepth * 0.30,
   };
 
-  // The braced bay sits on the side face, off centre, on every floor.
+  // The braced bay sits on a side face, off centre, on every floor.
+  const viewHorizontal = viewSide === "+z" || viewSide === "-z";
+  const sideFace: Side = viewHorizontal ? (Math.sin(viewAngle) >= 0 ? "+x" : "-x") : Math.cos(viewAngle) >= 0 ? "+z" : "-z";
   const bracedBay = { face: SIDE_FACE[sideFace], s0: rnd.range(0.18, 0.46), s1: 0 };
   bracedBay.s1 = bracedBay.s0 + rnd.range(0.14, 0.19);
 
