@@ -32,6 +32,102 @@ not there.
 - Bash heredocs with backticks or apostrophes break on this machine. Write
   python patch scripts to the scratchpad and run them with `python`.
 
+## The building was rebuilt as a solid concrete frame
+
+A designer friend told Efe the site looked **too AI generated**. He agreed and
+would not push it out. The concept — scroll to build — was never the problem.
+
+### What was actually wrong
+
+Fourteen commits on 09-17 between 16:36 and 16:38 replaced a materially rich,
+populated night construction site with an instanced skeletal wireframe. That
+batch deleted `Workers.tsx` (the crew), `Dressing.tsx` (hoarding, cabin,
+generator, skip, street lights), `Floors.tsx`, `Core.tsx`, `Lamps.tsx`,
+`Sparks.tsx`, six procedural textures and fourteen materials, and introduced
+the void environment, the irregular massing and the member/skin shaders. The
+last good commit before it is `02edd88`; the deletions are `fe65ff4` and
+`e35c58d`.
+
+So the "AI" read was not a lighting problem. It was that everything which made
+the scene a *place* had been removed, leaving glowing line work in a void.
+
+**A tangent to avoid repeating:** four surface treatments were built over the
+wireframe (`?look=current|lit|ink|day`) to try to fix it with light. Efe
+rejected all of them — the drawing treatment in particular "looks like we are
+trying to force a geometry of a building on a pattern". That harness has been
+reverted. Do not reach for a shader when the problem is that there is nothing
+in the scene.
+
+### The direction now
+
+Efe supplied two references: a concrete-frame tower under construction, on a
+plinth, black background, lower storeys glazed and warm inside, upper storeys
+bare frame, crane placing a slab, two figures, a welder. His two rules:
+
+1. **No impossible structures.** The eye knows where load goes; plates
+   floating on nothing read as wrong before you can say why. That is what the
+   irregular massing was doing.
+2. **The animation carries the energy.** The spectacle belongs to the process
+   of the thing going up, not to a strange silhouette.
+
+### What is built
+
+- `src/lib/site-generator.ts` — massing simplified to one consistent frame.
+  Same plate on every storey, a regular column grid (`BAYS_X`/`BAYS_Z`, the
+  middle left out for the core), columns dead straight top to bottom. The
+  `offset`/`extend`/`rotation`/`void` fields are kept at rest so
+  `construction.ts`, the crane, the pointer and the game keep their contract.
+  Changing the shape is now a data change in `generateSite`, not a code change.
+- `src/lib/building.ts` — the building as a flat list of placed boxes, each
+  naming the floor whose progress owns it and when in that progress it
+  arrives. Columns, slabs, core, curtain wall, lit ceilings, fit-out, edge
+  protection, starter bars, stacked material. `CLAD_LAG = 2`: a storey glazes
+  once the frame is two levels above it, so the top of the building is
+  permanently raw.
+- `src/components/scene/Building.tsx` — one instanced draw per material,
+  matrices written **from the frame loop** (not an effect — that is the
+  blank-building bug). Plinth, plinth uplights, one interior lamp per glazed
+  storey.
+- `src/components/scene/Welding.tsx` — the arc. Bursts with gaps, flicker,
+  a real point light so the flash has a source, sparks that fall and bounce
+  once off the slab, and a joint that cools white to orange after the arc
+  stops. Aimed at a column facing the camera.
+- `SiteScene.tsx` — black studio, no fog, warm key plus cool fill and rim,
+  `shadows="percentage"`, `NeutralToneMapping`.
+
+### Two traps this cost time to find
+
+- **The old `concreteTexture` fills with `#6a7480`.** That is 0.15 in linear,
+  so any material using it as a map lands near 0.10 albedo — asphalt. A lot of
+  light was thrown at the building before this was measured rather than
+  guessed at. `boardConcreteTexture` in `textures.ts` sits around 0.45 linear
+  and carries board marks and tie holes. Check the linear value of a texture
+  before blaming the lights.
+- **ACES tone mapping crushed the midtones** and held the concrete dark
+  whatever the key did. `THREE.NeutralToneMapping` holds mid greys.
+- three 0.186 **removed `PCFSoftShadowMap`**; r3f asks for it by default and
+  falls back with a warning on every compile. Ask for `"percentage"`.
+
+### Still to do on the building
+
+- The crane is still thin dark line work from the wireframe era and does not
+  match a solid building. It needs restyling to match the reference.
+- No figures yet. Two of them, at the right scale, is what sells the size.
+- The glass reads as dark panels with the interior glow behind, which is close,
+  but it has no reflections — there is no environment map in the scene.
+- No stair inside the core, and the core has no openings.
+- Then the site comes back around it, standing on the plinth.
+
+### Capture note
+
+In the desktop app Browser pane, rAF only runs while the pane composites. With
+it hidden the frame loop advances only when a screenshot forces a paint, at
+roughly three or four frames each — and any clock clamped with
+`Math.min(delta, 1/20)` then advances in slow motion. Measuring the weld clock
+showed 0.2s after six screenshots and 11s after twenty-four. Anything timed —
+an arc, a damped camera, glazing growing in — needs twenty-plus pump
+screenshots before a capture means anything.
+
 ## Status: the regression was reverted in 91d9c35
 
 Efe confirmed from a recording that the structure looked better a few
