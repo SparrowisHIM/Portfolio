@@ -9,6 +9,7 @@ import type { Site } from "@/lib/site-generator";
 import { toppedOutAt } from "@/lib/construction";
 import { Building, InteriorLights, PlinthLights } from "./Building";
 import { StudioEnvironment } from "./StudioEnvironment";
+import { Surroundings } from "./Surroundings";
 import { Crane } from "./Crane";
 import { Welding } from "./Welding";
 import { Workers } from "./Workers";
@@ -180,7 +181,13 @@ export function SiteScene({
         backdrop rather than as empty space where a scene failed to load.
         No fog: the reference keeps the tower crisp all the way to the top.
       */}
-      <color attach="background" args={["#08090b"]} />
+      {/*
+        The background only shows where the sky shell does not, which is
+        nowhere — it is the colour behind everything if the shell ever fails
+        to draw, and it matches the sky at the zenith so that is invisible.
+      */}
+      <color attach="background" args={["#05080f"]} />
+      <Surroundings seed={site.seed} />
       <StudioEnvironment />
       {/* Barely there, and cool, so the concrete has somewhere to sit in shadow. */}
       <ambientLight intensity={0.35} color="#4f4b43" />

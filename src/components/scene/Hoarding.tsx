@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Site } from "@/lib/site-generator";
+import type { Side, Site } from "@/lib/site-generator";
 import { plinth } from "@/lib/building";
 import { yardAxis } from "@/lib/construction";
 import { box, type Instance, type Vec3 } from "@/lib/geometry";
 import { createRandom } from "@/lib/random";
+import { BANNER_ASPECT, bannerTexture } from "@/lib/textures";
+import { owner } from "@/lib/projects";
+import * as THREE from "three";
 import { Instances } from "./Instances";
 import { materials } from "./materials";
 
@@ -43,6 +46,8 @@ export function insideHoarding(
 }
 /** Clear opening for the gate, on the side the laydown is served from. */
 const GATE = 5.2;
+/** The contractor's board, on the face the site is read from. */
+const BANNER_W = 5.6;
 
 type Edge = {
   /** True when the run travels along x — i.e. it stands on a ±z face. */
@@ -56,6 +61,8 @@ type Edge = {
   out: 1 | -1;
   /** This run carries the gate. */
   gated: boolean;
+  /** Which face of the site this run stands on. */
+  side: Side;
 };
 
 /**
@@ -86,10 +93,10 @@ export function Hoarding({ site }: { site: Site }) {
     const gateSign = gateOnX ? axis.nx : axis.nz;
 
     const edges: Edge[] = [
-      { alongX: true, fixed: hd, from: -hw, to: hw, out: 1, gated: !gateOnX && gateSign > 0 },
-      { alongX: true, fixed: -hd, from: -hw, to: hw, out: -1, gated: !gateOnX && gateSign < 0 },
-      { alongX: false, fixed: hw, from: -hd + POST, to: hd - POST, out: 1, gated: gateOnX && gateSign > 0 },
-      { alongX: false, fixed: -hw, from: -hd + POST, to: hd - POST, out: -1, gated: gateOnX && gateSign < 0 },
+      { alongX: true, fixed: hd, from: -hw, to: hw, out: 1, gated: !gateOnX && gateSign > 0, side: "+z" },
+      { alongX: true, fixed: -hd, from: -hw, to: hw, out: -1, gated: !gateOnX && gateSign < 0, side: "-z" },
+      { alongX: false, fixed: hw, from: -hd + POST, to: hd - POST, out: 1, gated: gateOnX && gateSign > 0, side: "+x" },
+      { alongX: false, fixed: -hw, from: -hd + POST, to: hd - POST, out: -1, gated: gateOnX && gateSign < 0, side: "-x" },
     ];
 
     const panels: Instance[] = [];
@@ -163,8 +170,44 @@ export function Hoarding({ site }: { site: Site }) {
       }
     }
 
-    return { panels, posts, rails, signs };
+    /*
+      The contractor's board, on the face the site is read from — which is
+      the one face guaranteed to be pointing at the camera. Off-centre, so
+      it sits on the hoarding rather than looking like a label centred on a
+      model, and never on the run that carries the gate.
+    */
+    const face = edges.find((e) => e.side === site.viewSide) ?? edges[0];
+    const bannerU = face.gated ? (face.from + -GATE / 2) / 2 : (face.from + face.to) / 2 - BANNER_W * 0.35;
+    // Proud of the posts, not of the panels: the posts stand out further
+    // than the sheeting and were cutting across the board.
+    const bannerAt = put(face, bannerU, face.out * (POST * 0.5 + 0.09), HEIGHT * 0.56);
+    const banner = {
+      position: bannerAt,
+      scale: (face.alongX
+        ? [BANNER_W, BANNER_W / BANNER_ASPECT, 0.03]
+        : [0.03, BANNER_W / BANNER_ASPECT, BANNER_W]) as Vec3,
+      /** The board faces out of the site; a ±x run needs turning to do it. */
+      turn: face.alongX ? 0 : Math.PI / 2,
+    };
+
+    return { panels, posts, rails, signs, banner };
   }, [site]);
+
+  const bannerMaterial = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map: bannerTexture(owner.name, owner.role),
+        roughness: 0.78,
+        metalness: 0.03,
+        // Site boards are lit by whatever is pointing at them, and this one
+        // is on the dark side of the hoarding. A little self-lift keeps the
+        // name legible without making it a lamp.
+        emissiveMap: bannerTexture(owner.name, owner.role),
+        emissive: "#ffffff",
+        emissiveIntensity: 0.22,
+      }),
+    [],
+  );
 
   const base = useMemo(() => plinth(site), [site]);
 
@@ -174,6 +217,14 @@ export function Hoarding({ site }: { site: Site }) {
       <Instances items={parts.posts} material={m.hoardingPost} />
       <Instances items={parts.rails} material={m.hoardingPost} />
       <Instances items={parts.signs} material={m.hoardingSign} />
+      <mesh
+        position={parts.banner.position}
+        scale={parts.banner.scale}
+        rotation={[0, parts.banner.turn, 0]}
+        material={bannerMaterial}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+      </mesh>
     </group>
   );
 }

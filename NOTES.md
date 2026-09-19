@@ -399,6 +399,46 @@ Left dormant, because they undo the presentation Efe approved:
   netting/banners with wind and pointer interaction; the scaffold netting is
   a static sheet for now and Cloth is the upgrade if it needs to move.
 
+## The site stands somewhere now
+
+`Surroundings.tsx`: a night sky with a horizon and stars, and a ground to
+stand on. Efe's words were *right now it's just pitch black*, and he is
+right — a black void reads as a product shot, not as a place, and a tower
+in it has no distance and no scale.
+
+- **The sky** is a back-side sphere with a two-band gradient and a tight
+  glow sitting on the horizon line. **Below the horizon it falls away
+  fast.** The first pass took thirty metres to get dark, and because the
+  ground disc fades out with distance, that mid navy showed *through* the
+  fade and read as a floodlit floor stretching to the horizon — a bright
+  ground that was not the ground at all.
+- **The ground is unlit**, with the spill from the site painted into its
+  texture. As a lit standard material it cost a tenth of the frame rate on
+  its own: it is the largest surface in the frame and it was evaluating
+  every light plus the studio cube map, per pixel, for a surface nothing
+  moves on. **Measured: 34.0 with no surroundings at all, 33.4 with the sky
+  and stars and no ground, 29.8 with the lit ground, 33.1 with it unlit.**
+  The sky was never the expensive part, which is the opposite of what it
+  looked like before measuring.
+- Not `Atmosphere.tsx` or `Ground.tsx`. Ground is a glowing setting-out
+  grid — house style. Atmosphere is closer, and its haze is worth taking if
+  the work lights ever get visible beams, but its horizon shell is built
+  round a different scene scale.
+
+### The name board
+
+`bannerTexture` in textures.ts, hung on the hoarding on `site.viewSide` —
+the one face guaranteed to point at the camera. Two things it has to do:
+
+- **Shrink to fit.** The name is data, and at a fixed size "EFE EBOMWONYI"
+  ran off the end of the board and lost its last letter.
+- **Stand proud of the posts**, not of the panels. The posts stick out
+  further than the sheeting and were cutting across it.
+
+The board is drawn on a square canvas and cropped to a band of the right
+aspect, because `make` only draws squares and a square texture stretched
+onto a long board stretches the type with it.
+
 ### The hoarding, and what it exposed
 
 `Hoarding.tsx`. Painted ply on posts with a capping rail, warning plates,
