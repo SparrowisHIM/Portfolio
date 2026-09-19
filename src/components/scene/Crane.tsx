@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { cranePose } from "@/lib/construction";
 import { box, lattice, strut, truss, type Instance, type Vec3 } from "@/lib/geometry";
-import { SLAB } from "@/lib/building";
+import { plinth, SLAB } from "@/lib/building";
 import { wind } from "@/lib/wind";
 import { game } from "@/lib/stack-game";
 import { emitBurst, emitPulse, workHue } from "@/lib/pulses";
@@ -52,6 +52,8 @@ function aim(mesh: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3, size: number,
 export function Crane({ site, build, animate }: CraneProps) {
   const { crane } = site;
   const m = materials();
+  // The crane stands on the plinth with everything else, not on y = 0.
+  const deck = useMemo(() => plinth(site).top, [site]);
   const slew = useRef<THREE.Group>(null);
   const trolley = useRef<THREE.Group>(null);
   const load = useRef<THREE.Group>(null);
@@ -184,7 +186,7 @@ export function Crane({ site, build, animate }: CraneProps) {
         const off = (i === 0 ? -1 : 1) * 0.1;
         tmpC.current.set(pos.x + off, pos.y + 0.2, pos.z);
         const from = tmpA.current.set(top.x + off, top.y - 0.2, top.z);
-        aim(rope, from, tmpC.current, 0.026, tmpB.current, tmpQ.current);
+        aim(rope, from, tmpC.current, 0.04, tmpB.current, tmpQ.current);
       }
     }
 
@@ -202,9 +204,9 @@ export function Crane({ site, build, animate }: CraneProps) {
         const sling = slings.current[i];
         if (!sling) return;
         sling.visible = true;
-        tmpA.current.set(Math.sign(cx) * 0.8, -0.5, 0);
+        tmpA.current.set(Math.sign(cx) * 1.05, -0.5, 0);
         tmpB.current.set(cx, -HOOK_ABOVE_SLAB, cz);
-        aim(sling, tmpA.current, tmpB.current, 0.026, tmpC.current, tmpQ.current);
+        aim(sling, tmpA.current, tmpB.current, 0.035, tmpC.current, tmpQ.current);
       });
     } else {
       for (const sling of slings.current) if (sling) sling.visible = false;
@@ -218,7 +220,7 @@ export function Crane({ site, build, animate }: CraneProps) {
 
   return (
     <group>
-      <group position={crane.position}>
+      <group position={[crane.position[0], deck, crane.position[2]]}>
         <Instances items={parts.base} material={m.steelDark} />
         <Instances items={parts.mast} material={m.crane} />
         {parts.lights.map((p, i) => (
@@ -266,7 +268,7 @@ export function Crane({ site, build, animate }: CraneProps) {
 
           <group ref={trolley} position={[0, TROLLEY_Y, crane.trolley]}>
             <mesh material={m.steelDark}>
-              <boxGeometry args={[0.95, 0.3, 0.68]} />
+              <boxGeometry args={[1.05, 0.34, 0.78]} />
             </mesh>
           </group>
         </group>
@@ -285,15 +287,20 @@ export function Crane({ site, build, animate }: CraneProps) {
         </mesh>
       ))}
       <group ref={load}>
-        <mesh position={[0, 0.02, 0]} material={m.steelDark}>
-          <boxGeometry args={[0.3, 0.36, 0.14]} />
+        {/* Hook block: sheaves, cheek plates and the hook itself. Small
+            enough to be honest, big enough to read at this distance. */}
+        <mesh position={[0, 0.06, 0]} castShadow material={m.steelDark}>
+          <boxGeometry args={[0.46, 0.52, 0.22]} />
         </mesh>
-        <mesh position={[0, -0.3, 0]} material={m.galvanised}>
-          <cylinderGeometry args={[0.035, 0.035, 0.2, 8]} />
+        <mesh position={[0, 0.06, 0]} rotation={[0, 0, Math.PI / 2]} material={m.galvanised}>
+          <cylinderGeometry args={[0.17, 0.17, 0.26, 12]} />
+        </mesh>
+        <mesh position={[0, -0.34, 0]} material={m.galvanised}>
+          <cylinderGeometry args={[0.055, 0.055, 0.34, 8]} />
         </mesh>
         <group ref={spreader}>
           <mesh position={[0, -0.5, 0]} material={m.steelDark}>
-            <boxGeometry args={[1.8, 0.07, 0.09]} />
+            <boxGeometry args={[2.4, 0.11, 0.14]} />
           </mesh>
           {[0, 1, 2, 3].map((i) => (
             <mesh

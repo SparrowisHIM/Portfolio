@@ -183,7 +183,11 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
   if (scaffoldSides.length === 0) scaffoldSides.push(rnd.pick(lateralSides));
   const craneHorizontal = craneSide === "+z" || craneSide === "-z";
   const craneSign = craneSide.startsWith("+") ? 1 : -1;
-  const craneDistance = (craneHorizontal ? baseDepth : baseWidth) / 2 + rnd.range(3.5, 5);
+  // On the plinth, close enough that the jib reaches right over the building
+  // and both are in the same shot. Standing it four metres clear put it off
+  // the base entirely, in the black beside the model, which is why it never
+  // looked like it was working on anything.
+  const craneDistance = (craneHorizontal ? baseDepth : baseWidth) / 2 + rnd.range(1.4, 2.0);
   const craneCorner = rnd.chance(0.5) ? 1 : -1;
   const craneAlong = craneCorner * ((craneHorizontal ? baseWidth : baseDepth) / 2 + rnd.range(0.5, 2));
   const cranePosition: Vec3 = craneHorizontal
@@ -238,7 +242,10 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
 
   const crane: Crane = {
     position: cranePosition,
-    mastHeight: totalHeight + rnd.range(4.6, 6),
+    // Just enough to hoist a plate over the top columns. Any taller and the
+    // jib spends the whole scroll above the frame, which is most of why the
+    // crane read as something happening somewhere else.
+    mastHeight: totalHeight + rnd.range(2.9, 3.7),
     jibLength: craneDistance + rnd.range(7, 10),
     counterJibLength: rnd.range(4.5, 6),
     angle: toTower + rnd.range(-0.35, 0.35),

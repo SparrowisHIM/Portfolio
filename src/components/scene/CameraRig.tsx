@@ -89,7 +89,9 @@ export function buildKeyframes(site: Site): Keyframe[] {
   site.floors.forEach((floor, i) => {
     const back = RHYTHM[i % RHYTHM.length];
     frames.push({
-      lookY: lerp(floor.y * 0.5 + 3.4, site.totalHeight * 0.44, back),
+      // Aimed a little high, so the jib and the hook stay in the shot with
+      // the level being worked on. A crane you cannot see is not working.
+      lookY: lerp(floor.y * 0.5 + 4.6, site.totalHeight * 0.54, back),
       rise: lerp(2.2, 4.6, back) + i * 0.3,
       radius: lerp(far * 0.82, far, back) + i * 0.5,
       angle: start + step * (i + 1),
