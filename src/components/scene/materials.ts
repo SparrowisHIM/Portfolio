@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { concreteTexture, deckTexture } from "@/lib/textures";
+import { boardConcreteTexture, concreteTexture, deckTexture } from "@/lib/textures";
 
 export const palette = {
   night: "#0d1b2e",
@@ -29,10 +29,19 @@ function create() {
     steel: new THREE.MeshStandardMaterial({ color: palette.steel, roughness: 0.45, metalness: 0.7 }),
     steelDark: new THREE.MeshStandardMaterial({ color: palette.steelDark, roughness: 0.4, metalness: 0.75 }),
     galvanised: new THREE.MeshStandardMaterial({ color: "#4b5566", roughness: 0.35, metalness: 0.85 }),
-    /** Crane structure: dark drawn lines with a trace of warmth, so the building stays the brightest thing. */
-    crane: new THREE.MeshStandardMaterial({ color: "#2c2a24", emissive: "#c9a46e", emissiveIntensity: 0.085, roughness: 0.55, metalness: 0.35 }),
-    /** Hoist rope and slings: a taut bright hairline, the one thing holding the load up. */
-    cable: new THREE.MeshStandardMaterial({ color: "#6b7689", emissive: "#aebbd2", emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.8 }),
+    /**
+     * Crane structure: painted steel, lit.
+     *
+     * It used to carry an emissive term so it read as drawn line work against
+     * the void. Beside a solid building that is exactly wrong — a glowing
+     * crane next to lit concrete is the one thing in frame that still looks
+     * like a wireframe. Let the key light model it like everything else.
+     */
+    crane: new THREE.MeshStandardMaterial({ color: "#23272d", roughness: 0.66, metalness: 0.5 }),
+    /** Hoist rope and slings: thin, taut, catching just enough light to read. */
+    cable: new THREE.MeshStandardMaterial({ color: "#8d96a5", emissive: "#8fa0bb", emissiveIntensity: 0.12, roughness: 0.35, metalness: 0.7 }),
+    /** The precast unit on the hook, matching the slabs it is being stacked onto. */
+    precast: new THREE.MeshStandardMaterial({ color: "#ffffff", map: boardConcreteTexture(9), roughness: 0.92, metalness: 0.02 }),
   };
 }
 

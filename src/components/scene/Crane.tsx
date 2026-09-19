@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { cranePose } from "@/lib/construction";
 import { box, lattice, strut, truss, type Instance, type Vec3 } from "@/lib/geometry";
+import { SLAB } from "@/lib/building";
 import { wind } from "@/lib/wind";
 import { game } from "@/lib/stack-game";
 import { emitBurst, emitPulse, workHue } from "@/lib/pulses";
@@ -19,12 +20,12 @@ type CraneProps = {
   animate: boolean;
 };
 
-const MAST = 1.1;
-const PANEL = 1.6;
+const MAST = 1.6;
+const PANEL = 1.9;
 const JIB_Y = 0.9;
 const TROLLEY_Y = 0.66;
 const HOOK_ABOVE_SLAB = 1.25;
-const APEX = 4.0;
+const APEX = 4.6;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -38,11 +39,15 @@ function aim(mesh: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3, size: number,
 }
 
 /**
- * The crane belongs to the same drawn world as the building: a thin dark
- * lattice mast, an A-frame top, a tapered truss jib, cables and a few node
- * lights, fading into the fog above. It carries each floor's frame in as a
- * wireframe module that sways, descends, overshoots and snaps, and sends a
- * pulse through the structure when it locks.
+ * A lattice tower crane, in painted steel: square mast, A-frame top, tapered
+ * truss jib, counter jib with its ballast, and two warm lamps on the
+ * machinery deck.
+ *
+ * It carries a solid precast unit, in the same concrete as the slabs it is
+ * stacking, which sways on the hook, descends, overshoots and snaps down —
+ * and sends a pulse through the structure when it locks. It used to carry a
+ * glowing wireframe outline instead, which was the loudest thing still
+ * reading as a diagram once the building below it went solid.
  */
 export function Crane({ site, build, animate }: CraneProps) {
   const { crane } = site;
@@ -56,12 +61,6 @@ export function Crane({ site, build, animate }: CraneProps) {
   const slings = useRef<THREE.Mesh[]>([]);
   const beacon = useRef<THREE.MeshStandardMaterial>(null);
   const wasLoaded = useRef(false);
-  /** The frame on the hook glows with the lamp: it is the subject, not scenery. */
-  const loadMaterial = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: "#6b5730", emissive: site.lamp.color, emissiveIntensity: 0.3, roughness: 0.45, metalness: 0.4 }),
-    [site.lamp.color],
-  );
-
   const loadPos = useRef(new THREE.Vector3());
   const loadVel = useRef(new THREE.Vector3());
   const settled = useRef(false);
@@ -73,8 +72,8 @@ export function Crane({ site, build, animate }: CraneProps) {
   const hookTop = useRef(new THREE.Vector3());
 
   const parts = useMemo(() => {
-    const mast = lattice({ x: 0, z: 0, y0: 0.4, y1: crane.mastHeight, width: MAST, panel: PANEL, chord: 0.06, brace: 0.028 });
-    const base: Instance[] = [box([0, 0.2, 0], [MAST + 0.6, 0.4, MAST + 0.6]), box([0, 0.06, 0], [3.4, 0.12, 0.2]), box([0, 0.06, 0], [0.2, 0.12, 3.4])];
+    const mast = lattice({ x: 0, z: 0, y0: 0.4, y1: crane.mastHeight, width: MAST, panel: PANEL, chord: 0.11, brace: 0.05 });
+    const base: Instance[] = [box([0, 0.2, 0], [MAST + 0.9, 0.5, MAST + 0.9]), box([0, 0.06, 0], [4.4, 0.16, 0.26]), box([0, 0.06, 0], [0.26, 0.16, 4.4])];
 
     const towerTop: Instance[] = [];
     const h = MAST / 2;
@@ -85,51 +84,29 @@ export function Crane({ site, build, animate }: CraneProps) {
       [h, h],
       [-h, h],
     ]) {
-      towerTop.push(strut([dx, 0.5, dz], apex, 0.05));
+      towerTop.push(strut([dx, 0.5, dz], apex, 0.085));
     }
     for (let i = 0; i < 3; i++) {
-      const y = 1.3 + i * 0.95;
+      const y = 1.5 + i * 1.05;
       const s = h * (1 - y / APEX) * 0.95;
-      towerTop.push(strut([-s, y, -s], [s, y, -s], 0.025), strut([s, y, -s], [s, y, s], 0.025), strut([s, y, s], [-s, y, s], 0.025), strut([-s, y, s], [-s, y, -s], 0.025));
+      towerTop.push(strut([-s, y, -s], [s, y, -s], 0.042), strut([s, y, -s], [s, y, s], 0.042), strut([s, y, s], [-s, y, s], 0.042), strut([-s, y, s], [-s, y, -s], 0.042));
     }
-    const jib = truss({ origin: [0, JIB_Y, 0.8], dir: [0, 0, 1], length: crane.jibLength, width: 0.7, height: 0.7, panel: 1.5, chord: 0.045, brace: 0.024, taper: true });
-    const counter = truss({ origin: [0, JIB_Y, -0.8], dir: [0, 0, -1], length: crane.counterJibLength, width: 0.9, height: 0.36, panel: 1.3, chord: 0.045, brace: 0.024 });
+    const jib = truss({ origin: [0, JIB_Y, 0.8], dir: [0, 0, 1], length: crane.jibLength, width: 0.95, height: 0.95, panel: 1.7, chord: 0.082, brace: 0.042, taper: true });
+    const counter = truss({ origin: [0, JIB_Y, -0.8], dir: [0, 0, -1], length: crane.counterJibLength, width: 1.15, height: 0.5, panel: 1.4, chord: 0.082, brace: 0.042 });
     const pendants: Instance[] = [
-      strut(apex, [0, JIB_Y + 0.3, 0.8 + crane.jibLength * 0.62], 0.02),
-      strut(apex, [0, JIB_Y + 0.22, 0.8 + crane.jibLength * 0.3], 0.018),
-      strut(apex, [0, JIB_Y + 0.34, -0.8 - crane.counterJibLength + 0.5], 0.02),
+      strut(apex, [0, JIB_Y + 0.3, 0.8 + crane.jibLength * 0.62], 0.032),
+      strut(apex, [0, JIB_Y + 0.22, 0.8 + crane.jibLength * 0.3], 0.028),
+      strut(apex, [0, JIB_Y + 0.34, -0.8 - crane.counterJibLength + 0.5], 0.032),
     ];
-    const ballast: Instance[] = [0, 1, 2].map((i) => box([0, JIB_Y - 0.5, -0.8 - crane.counterJibLength + 0.9 + i * 0.4], [1.3, 1.0, 0.28]));
+    const ballast: Instance[] = [0, 1, 2].map((i) => box([0, JIB_Y - 0.5, -0.8 - crane.counterJibLength + 0.9 + i * 0.4], [1.7, 1.25, 0.34]));
 
     // Node lights: one every few panels up the mast, and at the jib tip.
     const lights: Vec3[] = [];
     const panels = Math.floor((crane.mastHeight - 0.4) / PANEL);
     for (let p = 3; p < panels; p += 5) lights.push([h, 0.4 + p * PANEL, h]);
 
-    // The floor frame module the crane carries: the largest floor's outline
-    // and cross beams, as a light wireframe.
-    let w = 0;
-    let d = 0;
-    for (const f of site.floors) {
-      w = Math.max(w, f.width);
-      d = Math.max(d, f.depth);
-    }
-    const y = -HOOK_ABOVE_SLAB;
-    const frame: Instance[] = [
-      strut([-w / 2, y, -d / 2], [w / 2, y, -d / 2], 0.05),
-      strut([-w / 2, y, d / 2], [w / 2, y, d / 2], 0.05),
-      strut([-w / 2, y, -d / 2], [-w / 2, y, d / 2], 0.05),
-      strut([w / 2, y, -d / 2], [w / 2, y, d / 2], 0.05),
-      strut([0, y, -d / 2], [0, y, d / 2], 0.045),
-    ];
-    const secondaries = Math.max(2, Math.round(w / 1.6));
-    for (let k = 1; k < secondaries; k++) {
-      const x = -w / 2 + (k * w) / secondaries;
-      if (Math.abs(x) < 0.4) continue;
-      frame.push(strut([x, y + 0.02, -d / 2], [x, y + 0.02, d / 2], 0.035));
-    }
-    return { mast: [...mast.chords, ...mast.braces], base, towerTop: [...towerTop, ...jib.chords, ...jib.braces, ...counter.chords, ...counter.braces], pendants, ballast, lights, frame, module: { w, d } };
-  }, [crane, site.floors]);
+    return { mast: [...mast.chords, ...mast.braces], base, towerTop: [...towerTop, ...jib.chords, ...jib.braces, ...counter.chords, ...counter.braces], pendants, ballast, lights };
+  }, [crane]);
 
   useFrame(({ clock }, delta) => {
     const dt = Math.min(delta, 1 / 30);
@@ -184,8 +161,9 @@ export function Crane({ site, build, animate }: CraneProps) {
     // moment sends a pulse through the building.
     if (frame.current) {
       frame.current.visible = pose.loaded && !playing;
-      // The module is cut to the plate it is carrying, offsets and cantilevers included.
-      frame.current.scale.set(pose.slab.width / parts.module.w, 1, pose.slab.depth / parts.module.d);
+      // Cut to the plate it is carrying. The unit box is already one slab
+      // thick, so only the plan dimensions scale.
+      frame.current.scale.set(pose.slab.width, 1, pose.slab.depth);
       frame.current.rotation.y = pose.rotation ?? 0;
     }
     if (spreader.current) spreader.current.visible = pose.loaded;
@@ -252,14 +230,14 @@ export function Crane({ site, build, animate }: CraneProps) {
 
         <group ref={slew} position={[0, crane.mastHeight, 0]}>
           <mesh position={[0, 0.15, 0]} material={m.steelDark}>
-            <cylinderGeometry args={[0.8, 0.8, 0.3, 20]} />
+            <cylinderGeometry args={[1.05, 1.05, 0.4, 20]} />
           </mesh>
           <Instances items={parts.towerTop} material={m.crane} />
           <Instances items={parts.pendants} material={m.galvanised} />
           <Instances items={parts.ballast} material={m.steelDark} />
 
           {/* Cab: a dark box with one faint amber window. */}
-          <group position={[0.9, 0.85, 0.5]}>
+          <group position={[1.25, 0.9, 0.7]}>
             <mesh material={m.steelDark}>
               <boxGeometry args={[0.7, 0.85, 1.0]} />
             </mesh>
@@ -277,10 +255,18 @@ export function Crane({ site, build, animate }: CraneProps) {
             <sphereGeometry args={[0.06, 8, 8]} />
             <meshStandardMaterial color="#e8eefb" emissive="#dfe8ff" emissiveIntensity={0.7} toneMapped={false} />
           </mesh>
+          {/* Machinery deck lamps: the one warm thing on the crane, and the
+              detail that stops the counter jib reading as a bare stick. */}
+          {[-0.55, 0.55].map((x) => (
+            <mesh key={x} position={[x, JIB_Y + 0.5, -0.8 - crane.counterJibLength * 0.45]}>
+              <boxGeometry args={[0.26, 0.2, 0.14]} />
+              <meshStandardMaterial color="#20232a" emissive="#ffb765" emissiveIntensity={2.4} toneMapped={false} />
+            </mesh>
+          ))}
 
           <group ref={trolley} position={[0, TROLLEY_Y, crane.trolley]}>
             <mesh material={m.steelDark}>
-              <boxGeometry args={[0.7, 0.22, 0.5]} />
+              <boxGeometry args={[0.95, 0.3, 0.68]} />
             </mesh>
           </group>
         </group>
@@ -306,7 +292,7 @@ export function Crane({ site, build, animate }: CraneProps) {
           <cylinderGeometry args={[0.035, 0.035, 0.2, 8]} />
         </mesh>
         <group ref={spreader}>
-          <mesh position={[0, -0.5, 0]} material={loadMaterial}>
+          <mesh position={[0, -0.5, 0]} material={m.steelDark}>
             <boxGeometry args={[1.8, 0.07, 0.09]} />
           </mesh>
           {[0, 1, 2, 3].map((i) => (
@@ -321,8 +307,16 @@ export function Crane({ site, build, animate }: CraneProps) {
             </mesh>
           ))}
         </group>
+        {/*
+          A solid precast unit, in the same concrete as the slabs it is being
+          stacked onto. It used to be a glowing wireframe outline, which was
+          the single loudest thing still saying "diagram" once the building
+          underneath it went solid.
+        */}
         <group ref={frame}>
-          <Instances items={parts.frame} material={loadMaterial} frustumCulled={false} />
+          <mesh position={[0, -HOOK_ABOVE_SLAB, 0]} material={m.precast} castShadow>
+            <boxGeometry args={[1, SLAB, 1]} />
+          </mesh>
         </group>
       </group>
     </group>

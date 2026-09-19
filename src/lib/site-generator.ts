@@ -238,7 +238,7 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
 
   const crane: Crane = {
     position: cranePosition,
-    mastHeight: totalHeight + rnd.range(6, 9),
+    mastHeight: totalHeight + rnd.range(4.6, 6),
     jibLength: craneDistance + rnd.range(7, 10),
     counterJibLength: rnd.range(4.5, 6),
     angle: toTower + rnd.range(-0.35, 0.35),
