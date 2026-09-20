@@ -185,8 +185,11 @@ def main():
     ap.add_argument("--url")
     ap.add_argument("--scroll", type=float, help="fraction of max scroll, 0..1")
     ap.add_argument("--wait", type=float, default=2.5, help="seconds of real frames before capture")
-    ap.add_argument("--w", type=int, default=1440)
-    ap.add_argument("--h", type=int, default=900)
+    # Efe's screen is 1920x1080 and he looks at this maximised, so the
+    # default viewport is the one he actually sees. Framing judged at 1440
+    # is framing judged on somebody else's monitor.
+    ap.add_argument("--w", type=int, default=1920)
+    ap.add_argument("--h", type=int, default=980)
     ap.add_argument("--dpr", type=float, default=1.0)
     ap.add_argument("--eval", dest="expr", help="run an expression after settling and print the value")
     ap.add_argument("--mouse", help="X,Y to move the pointer to just before capture")
@@ -209,6 +212,22 @@ def main():
     try:
         page.send("Emulation.setFocusEmulationEnabled", enabled=True)
     except RuntimeError:
+        pass
+    # The capture size is the override below, not the window, so the window
+    # only decides what Efe sees over the driver's shoulder. Left at the
+    # launch size it is a small window on a big screen and he is looking at a
+    # narrower page than the one being measured. Maximise it so the two agree.
+    try:
+        win = page.send("Browser.getWindowForTarget")
+        if win["bounds"].get("windowState") != "maximized":
+            if win["bounds"].get("windowState") != "normal":
+                page.send("Browser.setWindowBounds", windowId=win["windowId"],
+                          bounds={"windowState": "normal"})
+                time.sleep(0.3)
+            page.send("Browser.setWindowBounds", windowId=win["windowId"],
+                      bounds={"windowState": "maximized"})
+            time.sleep(0.4)
+    except (RuntimeError, KeyError):
         pass
     # Pin the viewport: the window drifts between runs otherwise, and page
     # height changes with it, so the same scroll fraction points somewhere
