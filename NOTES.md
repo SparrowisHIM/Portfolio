@@ -30,10 +30,9 @@ many pieces. He has said he does not care if it takes a week.
 
 **The front page is finished first.** Do not start the yard until it is.
 
-**Efe rates the front page a 6 out of 10.** The first job of the next
-session is an audit: go through it honestly at desktop and work out what is
-keeping it off a 9. What follows is what he has already named. It is not
-the whole list, and finding the rest is the point of the audit.
+**Efe rates the front page a 6 out of 10.** The audit has been done — see
+*The audit* below for what it found and what is left. What follows is what
+he had already named.
 
 ### What he has named
 
@@ -46,21 +45,59 @@ the whole list, and finding the rest is the point of the audit.
 4. ~~Everything is very broken on a fast scroll.~~ Fixed. Both were one
    root cause; see *The crane flying through the building*.
 5. **Every floor needs its project link.** Only `vault-market` has a `live`
-   URL in `projects.ts`. Floors 2 and 3 are `finished: true` with no link,
-   so they render "Fit-out in progress. Opens soon.", contradicting their
-   own flag. **Efe has to supply four URLs** - ask, they cannot be invented.
+   URL in `projects.ts`. **Efe has to supply four URLs** - ask, they cannot
+   be invented. The contradiction is patched in the meantime: a finished
+   floor with no link says "Finished. Not published yet." rather than
+   claiming a fit-out it has completed.
 6. **The night shift is to be fixed**, not rebuilt from scratch as the note
    below assumed. A reference is coming. Until it arrives the *Do not
    touch* rule still stands.
 
 ## The reference: imdaryl.com
 
-Go and look at it yourself - the scratchpad does not survive a session, so
-there is no frame kept here, and nothing of theirs is committed to this
-repo. `get_page_text` gives the whole structure in one call and is the
-fastest way in. For frames, point `tools/cdp.py` at it: the page is heavy
-and the driver times out on it more often than not, so take them one at a
-time with a long wait rather than in a loop.
+**Efe has recorded it.** A 5m17s scroll-through at 1920x992 lives at
+`C:\Users\joker\Videos\Screen Recordings\Screen Recording 2026-09-20
+081439.mp4`. That is the fastest way in now and it survives the session,
+unlike the scratchpad. `ffmpeg` is on the path; a contact sheet is one
+call and beats scrubbing:
+
+```sh
+ffmpeg -i "<the mp4>" -vf "fps=1/8,scale=460:-1,tile=5x4" -frames:v 3 sheet%02d.png
+ffmpeg -ss 96 -i "<the mp4>" -frames:v 1 -vf "scale=1280:-1" f96.png
+```
+
+Live, `get_page_text` gives the whole structure in one call. For frames,
+point `tools/cdp.py` at it: the page is heavy and the driver times out on
+it more often than not, so take them one at a time with a long wait
+rather than in a loop. Nothing of theirs is committed to this repo.
+
+Four things in the recording that the earlier read of the site missed,
+all of them at the level Efe means when he says "that much detail":
+
+- **A blueprint mode.** The whole page turns into a setting-out drawing:
+  flat blue, every block replaced by a labelled hatched rectangle -
+  `NAV 01`, `TITLE`, `COPY 03`, `PLATE 01` - with dimension lines and
+  running measurements (441, 407, 1004) between them, `sheet 01 ·
+  identity · setting out` at the head and `issue P4 · blue for setting
+  out` at the shoulder. It is the single best idea on the site and it is
+  a toggle, not a page. t=0-6s.
+- **Margin notes in a hand, with leaders.** Both margins carry short
+  handwritten paragraphs - `first light`, `the machine`, `before`,
+  `teaching`, `materials` - each with a dashed leader curving in to the
+  row it is about, plus a small sketch. They are commentary, not
+  captions, and they are what makes the page feel written rather than
+  generated. t=90-130s.
+- **Hover pulls a card out of the margin.** Pointing at a row in the work
+  list floats a thumbnail preview to its left and draws a dimension line
+  under the row. t=124s.
+- **A ticket stub with the visitor on it.** The footer prints `No. 9,065
+  / FROM BENIN CITY, NG / ON WINDOWS / AT 07:52 · 20 SEPT 2026 / Back for
+  the 2nd time. Thanks.` beside a device split, a top-ten country table
+  with bars, and a world map with a dot on the reader. Next to it, in
+  mono, the actual maths of the interaction: `TILT · AN UNDERDAMPED
+  SPRING`, the differential equation, `k = 237.6  ζ = 7.5`, and `FIG 8.6
+  · THE STUB, SPRUNG`. The stub is draggable - `REACH · 120 PX · LET GO
+  BEYOND` - with a live readout of RX, RY, AIM, LIGHT beside it. t=236s.
 
 **We are not copying it.** It is a paper-white technical drawing sheet and
 this is a black construction site at night. What transfers is the
@@ -94,6 +131,79 @@ first / Newest first / A-Z`, `CARRYING: Design Motion Brand Web Launch
 Social Edu`, with a live `6 / 6` count), the **status tags** (`IN THE
 WORKS`), the **date ranges**, and the **draggable timeline**. That is the
 shape of the yard.
+
+## The audit
+
+Done at 1920x980 — Efe's screen, maximised — because the framing work
+before it was measured at 1440x900 and that turned out to matter. Read
+*How to actually see the site* first; the driver defaults to 1920 now.
+
+### The method that found the two real faults
+
+Screenshots do not show a hole in time. Sweeping the scroll and reading
+the **computed opacity of every copy card at each step** does, in one
+table. `scrollTo`, wait three frames, read `getComputedStyle(...).opacity`
+off all seven sections, repeat 36 times. Both faults below were invisible
+in any single frame and obvious in the table. Keep the script; it is four
+lines and it is the only way to see a transition as a whole.
+
+### Fixed
+
+1. **The copy column emptied at every floor boundary.** The exit window
+   ran a third of a section early, so a floor's copy was gone before the
+   next one arrived — five frames on the way up with nothing on screen at
+   all. This is most of what "the scroll is not talking" was, and it is
+   the kind of fault that never looks like a bug. See `handover.ts` for
+   the rule and for why a symmetric crossfade is worse than the hole.
+2. **The hero passed through the wordmark.** Above the breakpoint it
+   scrolled away at pinned opacity, so "A portfolio under construction."
+   sat on top of "Design engineer" for half a viewport. It is fixed in
+   the same band as the floors now, and the whole left column is one slot
+   the copy cycles through.
+3. **Finished floors claimed to be in fit-out.** Named item 5.
+4. **The levels rule had `group-hover` on an element with no `group`.**
+
+### Left, in the order that would move the number
+
+1. **The frame is 40% empty and the model cannot fill it.** Measured:
+   the model is **758px wide at both 1440 and 1920** — 53% of the frame
+   Efe's framing was tuned in, 39% of the one he uses. It does not scale
+   with width because a perspective camera's vertical fov does not, and
+   `WIDE_BACK` pulls *back* on every landscape screen without ever asking
+   how wide. The reflex is to dolly in on ultra-wide. **Do not**: the
+   shot is already height-bound, the crane's head is already at the top
+   edge, and coming in crops it worse. The extra 480px is not a camera
+   problem. It is where the drawing sheet goes — which makes the next
+   item the same item.
+2. **The annotation layer.** Named item 4, and now the biggest single
+   move available. The reference's margins are the model; ours are black.
+   Everything needed is already in the app and unsaid: the seed, the lamp
+   name, the elevation, the floor count, the stack, the year, the site
+   number. See *The reference* for the four devices in the recording.
+3. **Density inside the panel.** A floor carries a number, a title, two
+   lines, a stack list and two links. The reference's equivalent row
+   carries a paragraph, a figure, a caption, a date range, a status tag,
+   a filter and a count. The year is in now; the rest is not.
+4. **Nothing says the model is live.** You can orbit it and point at a
+   storey and the page never mentions either. Efe removed the tooltip and
+   was right to. The reference's form — permanent, in the annotation
+   voice, sounding like a person — is the one to copy. **Ask first.**
+
+### Looked at and deliberately not changed
+
+- **The crane's head is cropped through floor one.** Real, and it is a
+  constraint rather than a bug: the crane tops out at 30 and floor one is
+  at 0, so at fov 43 holding both the machine's head and a close shot of
+  the first floor is not possible — it needs `lookY ≥ 16` at that radius,
+  which puts the working floor on the bottom edge. The load and the rope
+  stay in shot, which is the part that tells the story, and the arrival
+  keyframe has already given the whole crane as a poster. Changing it
+  means changing the rhythm of the climb, which is Efe's call.
+- **A topped-out building stays up when you scroll back down.** By
+  design. Note the side effect: the levels rule then reads "01" beside a
+  finished tower. Worth asking whether the rule should say so.
+- **Capture with `--url` between shots.** Without a reload the tower is
+  still up from the last run and the climb cannot be judged.
 
 ## The crane flying through the building: what it was, and the fix
 
@@ -787,7 +897,7 @@ Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" 
   "--remote-debugging-port=9222",
   "--user-data-dir=$scratch\chrome-profile",
   "--no-first-run","--no-default-browser-check",
-  "--window-size=1480,1000","--window-position=40,40",
+  "--window-size=1920,1080","--window-position=0,0",
   "--disable-features=CalculateNativeWinOcclusion",
   "http://localhost:3000")
 ```
@@ -896,8 +1006,8 @@ In the order Efe wants them.
 
 ### Finish the front page
 
-1. **Audit it.** He rates it a 6. Find the rest of the gap; the named items
-   are only a start. See *Read this first*.
+1. ~~**Audit it.**~~ Done. See *The audit*. Four faults fixed; four
+   things left, and the first two are the same job.
 2. ~~Place the building better, and give the scroll something that
    talks.~~ Done. The building stands back off the copy, and `ClimbRule`
    is a levels rule down the right edge: real elevations, the active
