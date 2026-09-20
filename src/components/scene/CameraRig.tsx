@@ -79,6 +79,22 @@ const PITCH_HIGH = 1.05;
 /** Past this much pointer travel a press is a drag, not a click. */
 const DRAG_SLOP = 4;
 
+/*
+  How far back the whole run sits on a landscape screen.
+
+  The model was sixty-five percent of the frame's width and running off the
+  right edge with no margin at all, so it covered the middle of the picture
+  and left the copy column nothing to sit beside. One number for every
+  shot, because they all had the same problem and they have to stay in
+  proportion to each other — pulling one keyframe back would just break the
+  rhythm between them.
+
+  It eases out as the screen narrows and is gone by portrait: the phone has
+  its own framing through the keyframes' `tall` overrides and does not have
+  a copy column to make room for.
+*/
+const WIDE_BACK = 1.24;
+
 function easeOutExpo(t: number) {
   return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
@@ -319,7 +335,7 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
     // off until the tower is a thumbnail: close and cropped reads, distant
     // and complete does not.
     const need = aspect < 1.3 ? THREE.MathUtils.clamp(1.3 / aspect, 1, 1.35) : 1;
-    const fit = 1 + (need - 1) * lerp(a.fit, b.fit, t);
+    const fit = (1 + (need - 1) * lerp(a.fit, b.fit, t)) * (1 + (WIDE_BACK - 1) * (1 - upright));
     const target: Keyframe = {
       lookY: lerp(a.lookY, b.lookY, t),
       rise: lerp(a.rise, b.rise, t),

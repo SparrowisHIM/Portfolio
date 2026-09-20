@@ -26,8 +26,13 @@ export const HERO = {
   /** Orbit angle relative to the site's view angle. */
   angleOffset: -0.47,
   radius: 30,
-  /** Fraction of the radius the camera slides left on wide screens. */
-  shift: 0.17,
+  /**
+   * Fraction of the radius the camera slides left on wide screens.
+   *
+   * Down from 0.17: the model was hard against the right edge with no
+   * margin, and there is a levels rule living there now.
+   */
+  shift: 0.14,
 } as const;
 
 export type Side = "+x" | "-x" | "+z" | "-z";
