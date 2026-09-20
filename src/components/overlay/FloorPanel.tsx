@@ -38,16 +38,24 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
       aria-label={`Floor ${number}: ${project.title}`}
     >
       {/* Pinned clear of the wordmark: the copy parks in its band and fades
-          out rather than sliding up through the header.
+          out rather than sliding up through the header. On a phone it parks
+          at the foot of the screen instead.
 
-          On a phone it is fixed to the foot of the screen instead. Sticky
-          cannot do this job: sticky only ever pulls an element back up
-          toward an edge, and what is wanted here is the opposite — hold the
-          card down at the bottom of the viewport while its section is still
-          arriving. Left in flow the cards ride their sections, and two of
-          them meet half-lit in the middle of the screen between floors. */}
+          Fixed on both, and sticky on neither. Sticky cannot do this job:
+          sticky only ever pulls an element back up toward an edge, so until
+          the section has scrolled far enough to engage it the card is just
+          in flow, riding its own section down the screen. On a tall window
+          that only looked slightly loose. On a short one — 820px, an
+          ordinary laptop — the card sat at two thirds height and ran its
+          last two lines off the bottom of the screen, under the night-shift
+          button. There is nothing to line the card up with anyway: it is an
+          overlay on a 3D scene, so it belongs in a fixed band of the
+          viewport, which is what `travel` already assumes.
+
+          All six stack in the same band and only the one whose floor is on
+          screen is visible, which is how the phone has always done it. */}
       <motion.div
-        className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:bottom-auto md:top-[22vh] md:w-auto md:max-w-[26rem]"
+        className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] md:inset-x-auto md:bottom-auto md:left-8 md:top-[22vh] md:w-auto md:max-w-[26rem]"
         style={{ opacity: travel, pointerEvents: active ? "auto" : "none" }}
       >
         <motion.div
