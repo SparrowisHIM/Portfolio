@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { COPY_BAND, COPY_KEYS, LIFT_KEYS } from "@/lib/handover";
 import type { Project } from "@/lib/projects";
 
 type FloorPanelProps = {
@@ -19,12 +20,15 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
   const section = useRef<HTMLElement>(null);
   // The copy is tied to where its own floor sits on screen, not to a
   // rounded section index, so it is already dark by the time it would
-  // otherwise slide up through the wordmark.
+  // otherwise slide up through the wordmark. The window itself is the
+  // shared handover rule — see `handover.ts` for why the out band is the
+  // in band plus exactly a half.
   const { scrollYProgress } = useScroll({
     target: section,
     offset: ["start end", "end start"],
   });
-  const travel = useTransform(scrollYProgress, [0.24, 0.42, 0.58, 0.75], [0, 1, 1, 0]);
+  const travel = useTransform(scrollYProgress, [...COPY_BAND], [...COPY_KEYS]);
+  const rise = useTransform(scrollYProgress, [...COPY_BAND], [...LIFT_KEYS]);
   // Arriving on a floor switches the panel on like a work lamp.
   const flicker = reduced
     ? { opacity: 1 }
@@ -56,7 +60,11 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
           screen is visible, which is how the phone has always done it. */}
       <motion.div
         className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] md:inset-x-auto md:bottom-auto md:left-8 md:top-[22vh] md:w-auto md:max-w-[26rem]"
-        style={{ opacity: travel, pointerEvents: active ? "auto" : "none" }}
+        style={{
+          opacity: travel,
+          y: reduced ? 0 : rise,
+          pointerEvents: active ? "auto" : "none",
+        }}
       >
         <motion.div
           initial={false}
@@ -73,6 +81,9 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
             {number}
           </span>
           <span className="text-[14px] text-chalk-dim">Floor</span>
+          <span className="font-mono text-[11px] tracking-widest text-steel tabular-nums">
+            {project.year}
+          </span>
         </p>
         <h2 className="select-none mt-2 font-display text-[28px] font-bold uppercase leading-none tracking-wide text-chalk md:mt-4 md:text-[40px]">
           {project.title}
@@ -106,7 +117,16 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
               </button>
             </>
           ) : (
-            <span className="text-steel">Fit-out in progress. Opens soon.</span>
+            // Two different states were saying the same sentence. A floor
+            // flagged finished with no URL is built and unpublished; a
+            // floor that is not finished is still being fitted out. Saying
+            // "fit-out in progress" on a glazed storey contradicts the
+            // model standing next to it.
+            <span className="text-steel">
+              {project.finished
+                ? "Finished. Not published yet."
+                : "Fit-out in progress. Opens soon."}
+            </span>
           )}
           </div>
         </motion.div>

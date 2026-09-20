@@ -1,21 +1,33 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { COPY_IN, LIFT } from "@/lib/handover";
 import { owner } from "@/lib/projects";
 
 export function Roof({ active, onPlay }: { active: boolean; onPlay: () => void }) {
   const reduced = useReducedMotion();
+  const section = useRef<HTMLElement>(null);
+  // This was the one card on a timer rather than on the scroll, so floor
+  // five faded out on its own schedule and the roof faded in on another,
+  // and the two did not meet. Same arrival rule as every floor now; there
+  // is no departure because there is nothing above it.
+  const { scrollYProgress } = useScroll({ target: section, offset: ["start end", "end start"] });
+  const travel = useTransform(scrollYProgress, [...COPY_IN], [0, 1]);
+  const rise = useTransform(scrollYProgress, [...COPY_IN], [LIFT, 0]);
   return (
     <section
+      ref={section}
       id="contact"
       className="h-screen md:flex md:items-center md:px-8 md:pt-24"
     >
       <motion.div
-        className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-xl border border-steel-dim/45 bg-night-deep/80 p-4 backdrop-blur-md md:static md:inset-x-auto md:bottom-auto md:w-auto md:max-w-[28rem] md:rounded-none md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
-        initial={false}
-        animate={{ opacity: active ? 1 : 0 }}
-        transition={{ duration: reduced ? 0.2 : 0.6 }}
-        style={{ pointerEvents: active ? "auto" : "none" }}
+        className="fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-xl border border-steel-dim/45 bg-night-deep/80 p-4 backdrop-blur-md md:inset-x-auto md:bottom-auto md:left-8 md:top-[22vh] md:w-auto md:max-w-[28rem] md:rounded-none md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+        style={{
+          opacity: travel,
+          y: reduced ? 0 : rise,
+          pointerEvents: active ? "auto" : "none",
+        }}
       >
         <h2 className="select-none font-display text-[clamp(38px,8vw,96px)] font-extrabold uppercase leading-[0.9] tracking-tight text-chalk">
           Next floor
