@@ -108,7 +108,7 @@ rules, which still hold:
 - `src/components/scene/SiteYard.tsx` — the laydown stack, cabin, skip, rebar,
   lighting mast, cones, pallets, and the light shafts off the mast heads.
 
-  **The beams are cones, not haze.** There is nothing in the air here to
+  **The beams are cones, not haze.** `Beam.tsx`, shared with the crane. There is nothing in the air here to
   scatter in and adding some means shading every pixel in the frame for it.
   The cone fades on two axes: along its length from the lamp, so the shaft
   is gone before it reaches the deck and the ellipse it would cut there
@@ -178,6 +178,14 @@ with the foot planted, and retracts the same way scrolling back down.
   used to carry a plate the size of the entire floor plate, which was the
   largest object in the hero frame; then a 3.4m plank, which was too small to
   look like it was building anything.
+- **The machinery deck throws a shaft.** It hangs off the slew, so the jib
+  points it at whatever is being built and it sweeps across the site as the
+  crane swings — the one piece of lighting here that moves. Narrower, weaker
+  and with a much slower length falloff than the mast's: it is twenty-five
+  metres up and four times as long, so the same cone at the same settings is
+  a translucent wedge across half the frame, and the same falloff dies out
+  before it reaches anything and hangs in the air as a cone with no end.
+  One shaft, not two — the pair sat on top of each other and read as one.
 - Picks off a **real stack** that draws down as the building goes up and
   then holds at `STACK_MIN`. It used to run to nothing by the top floor,
   which reads as a yard that has finished rather than one that is working.
@@ -566,6 +574,12 @@ Two things to know if you touch it:
   below the slab soffit.
 - **three 0.186 removed `PCFSoftShadowMap`**, which r3f asks for by default.
   Ask for `shadows="percentage"`.
+- **The `PerformanceMonitor` floor has to move when the scene grows.** It
+  was 32 when this was a frame and a crane. With the scaffold, hoarding,
+  ground, sky, crew and light shafts the scene runs 32 to 40 on the machine
+  it is tuned on, so 32 sat inside the normal variance and the monitor spent
+  its time stripping the bloom off a scene that was running fine. It is 26.
+  **A floor inside the noise protects nothing and costs the look.**
 - **Adding an environment map costs a sample on every standard material.** It
   took the scene from 47 to 38 fps, under the `PerformanceMonitor` floor.
   Clawed back by cutting the plinth uplights to two real lights (the eight lit

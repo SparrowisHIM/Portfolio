@@ -233,7 +233,15 @@ export function SiteScene({
       <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} topped={topped} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
-      <PerformanceMonitor bounds={() => [32, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
+      {/*
+        The floor was 32 when this scene was a frame and a crane. It now
+        carries a scaffold, a hoarding, a ground, a sky, a crew and three
+        light shafts, and runs at 33 to 40 on the machine it was tuned on —
+        so 32 sat inside the normal variance and the monitor was stripping
+        the bloom off a scene that was running fine. Lower the floor when
+        the scene grows, or it protects nothing and costs the look.
+      */}
+      <PerformanceMonitor bounds={() => [26, 60]} flipflops={2} onDecline={() => setEffects(false)} onFallback={() => setEffects(false)}>
         <AdaptiveDpr pixelated />
       </PerformanceMonitor>
       {/*

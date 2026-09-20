@@ -12,6 +12,7 @@ import { wind } from "@/lib/wind";
 import { game } from "@/lib/stack-game";
 import { emitBurst, emitPulse, workHue } from "@/lib/pulses";
 import { Instances } from "./Instances";
+import { Beam } from "./Beam";
 import { materials } from "./materials";
 
 type CraneProps = {
@@ -121,6 +122,24 @@ export function Crane({ site, build, animate }: CraneProps) {
   const tmpQ = useRef(new THREE.Quaternion());
   /** Where the trolley is in the world, kept clear of the scratch vectors. */
   const hookTop = useRef(new THREE.Vector3());
+
+  /*
+    Where the machinery deck lamps point, in the slew's own space. Forward
+    along the jib and well down: a fixed local aim, because the jib already
+    tracks the work and anything hung off it inherits that for free.
+  */
+  const lampAim = useMemo(
+    () => [
+      {
+        from: new THREE.Vector3(0, JIB_Y + 0.5, -0.8 - crane.counterJibLength * 0.45),
+        // Down onto the building, not into the air short of it. The
+        // structure occludes the far end, which is what makes it read as
+        // light landing on something.
+        to: new THREE.Vector3(0, -14.5, 9.2),
+      },
+    ],
+    [crane],
+  );
 
   const parts = useMemo(() => {
     const mast = lattice({ x: 0, z: 0, y0: 0.4, y1: crane.mastHeight, width: MAST, panel: PANEL, chord: 0.11, brace: 0.05 });
@@ -486,6 +505,25 @@ export function Crane({ site, build, animate }: CraneProps) {
               <boxGeometry args={[0.26, 0.2, 0.14]} />
               <meshStandardMaterial color="#20232a" emissive="#ffb765" emissiveIntensity={2.4} toneMapped={false} />
             </mesh>
+          ))}
+          {/*
+            And the shafts they throw, forward along the jib and down at the
+            work. They hang off the slew, which is the whole point: the jib
+            points at whatever is being built, so the light does too, and it
+            sweeps across the site as the crane swings — which is a thing
+            only a crane does and the one piece of lighting here that moves.
+
+            Narrower and weaker than the mast's. These are twenty-five
+            metres up and four times as long, so the same cone at the same
+            strength is a translucent wedge lying across half the frame.
+
+            One shaft, not two. The pair sat almost on top of each other at
+            this distance and read as a single beam anyway, while costing
+            two lots of additive fill — which put the scene under the
+            performance monitor's floor and started stripping the bloom.
+          */}
+          {lampAim.map((a, i) => (
+            <Beam key={i} from={a.from} to={a.to} spread={0.11} strength={0.46} color="#ffc078" fade={0.85} />
           ))}
 
           <group ref={trolley} position={[0, TROLLEY_Y, crane.trolley]}>
