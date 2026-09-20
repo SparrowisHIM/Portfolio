@@ -16,19 +16,131 @@ lands it on the frame; the connections are welded off; the storey glazes and
 lights up as the build moves above it. Efe rates it by eye and it has to make
 people stop — portfolio, X, job visibility.
 
-**As of this session the building is working and Efe is happy with it.**
-Hovering a finished storey names its project, the orbit comes off its leash
-once the site tops out, and a phone gets its own framing of the model with a
-floor rail to travel in. What is left is in *Outstanding*, and the biggest
-thing on it is a game Efe wants to rebuild himself.
+The site itself is built: hoarded, scaffolded, populated, lit, with a crane
+that behaves like a crane and a laydown that behaves like a laydown.
+Hovering a finished storey names its project and the orbit comes off its
+leash once it tops out.
+
+## Read this first: where the project is going
+
+There are two sides. **The front page** is the construction site. **The
+component yard** at `/components` is the other, and Efe has now set the bar
+for it: `https://www.imdaryl.com/`, at that level of detail and with that
+many pieces. He has said he does not care if it takes a week.
+
+**The front page is finished first.** Do not start the yard until it is.
+
+**Efe rates the front page a 6 out of 10.** The first job of the next
+session is an audit: go through it honestly at desktop and work out what is
+keeping it off a 9. What follows is what he has already named. It is not
+the whole list, and finding the rest is the point of the audit.
+
+### What he has named
+
+1. **The building is badly placed.** It takes almost the whole centre of
+   the frame. The composition needs rebalancing: more air, a clearer
+   relationship to the copy column.
+2. **The scroll animation "is not talking".** Nothing tells you where you
+   are in the climb or what the scroll is doing. The mobile floor rail does
+   exactly this job; desktop has no equivalent.
+3. **The crane is broken between floor five and the roof section.** See
+   *Known broken*. Measured, not guessed.
+4. **Everything is very broken on a fast scroll.** Same root cause.
+5. **Every floor needs its project link.** Only `vault-market` has a `live`
+   URL in `projects.ts`. Floors 2 and 3 are `finished: true` with no link,
+   so they render "Fit-out in progress. Opens soon.", contradicting their
+   own flag. **Efe has to supply four URLs** - ask, they cannot be invented.
+6. **The night shift is to be fixed**, not rebuilt from scratch as the note
+   below assumed. A reference is coming. Until it arrives the *Do not
+   touch* rule still stands.
+
+## The reference: imdaryl.com
+
+Go and look at it yourself - the scratchpad does not survive a session, so
+there is no frame kept here, and nothing of theirs is committed to this
+repo. `get_page_text` gives the whole structure in one call and is the
+fastest way in. For frames, point `tools/cdp.py` at it: the page is heavy
+and the driver times out on it more often than not, so take them one at a
+time with a long wait rather than in a loop.
+
+**We are not copying it.** It is a paper-white technical drawing sheet and
+this is a black construction site at night. What transfers is the
+discipline, and specifically five things.
+
+- **A continuous annotation layer.** Rulers with tick marks down both
+  edges, live cursor coordinates, a stated drawing scale, crop marks. Every
+  section titled `SHEET 01 - IDENTITY`, `SHEET 02 - ASSEMBLY ORDER`. Every
+  figure captioned `Fig 0.1 - Nine pieces. Each cell is one thing I made.`
+  Nothing is unlabelled. This site already has one sentence in that voice -
+  `Site no. 20260916, arc lighting` - and it is the best line on the page.
+  There should be a system of them.
+- **A third type register.** Display for headlines, sans for body,
+  **monospace for annotation**. We have the first two. The monospace voice
+  is what carries the drawing-sheet feel and it is missing.
+- **Live data in the chrome.** His header carries his city, the local time
+  and the weather. A site has a clock, a shift and a forecast.
+- **Density.** Each of his sections carries a paragraph, a figure, a
+  caption, a grid, filters, a sort and a count. Our floors carry a title,
+  two lines, a stack list and two links. Ours is thin, and that is most of
+  the gap between a 6 and a 9.
+- **Invitations to play, stated plainly.** *N.B. this drawing is live. drag
+  the track, pull a keyframe. nothing here is precious.* We have a model
+  you can orbit and storeys you can point at, and we say none of it. The
+  hint Efe removed was the wrong *form* - a fading tooltip - not the wrong
+  idea. His works because it is in the annotation voice, permanent, and
+  sounds like a person rather than a product tour.
+
+For the yard specifically: note the **filter and sort bar** (`SORT: Oldest
+first / Newest first / A-Z`, `CARRYING: Design Motion Brand Web Launch
+Social Edu`, with a live `6 / 6` count), the **status tags** (`IN THE
+WORKS`), the **date ranges**, and the **draggable timeline**. That is the
+shape of the yard.
+
+## Known broken
+
+### The crane flies through the building
+
+Between floor five finishing and the roof section - scroll 0.86 to 1.0 -
+the site tops out, `craneJob` goes idle, and the pose jumps in one frame
+from the hook resting on the laydown to holding a plate over the roof:
+**22.75 units of travel and 0.95 radians of slew.**
+
+`Crane.tsx` eases the jib so it is not a teleport, and that is exactly what
+makes it visible: it *flies*, and the flight goes through the frame.
+Checked against the building envelope, **54 of 99 steps along that path are
+inside it** - the plate enters the west face at 10.7m and comes out of the
+roof at 21.2m.
+
+**Easing a discontinuity is not the same as not having one.** The fix is
+one of: give the crane a real cycle for that hand-over, the same as every
+other lift; or route the eased path over the building rather than through
+it, hoisting before slewing the way a crane actually works; or do not hold
+a plate at idle at all.
+
+**The same mechanism is why fast scrolling is broken.** `Smoother` damps
+the section at 5.5 and the jib eases at 7, so a scroll crossing several
+floors in a second hands the crane a pose it can only reach by flying, and
+it takes the shortest route - through the structure, every time. Anything
+that fixes the hand-over has to fix this too or it has fixed nothing.
+**The test is dragging the scrollbar top to bottom in one movement, not
+scrolling gently.**
+
+### The composition
+
+The model sits centre-right and fills most of the frame. `HERO.shift`, the
+keyframe radii in `buildKeyframes` and the plinth size all feed it. The
+deck has been widened twice for content reasons, which makes the model
+bigger in frame each time - **check the framing after any change to
+`plinth()`.**
 
 ## Do not touch
 
 - The night-shift game: `src/lib/stack-game.ts`,
   `src/components/scene/StackGame.tsx`, `src/components/overlay/NightShift.tsx`.
   The `game.active` block in `Crane.tsx` stays byte-for-byte.
-  **Efe has said the game is broken and will be rebuilt from scratch later.**
-  Do not spend time on it; do not let it block anything.
+  **Efe now wants the game fixed rather than rebuilt from scratch, and is
+  sending a reference for it.** Until that arrives, leave these files alone
+  and do not let them block anything.
 - The component yard: `src/app/components/`, `src/components/yard/`.
 
 ## Ground rules
@@ -713,24 +825,48 @@ trigger Rebuild. That is not a bug; ask before chasing it.
 
 - **The topped-out hint.** A line that faded in at the end saying the orbit
   was free. He did not like it; it is gone, component and all. The orbit is
-  still free — see *Free orbit*. Do not reintroduce a tutorial line.
+  still free — see *Free orbit*.
+
+  **Do not reintroduce a tutorial.** But note what the reference does with
+  the same problem: *N.B. this drawing is live. drag the track, pull a
+  keyframe. nothing here is precious.* Permanent, in the annotation voice,
+  and it sounds like a person. That is a different thing from a tooltip
+  that fades in to tell you how to use the page, and it is probably the
+  form the invitation should eventually take here. Ask before building it.
 
 ## Outstanding
 
-Hover navigation, free orbit and mobile are done — see the sections above.
-What is left:
+In the order Efe wants them.
 
-1. **Mobile.** Built and pushed, then parked: Efe has not decided what he
-   wants there yet. It is behind `md:` and the `tall` keyframe overrides, so
-   it is self-contained if it needs reworking.
-2. **The night-shift game**, which Efe will rebuild as a whole game. Still do
-   not touch the files listed under *Do not touch*. `CranePose.hitched` is
-   optional precisely so that block stayed byte-for-byte.
-3. Load time. 1.4s in production. Chase only if Efe finds it slow.
-4. The `metadataBase` warning in `next build`. One line in `layout.tsx` once
-   there is a real domain.
-5. `Instances.tsx` still fills from a `useLayoutEffect` rather than the frame
-   loop. It has not bitten, but it is the same hazard as the blank building.
+### Finish the front page
+
+1. **Audit it.** He rates it a 6. Find the rest of the gap; the named items
+   are only a start. See *Read this first*.
+2. **Fix the crane hand-over and the fast scroll.** One root cause, two
+   symptoms. See *Known broken*.
+3. **Place the building better**, and give the scroll something that talks.
+4. **Links on every floor.** Needs four URLs from Efe.
+5. **The annotation layer**, in the monospace voice the reference uses.
+6. **Fix the night shift.** Reference to come. Until it lands the *Do not
+   touch* rule stands; `CranePose.hitched` is optional precisely so that
+   block has stayed byte-for-byte.
+
+### Then the component yard
+
+`/components`, at imdaryl.com's level of detail and count. A week is fine.
+Do not start it before the front page is signed off.
+
+### Loose ends, any time
+
+- **Mobile.** Built and pushed, then parked: Efe has not decided what he
+  wants there. Behind `md:` and the `tall` keyframe overrides, so it is
+  self-contained if it needs reworking.
+- The `metadataBase` warning in `next build`, plus an OpenGraph block. Ten
+  minutes, and without it an X post has no preview card - which matters for
+  a site whose whole purpose is being seen.
+- Load time. 1.4s in production. Chase only if Efe finds it slow.
+- `Instances.tsx` still fills from a `useLayoutEffect` rather than the frame
+  loop. It has not bitten, but it is the same hazard as the blank building.
 
 ## Recent history
 
