@@ -5,7 +5,12 @@ import * as THREE from "three";
 import { groundFade, groundSurface } from "@/lib/textures";
 import { createRandom } from "@/lib/random";
 
-/** Inside the camera's far plane, which is 220. */
+/*
+  Both of these have to clear the camera's far plane from the *furthest the
+  camera ever stands from the origin*, not from the origin itself — about 61
+  on a wide screen and more in portrait. See the note on `far` in SiteScene:
+  getting that wrong cuts a hole in the sky.
+*/
 const SKY = 165;
 const GROUND = 150;
 

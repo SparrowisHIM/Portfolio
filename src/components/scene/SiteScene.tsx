@@ -150,7 +150,23 @@ export function SiteScene({
     <Canvas
       shadows="percentage"
       dpr={[1, rich ? 1.5 : 1.25]}
-      camera={{ position: [30, 12, 30], fov: 43, near: 0.4, far: 220 }}
+      /*
+        `far` has to clear the sky, not the subject.
+
+        It was 220 and the sky shell has a radius of 165, which looks like
+        plenty of room until you notice the camera is not at the origin: it
+        orbits out to about 61 on a wide screen and further in portrait, so
+        the far side of the shell sits at 226 and the far rim of the ground
+        disc at 212. The shell was being cut by the far plane, and the hole
+        it left showed the flat clear colour — a dark polygon hanging in the
+        sky behind the crane, with the shell's own tessellation for edges.
+
+        So the rule is `far > radius + furthest the camera ever gets`, and
+        280 holds that with room for both the sky and the ground. It costs
+        nothing worth measuring: depth precision here is set by `near` being
+        0.4, not by where the far plane is.
+      */
+      camera={{ position: [30, 12, 30], fov: 43, near: 0.4, far: 280 }}
       gl={{
         antialias: true,
         powerPreference: "high-performance",
@@ -218,7 +234,7 @@ export function SiteScene({
       <PlinthLights site={site} />
       <InteriorLights site={site} build={build} />
       <Crane site={site} build={build} animate={animate} />
-      <Welding site={site} build={build} animate={animate} />
+      <StackGame site={site} animate={animate} />
       <Workers site={site} build={build} animate={animate} />
       <Hoarding site={site} />
       <Scaffold site={site} build={build} />
@@ -229,8 +245,8 @@ export function SiteScene({
         its cap of 24 and sat there. Sparks at the moment a plate is taken by
         the structure, at last.
       */}
+      <Welding site={site} build={build} animate={animate} />
       <Bursts animate={animate} />
-      <StackGame site={site} animate={animate} />
       <Pointer site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} topped={topped} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
       {/*
