@@ -162,7 +162,9 @@ export function craneJob(site: Site, f: number) {
   for (let i = 1; i <= count; i++) {
     if (floorProgress(i, f) === 0) return { index: i, t: 0, idle: false };
   }
-  return { index: count, t: 0.42, idle: true };
+  // `t` is unused for an idle job: `cranePose` derives it from how far
+  // past topping out the scroll has gone.
+  return { index: count, t: 0, idle: true };
 }
 
 export type CranePose = {
@@ -290,7 +292,29 @@ export function cranePose(site: Site, f: number): CranePose {
   const floor = site.floors[Math.min(job.index, site.floors.length - 1)];
   // Standing by with a plate overhead, rather than placing one.
   const overRoof = job.idle;
-  const t = job.t;
+
+  /*
+    Topping out sets off one more pick.
+
+    This used to be a fixed pose — hold a plate over the roof — and getting
+    into it from the end of the last lift was a jump of twenty-two metres
+    and half a radian in a single frame. Easing the jib turned that from a
+    teleport into a flight, and the flight went straight through the
+    building: fifty-four steps of a hundred along that path were inside it.
+
+    So there is no hand-over any more. The last lift ends with the hook at
+    the laydown, and this picks up from exactly there and runs the ordinary
+    curve to a hover over the roof — continuous by construction.
+
+    Note it is driven by `build`, not by the scroll: the Smoother latches
+    at topping out and walks `build` to the end on its own, so this plays
+    once as a closing beat and then holds. It also makes the roof copy
+    literally true — the slab really is on the hook, and it just got
+    there.
+  */
+  const t = job.idle
+    ? lerp(HITCH_AT, 0.6, clamp01((f - (site.floors.length + 0.18)) / 0.82))
+    : job.t;
 
   // The hook aims at the plate itself, not the tower axis: plates shift.
   const [px, pz] = overRoof ? floor.offset : plateCentre(floor);
@@ -353,14 +377,6 @@ export function cranePose(site: Site, f: number): CranePose {
     loaded = false;
   }
 
-  if (overRoof) {
-    // Holding the next frame above the unfinished top level.
-    angle = lerp(toYard, toTower, 0.85);
-    trolley = lerp(rYard, rTower, 0.85);
-    y = hoistY;
-    loaded = true;
-  }
-
   // A hook cannot rise past its own trolley. On a short mast over the top
   // level the hoist height worked out above the rope's own anchor, which
   // inverted the falls — visible as two hairlines crossing the jib.
@@ -378,9 +394,7 @@ export function cranePose(site: Site, f: number): CranePose {
     // poking out through the slab edges on the way back to the yard.
     hitched: loaded || (t >= SLINGS_AT && t < HITCH_AT),
     slab: PLANK,
-    rotation: overRoof
-      ? 0
-      : lerp(yardTurn(site), floor.rotation, smoothstep(0.28, 0.56, t)),
+    rotation: lerp(yardTurn(site), floor.rotation, smoothstep(0.28, 0.56, t)),
   };
 }
 

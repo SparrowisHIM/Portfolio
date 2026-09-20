@@ -44,6 +44,23 @@ const BEAM_CROSS = 0.58;
 const ANCHOR_X = 0.35;
 const ANCHOR_Z = 0.31;
 
+/*
+  How far the jib may fall behind the pose, per axis.
+
+  The ease is what makes the crane read as a machine, and it is also what
+  breaks it. A scroll crossing several floors in a second hands the jib a
+  pose it can only reach by travelling, and an eased value travels in a
+  straight line through whatever is in the way — which on this site means
+  through the building. Capping the lag means the jib is never far enough
+  behind for that line to be long, so a fast scroll fast-forwards the real
+  animation instead of cutting corners across it.
+
+  Under the caps nothing changes: ordinary operation never reaches them.
+*/
+const LAG_SLEW = 0.3;
+const LAG_TROLLEY = 2.0;
+const LAG_HOIST = 3.0;
+
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** The same turn expressed as the shorter of the two ways round. */
@@ -319,6 +336,14 @@ export function Crane({ site, build, animate }: CraneProps) {
     jib.angle += shortTurn(pose.angle - jib.angle) * ease;
     jib.trolley += (pose.trolley - jib.trolley) * ease;
     jib.y += (pose.hook[1] - jib.y) * ease;
+
+    // Then refuse to be further behind than the caps allow.
+    const behind = shortTurn(pose.angle - jib.angle);
+    if (Math.abs(behind) > LAG_SLEW) jib.angle = pose.angle - Math.sign(behind) * LAG_SLEW;
+    const outBy = pose.trolley - jib.trolley;
+    if (Math.abs(outBy) > LAG_TROLLEY) jib.trolley = pose.trolley - Math.sign(outBy) * LAG_TROLLEY;
+    const underBy = pose.hook[1] - jib.y;
+    if (Math.abs(underBy) > LAG_HOIST) jib.y = pose.hook[1] - Math.sign(underBy) * LAG_HOIST;
 
     if (slew.current) slew.current.rotation.y = jib.angle;
     if (trolley.current) trolley.current.position.z = jib.trolley;

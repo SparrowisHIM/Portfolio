@@ -43,9 +43,9 @@ the whole list, and finding the rest is the point of the audit.
 2. **The scroll animation "is not talking".** Nothing tells you where you
    are in the climb or what the scroll is doing. The mobile floor rail does
    exactly this job; desktop has no equivalent.
-3. **The crane is broken between floor five and the roof section.** See
-   *Known broken*. Measured, not guessed.
-4. **Everything is very broken on a fast scroll.** Same root cause.
+3. ~~The crane is broken between floor five and the roof section.~~ Fixed.
+4. ~~Everything is very broken on a fast scroll.~~ Fixed. Both were one
+   root cause; see *The crane flying through the building*.
 5. **Every floor needs its project link.** Only `vault-market` has a `live`
    URL in `projects.ts`. Floors 2 and 3 are `finished: true` with no link,
    so they render "Fit-out in progress. Opens soon.", contradicting their
@@ -96,34 +96,58 @@ Social Edu`, with a live `6 / 6` count), the **status tags** (`IN THE
 WORKS`), the **date ranges**, and the **draggable timeline**. That is the
 shape of the yard.
 
-## Known broken
+## The crane flying through the building: what it was, and the fix
 
-### The crane flies through the building
+Kept because the reasoning generalises, and because the measurement
+technique is the useful part.
 
-Between floor five finishing and the roof section - scroll 0.86 to 1.0 -
-the site tops out, `craneJob` goes idle, and the pose jumps in one frame
-from the hook resting on the laydown to holding a plate over the roof:
-**22.75 units of travel and 0.95 radians of slew.**
-
-`Crane.tsx` eases the jib so it is not a teleport, and that is exactly what
-makes it visible: it *flies*, and the flight goes through the frame.
-Checked against the building envelope, **54 of 99 steps along that path are
-inside it** - the plate enters the west face at 10.7m and comes out of the
+**The symptom.** Between floor five finishing and the roof section the
+site topped out, `craneJob` went idle, and the pose jumped in a single
+frame from the hook resting on the laydown to holding a plate over the
+roof: **22.75 units of travel and 0.95 radians of slew.** The jib easing
+added earlier stopped it being a teleport, which is exactly what made it
+visible — it *flew*, and the flight went through the frame. Measured
+against the building envelope, **54 of 99 steps along that path were
+inside it**: the plate entered the west face at 10.7m and came out of the
 roof at 21.2m.
 
-**Easing a discontinuity is not the same as not having one.** The fix is
-one of: give the crane a real cycle for that hand-over, the same as every
-other lift; or route the eased path over the building rather than through
-it, hoisting before slewing the way a crane actually works; or do not hold
-a plate at idle at all.
+**Easing a discontinuity is not the same as not having one.** That is the
+sentence worth keeping.
 
-**The same mechanism is why fast scrolling is broken.** `Smoother` damps
-the section at 5.5 and the jib eases at 7, so a scroll crossing several
-floors in a second hands the crane a pose it can only reach by flying, and
-it takes the shortest route - through the structure, every time. Anything
-that fixes the hand-over has to fix this too or it has fixed nothing.
-**The test is dragging the scrollbar top to bottom in one movement, not
-scrolling gently.**
+**Two fixes, because they were two problems.**
+
+- *The hand-over.* There is no fixed idle pose any more. The last lift
+  ends with the hook at the laydown, and topping out sets off one more
+  ordinary pick from exactly there, running the normal curve to a hover
+  over the roof. Continuous by construction — nothing to ease across. It
+  also makes the roof copy literally true: the slab really is on the hook.
+  Driven by `build`, not the scroll: the Smoother latches at topping out
+  and walks `build` to the end on its own, so it plays once as a closing
+  beat and holds.
+- *The fast scroll.* `LAG_SLEW`, `LAG_TROLLEY` and `LAG_HOIST` in
+  `Crane.tsx` cap how far the eased jib may fall behind the pose. Under
+  the caps nothing changes; over them the crane tracks the scroll instead
+  of chasing it, so a slam fast-forwards the real animation rather than
+  cutting corners across it.
+
+**How to check it, because eyes are no good at this.** Sweep `cranePose`
+over the whole timeline and look at the biggest single step:
+
+    biggest step 22.75 units at f=5.182   before
+    biggest step  0.45 units at f=5.116   after, and none over 0.5
+
+Then record the *rendered* plate position every frame while slamming the
+scrollbar from top to bottom, and count frames where it is inside the
+building box. Afterwards: five runs of one to three frames, at 2.6, 5.4,
+9.4, 12.9 and 16.0 metres — which is the plate being lowered onto each
+floor in turn as the build fast-forwards, exactly as it should. The bug
+would have shown as one long run climbing 10.7 to 21.2.
+
+**The box test counts a legitimate placement as a hit**, so read the runs,
+not the total. A short run at a floor level is the crane working; a long
+run crossing storeys is the crane cheating.
+
+## Known broken
 
 ### The composition
 
@@ -842,12 +866,10 @@ In the order Efe wants them.
 
 1. **Audit it.** He rates it a 6. Find the rest of the gap; the named items
    are only a start. See *Read this first*.
-2. **Fix the crane hand-over and the fast scroll.** One root cause, two
-   symptoms. See *Known broken*.
-3. **Place the building better**, and give the scroll something that talks.
-4. **Links on every floor.** Needs four URLs from Efe.
-5. **The annotation layer**, in the monospace voice the reference uses.
-6. **Fix the night shift.** Reference to come. Until it lands the *Do not
+2. **Place the building better**, and give the scroll something that talks.
+3. **Links on every floor.** Needs four URLs from Efe.
+4. **The annotation layer**, in the monospace voice the reference uses.
+5. **Fix the night shift.** Reference to come. Until it lands the *Do not
    touch* rule stands; `CranePose.hitched` is optional precisely so that
    block has stayed byte-for-byte.
 
