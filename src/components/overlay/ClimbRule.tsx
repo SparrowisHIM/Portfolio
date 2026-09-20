@@ -83,7 +83,7 @@ export function ClimbRule({ section }: { section: number }) {
                 <a
                   href={stop.href}
                   aria-current={active ? "true" : undefined}
-                  className="pointer-events-auto flex -translate-y-1/2 items-center gap-2 py-1 pl-4 font-mono text-[10px] tabular-nums transition-colors duration-200"
+                  className="group pointer-events-auto flex -translate-y-1/2 items-center gap-2 py-1 pl-4 font-mono text-[10px] tabular-nums transition-colors duration-200"
                 >
                   <span
                     aria-hidden="true"
@@ -92,7 +92,14 @@ export function ClimbRule({ section }: { section: number }) {
                       (active ? "w-[13px] bg-sodium" : "w-[7px] bg-steel-dim group-hover:bg-steel")
                     }
                   />
-                  <span className={active ? "text-sodium" : "text-steel"}>{stop.code}</span>
+                  <span
+                    className={
+                      "transition-colors duration-200 " +
+                      (active ? "text-sodium" : "text-steel group-hover:text-chalk")
+                    }
+                  >
+                    {stop.code}
+                  </span>
                 </a>
               </li>
             );
