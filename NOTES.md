@@ -37,12 +37,11 @@ the whole list, and finding the rest is the point of the audit.
 
 ### What he has named
 
-1. **The building is badly placed.** It takes almost the whole centre of
-   the frame. The composition needs rebalancing: more air, a clearer
-   relationship to the copy column.
-2. **The scroll animation "is not talking".** Nothing tells you where you
-   are in the climb or what the scroll is doing. The mobile floor rail does
-   exactly this job; desktop has no equivalent.
+1. ~~The building is badly placed.~~ Fixed. See *The framing, and a hole
+   in the sky* — and note the framing is now measured, so redo the
+   measurement rather than eyeballing it if the plinth changes again.
+2. ~~The scroll animation "is not talking".~~ Fixed. `ClimbRule` gives
+   desktop the equivalent of the mobile floor rail, as a levels rule.
 3. ~~The crane is broken between floor five and the roof section.~~ Fixed.
 4. ~~Everything is very broken on a fast scroll.~~ Fixed. Both were one
    root cause; see *The crane flying through the building*.
@@ -147,15 +146,48 @@ would have shown as one long run climbing 10.7 to 21.2.
 not the total. A short run at a floor level is the crane working; a long
 run crossing storeys is the crane cheating.
 
-## Known broken
+## The framing, and a hole in the sky
 
-### The composition
+Two things came out of placing the building better. Keeping both because
+both were invisible until measured.
 
-The model sits centre-right and fills most of the frame. `HERO.shift`, the
-keyframe radii in `buildKeyframes` and the plinth size all feed it. The
-deck has been widened twice for content reasons, which makes the model
-bigger in frame each time - **check the framing after any change to
-`plinth()`.**
+### The model had no margin
+
+It was 62 to 65 per cent of the frame's width and flush to the right
+edge, so it held the middle of the picture and the copy column had
+nothing to sit beside. The fix is `WIDE_BACK` in `CameraRig.tsx`: one
+multiplier on `fit` for the whole run rather than a tweak per keyframe,
+because they all had the same problem and they have to stay in
+proportion to each other. It eases out as the screen narrows and is gone
+by portrait, which has no copy column and its own `tall` framing.
+`HERO.shift` came down 0.17 to 0.14 to match.
+
+Measured, not eyeballed: hero 918 to 836 px wide, mid-climb 976 to 888,
+left edge of the model 616 to 698.
+
+**`HERO.shift`, the keyframe radii in `buildKeyframes` and the plinth
+size all feed the framing, and the deck has been widened twice for
+content reasons — check the framing after any change to `plinth()`.**
+
+### Pulling back cut a hole in the sky
+
+A dark polygon appeared behind the crane, floating, with straight edges.
+It was the sky shell being clipped by the camera's far plane: radius
+165, `far` 220, and the camera orbits out to 61 on a wide screen, so the
+far side of the shell sat at 226. What showed through the hole was the
+flat clear colour, and the edges were the shell's own tessellation.
+
+**The rule is `far > radius + the furthest the camera ever gets`,** not
+`far > radius`. The ground disc's far rim was at 212 and about to do the
+same thing. `far` is 280 now.
+
+The useful part is how it was found, because guessing got nowhere for
+half an hour. A temporary `Probe` component inside the `Canvas` writing
+`useThree()` state to `window`, then from the CDP driver: hide each
+top-level child in turn, `gl.render`, `readPixels` one pixel, compare.
+That named `Surroundings` in one call and the sky mesh in the next. A
+raycast through the same pixel had already reported the sky at distance
+**220.91** — the answer was sitting in the output before I read it.
 
 ## Do not touch
 
@@ -866,7 +898,13 @@ In the order Efe wants them.
 
 1. **Audit it.** He rates it a 6. Find the rest of the gap; the named items
    are only a start. See *Read this first*.
-2. **Place the building better**, and give the scroll something that talks.
+2. ~~Place the building better, and give the scroll something that
+   talks.~~ Done. The building stands back off the copy, and `ClimbRule`
+   is a levels rule down the right edge: real elevations, the active
+   level in sodium, a marker that slides with the scroll. A rule rather
+   than a progress bar, because a bar says how far through a page you
+   are — the browser's job — and a rule says how high up a building you
+   are, which is the thing actually happening.
 3. **Links on every floor.** Needs four URLs from Efe.
 4. **The annotation layer**, in the monospace voice the reference uses.
 5. **Fix the night shift.** Reference to come. Until it lands the *Do not
