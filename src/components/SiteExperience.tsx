@@ -15,6 +15,7 @@ import { FloorPanel } from "./overlay/FloorPanel";
 import { Roof } from "./overlay/Roof";
 import { RebuildButton } from "./overlay/RebuildButton";
 import { FloorRail } from "./overlay/FloorRail";
+import { ClimbRule } from "./overlay/ClimbRule";
 import { Loader } from "./overlay/Loader";
 import { WalkIn } from "./overlay/WalkIn";
 import { NightShift } from "./overlay/NightShift";
@@ -136,6 +137,7 @@ export function SiteExperience() {
 
       {!playing && <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} onPlay={clockOn} />}
       {!playing && <FloorRail section={section} sectionCount={SECTION_COUNT} />}
+      {!playing && <ClimbRule section={section} />}
       <NightShift onAgain={again} onLeave={clockOff} />
       <WalkIn project={walkIn} onClose={closeWalkIn} />
     </div>
