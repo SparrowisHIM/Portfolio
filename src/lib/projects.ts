@@ -4,7 +4,17 @@ export type Project = {
   description: string;
   stack: string[];
   year: string;
-  /** The site itself. Floors without one are still being fitted out. */
+  /**
+   * The site itself. Floors without one are still being fitted out.
+   *
+   * **Only ever a URL Efe has confirmed, or one read off the repo's own
+   * `homepage` field or its Vercel deployment record.** `<project-name>
+   * .vercel.app` is a single global namespace on Vercel, not a per-account
+   * one, so the obvious guess for a project name usually resolves - to a
+   * stranger's deployment. `vault-market.vercel.app` serves someone else's
+   * "Vault Market"; his is `vault-market-seven`. A 200 and a plausible
+   * `<title>` prove nothing. Do not guess these.
+   */
   live?: string;
   /** Whether the floor reads as finished (glazed) or still raw structure. */
   finished: boolean;
@@ -26,17 +36,17 @@ export const projects: Project[] = [
       "A trust-first marketplace for graded collectibles. Inspect slabs up close, read market context, and route exceptional cards into specialist review.",
     stack: ["Next.js", "TypeScript", "Tailwind CSS"],
     year: "2026",
-    live: "https://vault-market.vercel.app",
+    live: "https://vault-market-seven.vercel.app",
     finished: true,
   },
   {
     slug: "mimi-crochet",
     title: "Mimi Crochet",
     description:
-      "A storefront for a Colombian crochet maker, built in Spanish for her customers. Hand-made bags and accessories carrying their own colour variants, testimonials from buyers, and every order handed off to WhatsApp.",
+      "A storefront for a Nigerian crochet label, in ready-to-wear and made-to-order. Browse the pieces in stock, or send a custom request to have an earlier design remade in your size, colour and fit.",
     stack: ["Next.js", "TypeScript", "Tailwind CSS"],
     year: "2026",
-    live: "https://mimicrochet.vercel.app",
+    live: "https://mimicrochet-taupe.vercel.app",
     finished: true,
   },
   {
@@ -46,7 +56,8 @@ export const projects: Project[] = [
       "A wallet interface for holding and moving between currencies. Balances, conversions and transfers as a calm, tactile flow.",
     stack: ["React", "TypeScript", "Framer Motion"],
     year: "2026",
-    live: "https://multi-currency-wallet.vercel.app",
+    // Deployed, but the URL is not recoverable from here: the repo has no
+    // `homepage` and no Vercel deployment record on GitHub. Needs Efe.
     finished: true,
   },
   {
@@ -56,7 +67,8 @@ export const projects: Project[] = [
       "A betslip that prints itself. Line-by-line receipt motion with thermal-printer timing, recreated from frame captures of the real thing.",
     stack: ["React", "Framer Motion", "Vite"],
     year: "2026",
-    live: "https://betslip-printer.vercel.app",
+    // Only Preview deployments on the repo, never a Production one, so
+    // there is no stable alias to link. Needs Efe.
     finished: false,
   },
   {
@@ -66,7 +78,7 @@ export const projects: Project[] = [
       "An animated stack of character cards. Drag, flick and reshuffle with spring physics tuned so every card feels like it has weight.",
     stack: ["React", "Framer Motion", "Tailwind CSS"],
     year: "2026",
-    live: "https://one-piece-cards.vercel.app",
+    // No deployment record on the repo. Needs Efe.
     finished: false,
   },
 ];
@@ -84,7 +96,7 @@ export const yardProjects: Project[] = [
       "A spinning globe with live network arcs between cities. Built directly on three.js to keep the whole thing under one frame budget.",
     stack: ["React", "three.js", "Vite"],
     year: "2026",
-    live: "https://kinetic-network-globe.vercel.app",
+    // No deployment record on the repo. Needs Efe.
     finished: true,
   },
 ];
