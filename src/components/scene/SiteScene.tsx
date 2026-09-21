@@ -80,6 +80,28 @@ function Ready({ onReady }: { onReady?: () => void }) {
  * before the scroll has come back down. The latch stays open until the build
  * has genuinely been under way again.
  */
+/**
+ * The most construction time that may pass in one second, in floors.
+ *
+ * Damping on its own was not enough and the comment above used to claim it
+ * was. `damp` bounds the distance left to travel, never the speed of
+ * travel: the rate it starts at is proportional to the size of the jump,
+ * so a flick of the wheel to the bottom of the page moved the build several
+ * floors in a frame. Every part of a lift that reads as construction - the
+ * plate coming off the pile, the swing, the dip onto the columns, the arc
+ * at the joint - happens inside that frame and is therefore never seen. The
+ * building arrived assembled and the crane appeared to teleport.
+ *
+ * So the build has a speed limit as well as a destination. Scroll as fast
+ * as you like; the site puts up a floor in about six tenths of a second and
+ * not one faster, and a scroll that outruns it is a queue of work rather
+ * than a skipped animation.
+ *
+ * Raising this is the knob for "the catch-up feels slow"; lowering it is
+ * the knob for "I did not get to see it land".
+ */
+const MAX_FLOORS_PER_SECOND = 1.6;
+
 function Smoother({
   site,
   progress,
@@ -104,7 +126,18 @@ function Smoother({
   useFrame((_, delta) => {
     const target = (progress.current ?? 0) * end;
     const current = section.current ?? target;
-    const next = animate ? THREE.MathUtils.damp(current, target, 5.5, delta) : target;
+    let next: number;
+    if (!animate) {
+      next = target;
+    } else {
+      // A frame that took longer than this was a stall, and feeding the real
+      // delta back in turns the recovery into the jump the cap exists to
+      // prevent.
+      const dt = Math.min(delta, 0.05);
+      const eased = THREE.MathUtils.damp(current, target, 5.5, dt);
+      const cap = MAX_FLOORS_PER_SECOND * dt;
+      next = current + THREE.MathUtils.clamp(eased - current, -cap, cap);
+    }
     section.current = next;
     if (topped.current) {
       // Finished. Run the last of the glazing in and hold there.
@@ -141,9 +174,17 @@ export function SiteScene({
   const below = useRef(false);
 
   // A rebuild is a different site, and the latch belongs to the old one.
+  //
+  // The clocks go back to the ground with it. They used to carry the old
+  // height across, which was invisible while the catch-up took a fraction
+  // of a second; with a speed limit on it the new site would have stood up
+  // fully built and then taken four seconds to dismantle itself down to the
+  // ground the scroll had already returned to.
   useEffect(() => {
     topped.current = false;
     below.current = false;
+    section.current = 0;
+    build.current = 0;
   }, [site]);
 
   return (
