@@ -180,10 +180,8 @@ lines and it is the only way to see a transition as a whole.
    specification — level and elevation, stack, published host — and a
    figure caption for the storey standing beside it. See *Density without
    inventing anything*.
-3. **Nothing says the model is live.** You can orbit it and point at a
-   storey and the page never mentions either. Efe removed the tooltip and
-   was right to. The reference's form — permanent, in the annotation
-   voice, sounding like a person — is the one to copy. **Ask first.**
+3. ~~Nothing says the model is live.~~ Done, and Efe approved the form
+   first: permanent, in the annotation voice. See *The site note*.
 
 ### Looked at and deliberately not changed
 
@@ -288,6 +286,37 @@ The phone keeps the old loose stack line and the old fallback sentence;
 the table and the caption are `md:` only. The fallback sentence is now
 `md:hidden` because above the breakpoint the PUBLISHED row says it and
 the two together said it twice.
+
+## The site note
+
+`SheetFrame.tsx`, top margin:
+
+> **N.B.** this site is live. Drag the model, and click a finished storey
+> to go up to it. Once it tops out the camera comes off its leash; Rebuild
+> starts a new one.
+
+Every clause is true and every one of them was going unsaid. Note what it
+does **not** claim: the camera is leashed to ±0.45 until the frame tops
+out, so it says *once it tops out* rather than implying a free orbit from
+the start, and it says *finished* storey because clicking an unbuilt one
+does nothing. Hover-naming is deliberately left out — it is also gated on
+topping out and the line was long enough.
+
+It is not a tooltip. It never animates, it is there on the first frame and
+the last, and it is printed on the sheet with the rulers and the
+coordinates. That is the distinction Efe drew when he deleted the old
+hint, and he approved this form before it was built.
+
+**The top margin, and that is a measurement.** At the bottom the free
+width is whatever the model leaves, and the model moves: the plinth's left
+edge at that height is x=1039 at 1920 and x=515 at 1440, so a note wide
+enough to read printed straight across the deck on any ordinary laptop. It
+was tried there twice. Up top the neighbours are the wordmark and the nav,
+which are fixed chrome at known positions, and the model never reaches
+y<80 — the highest thing it puts in that band is the crane's beacon, about
+x=925 on a mid scroll. So the note runs 320 to 880 and gates at 1360px,
+where the nav still starts at 1032. Measured clearance: 712px at 1920,
+232px at 1440, 152px at 1360.
 
 ## Two gates, and why they are numbers
 
@@ -1174,12 +1203,9 @@ trigger Rebuild. That is not a bug; ask before chasing it.
   was free. He did not like it; it is gone, component and all. The orbit is
   still free — see *Free orbit*.
 
-  **Do not reintroduce a tutorial.** But note what the reference does with
-  the same problem: *N.B. this drawing is live. drag the track, pull a
-  keyframe. nothing here is precious.* Permanent, in the annotation voice,
-  and it sounds like a person. That is a different thing from a tooltip
-  that fades in to tell you how to use the page, and it is probably the
-  form the invitation should eventually take here. Ask before building it.
+  **Do not reintroduce a tutorial.** The invitation exists now and it took
+  the reference's form instead — see *The site note*. Efe approved that
+  form before it was built, in those words: permanent, annotation voice.
 
 ## Outstanding
 

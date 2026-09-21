@@ -186,6 +186,21 @@ body {
   }
 }
 
+/*
+  The site note shares the top margin with the wordmark and the nav. It
+  needs the width between them: at 1360 the nav starts at about 1033 and
+  the note runs 320 to 880, which is the tightest it is allowed to get.
+*/
+.sheet-note {
+  display: none;
+}
+
+@media (min-width: 1360px) {
+  .sheet-note {
+    display: block;
+  }
+}
+
 .sheet-wide {
   display: none;
 }

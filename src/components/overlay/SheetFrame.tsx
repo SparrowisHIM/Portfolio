@@ -94,6 +94,47 @@ export function SheetFrame() {
         style={{ left: EDGE + 1, top: EDGE, bottom: EDGE }}
       />
 
+      {/*
+        The note, in the top margin.
+
+        Everything it describes was already true and the page said none of
+        it: you could drag the model, click a finished storey to travel to
+        it, and get a full turn of the camera once the frame topped out.
+
+        Efe deleted a tooltip that faded in at the end to say so, and was
+        right to - a hint that appears, explains the page and goes away
+        treats the reader as someone who needs managing. The form that
+        works is the reference's: permanent, in the annotation voice, and
+        phrased like the person who built the thing rather than like a
+        product tour. So it is printed on the sheet with the rulers and the
+        coordinates, it never animates, and it is there from the first
+        frame to the last.
+
+        The top margin, not the bottom, and that is a measurement. At the
+        bottom the free width is whatever the model leaves, and the model
+        moves: the plinth's left edge at that height is x=1039 at 1920 and
+        x=515 at 1440, so a note wide enough to read printed across the
+        deck on any ordinary laptop. Up here the neighbours are the
+        wordmark and the nav, which are fixed chrome at known positions,
+        and the model never reaches y<80 - the highest thing it ever puts
+        in this band is the crane's beacon, at about x=925 on a mid scroll.
+        Hence 320 to 880, and a gate at 1360 where the nav still starts at
+        about 1033.
+
+        Accurate on purpose. The camera really is leashed until the frame
+        tops out, so it says "once it tops out" rather than implying a free
+        orbit from the start, and "finished storey" because clicking an
+        unbuilt one does nothing.
+      */}
+      <p
+        className="sheet-note absolute max-w-[560px] font-mono text-[10px] leading-[1.7] tracking-[0.05em] text-steel"
+        style={{ left: EDGE + 304, top: EDGE + 8 }}
+      >
+        <span className="text-sodium/80">N.B.</span> this site is live. Drag the model, and click a
+        finished storey to go up to it. Once it tops out the camera comes off its leash; Rebuild
+        starts a new one.
+      </p>
+
       <span
         className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] tracking-[0.18em] text-steel-dim tabular-nums"
         style={{ bottom: EDGE + 8 }}
