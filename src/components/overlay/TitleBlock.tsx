@@ -96,22 +96,31 @@ export function TitleBlock({ section, seed, lamp }: TitleBlockProps) {
         Sheet {level.sheet} <span className="text-steel-dim">of</span> {last.sheet}
       </p>
       {/*
-        Four rows, and it is a measurement rather than a taste.
+        Three rows, and it is a measurement rather than a taste.
 
         The hero card is the tallest copy on the page — a 200px headline
         over two lines — and at 1920x980 it runs to y=802. Anchored to the
         foot of the sheet, a six-row block started at 758 and the "Climb"
         link printed straight through it. Four rows at this leading start
-        at 820. Add a row back and it collides again on the ground sheet
-        only, which is exactly the kind of fault that looks fine on every
-        floor you happen to screenshot.
+        at 820, and three rows buy back enough height that the block
+        clears the hero from 930px of window rather than from 960.
+
+        That number is why the lamp shares the site-no row. The hero is
+        586px tall whatever the width, because its headline is clamped at
+        200px, so the clearance is a straight race between 0.22vh + 586
+        and vh - 135. Add a row back and it collides on the ground sheet
+        only - the kind of fault that looks fine on every floor you happen
+        to screenshot.
 
         What went: the project row, which the headline already says, and
         the drawing row, which the copy column's own sheet label says.
       */}
       <div className="border border-steel-dim/25 px-3 py-1.5">
-        <Row label="Site no">{seed.toString(16).padStart(8, "0")}</Row>
-        <Row label="Lamp">{lamp} lighting</Row>
+        <Row label="Site no">
+          {seed.toString(16).padStart(8, "0")}
+          <span className="text-steel-dim"> · </span>
+          {lamp}
+        </Row>
         <Row label="Levels">
           {LEVELS.length - 1} risers, top {elevation(TOP_ELEVATION)}
         </Row>

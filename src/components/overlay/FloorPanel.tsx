@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { COPY_BAND, COPY_KEYS, LIFT_KEYS } from "@/lib/handover";
 import type { Project } from "@/lib/projects";
+import { LEVELS, elevation } from "@/lib/sheets";
 
 type FloorPanelProps = {
   project: Project;
@@ -14,9 +15,31 @@ type FloorPanelProps = {
   onWalkIn?: (project: Project) => void;
 };
 
+/** One row of the floor's specification. */
+function Spec({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline gap-3 border-b border-steel-dim/15 py-[5px]">
+      <dt className="w-[66px] shrink-0 text-[9px] uppercase tracking-[0.16em] text-steel-dim">
+        {label}
+      </dt>
+      <dd className="min-w-0 flex-1 truncate text-[10px] tracking-[0.03em] text-chalk-dim tabular-nums">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
 /** One project per floor. The panel switches on like a work lamp. */
 export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProps) {
   const reduced = useReducedMotion();
+  const code = String(number).padStart(2, "0");
+  const level = LEVELS.find((l) => l.key === project.slug);
+  /*
+    The host on its own, because the scheme and the trailing slash are
+    noise in a table and the reader is being told where this is, not given
+    something to copy. The link underneath is the thing you click.
+  */
+  const host = project.live ? project.live.replace(/^https?:\/\//, "").replace(/\/$/, "") : null;
   const section = useRef<HTMLElement>(null);
   // The copy is tied to where its own floor sits on screen, not to a
   // rounded section index, so it is already dark by the time it would
@@ -79,7 +102,7 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
         {/* The copy column joins the drawing set: sheet number, and the
             status the schedule is reporting for this level. */}
         <p className="mb-2 hidden font-mono text-[10px] uppercase tracking-[0.2em] text-steel md:block">
-          Sheet {String(number).padStart(2, "0")}
+          Sheet {code}
           <span className="text-steel-dim"> · </span>
           {project.finished ? "Complete" : "In the works"}
         </p>
@@ -98,9 +121,49 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
         <p className="mt-2.5 text-[13px] leading-relaxed text-chalk-dim md:mt-4 md:text-[15px]">
           {project.description}
         </p>
-        <p className="mt-2.5 text-[12px] text-steel md:mt-4 md:text-[13px]">
+        {/*
+          The specification, as a drawing states one.
+
+          The audit's complaint was that a floor carried a number, a title,
+          two lines and a stack list against a reference row carrying a
+          paragraph, a caption, a range, a status and a count. The answer is
+          not to invent copy about the work - that is how a portfolio starts
+          lying - it is to say the things that are already true and were
+          going unsaid. The elevation is the one on the rule, the host is the
+          one the link actually opens, and the level count is the building
+          you are standing in front of.
+        */}
+        <dl className="mt-3 hidden border-t border-steel-dim/25 font-mono md:mt-5 md:block">
+          <Spec label="Level">
+            {code} of {String(LEVELS.length - 2).padStart(2, "0")}
+            <span className="text-steel-dim"> · </span>
+            {elevation(level?.elevation ?? null)}
+          </Spec>
+          <Spec label="Stack">{project.stack.join(" · ")}</Spec>
+          <Spec label="Published">
+            {host ?? <span className="text-steel">Not yet</span>}
+          </Spec>
+        </dl>
+
+        {/* On a phone the specification is a line, not a table. */}
+        <p className="mt-2.5 text-[12px] text-steel md:hidden">
           {project.stack.join(", ")}
           {project.finished ? "" : " (still in progress)"}
+        </p>
+
+        {/*
+          Every figure on the reference is captioned, and the figure here is
+          the storey standing next to the words. Captioning it is what ties
+          the column to the model rather than leaving them as two things on
+          one screen.
+        */}
+        <p className="mt-3 hidden font-mono text-[10px] leading-relaxed text-steel md:mt-4 md:block">
+          Fig {number}.1
+          <span className="text-steel-dim"> — </span>
+          Level {code},{" "}
+          {project.finished
+            ? "glazed and occupied."
+            : "frame up, fit-out to follow."}
         </p>
         <div className="mt-4 flex flex-wrap gap-6 text-[14px] md:mt-6">
           {project.live ? (
@@ -124,12 +187,15 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
               </button>
             </>
           ) : (
-            // Two different states were saying the same sentence. A floor
-            // flagged finished with no URL is built and unpublished; a
-            // floor that is not finished is still being fitted out. Saying
-            // "fit-out in progress" on a glazed storey contradicts the
-            // model standing next to it.
-            <span className="text-steel">
+            // Phone only. Above the breakpoint the specification's PUBLISHED
+            // row already says this, and the two together said it twice.
+            //
+            // Two different states were saying the same sentence before
+            // that. A floor flagged finished with no URL is built and
+            // unpublished; a floor that is not finished is still being
+            // fitted out. Saying "fit-out in progress" on a glazed storey
+            // contradicts the model standing next to it.
+            <span className="text-steel md:hidden">
               {project.finished
                 ? "Finished. Not published yet."
                 : "Fit-out in progress. Opens soon."}

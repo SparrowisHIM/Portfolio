@@ -176,11 +176,10 @@ lines and it is the only way to see a transition as a whole.
    now the thing that gates the furniture. **The reflex is still to dolly
    in on ultra-wide. Do not**: the shot is height-bound, the crane's head
    is at the top edge, and coming in crops it worse.
-2. **Density inside the panel.** A floor carries a number, a title, two
-   lines, a stack list and two links. The reference's equivalent row
-   carries a paragraph, a figure, a caption, a date range, a status tag,
-   a filter and a count. The year and a sheet label with the status are
-   in now; the rest is not. **This is the next job.**
+2. ~~Density inside the panel.~~ Done. Every floor carries a
+   specification — level and elevation, stack, published host — and a
+   figure caption for the storey standing beside it. See *Density without
+   inventing anything*.
 3. **Nothing says the model is live.** You can orbit it and point at a
    storey and the page never mentions either. Efe removed the tooltip and
    was right to. The reference's form — permanent, in the annotation
@@ -262,6 +261,80 @@ the mesh with an empty matrix buffer. Same rule as `hover.ts` and
 `orbit.ts`. The clock is a `useSyncExternalStore` rather than state set
 from an effect, which the lint rule catches, and it needs a null server
 snapshot or the time in the HTML hydrates to a different one.
+
+## Density without inventing anything
+
+The audit said a floor carried a number, a title, two lines and a stack
+list against a reference row carrying a paragraph, a caption, a range, a
+status and a count. The temptation is to write more copy about the work.
+**Do not** - that is how a portfolio starts lying, and Efe cannot check
+every sentence.
+
+Everything added is already true and was going unsaid:
+
+- **`LEVEL  02 of 05 · +3.55`** - the elevation is the one the climb rule
+  prints, read from `LEVELS`, so the column and the rule cannot disagree.
+- **`STACK`** - moved out of a loose line into the table.
+- **`PUBLISHED  mimicrochet-taupe.vercel.app`** - host only. The scheme and
+  the trailing slash are noise in a table, and the reader is being told
+  where the thing lives, not given something to copy. A floor with no
+  deployment says `Not yet`.
+- **`Fig 2.1 — Level 02, glazed and occupied.`** - every figure on the
+  reference is captioned, and the figure here is the storey standing next
+  to the words. It reads the `finished` flag, so an unglazed floor says
+  *frame up, fit-out to follow*, which is what the model is showing.
+
+The phone keeps the old loose stack line and the old fallback sentence;
+the table and the caption are `md:` only. The fallback sentence is now
+`md:hidden` because above the breakpoint the PUBLISHED row says it and
+the two together said it twice.
+
+## Two gates, and why they are numbers
+
+The sheet furniture only appears when there is room, and both thresholds
+are measurements. Re-measure rather than nudge them.
+
+- **The floor schedule needs 1760px of width.** The margin beside the
+  model is whatever the window has spare: about 270px at 1440, about
+  470px at 1920. At 1440 the schedule printed across the scaffold.
+- **The title block needs 950px of height, and the hero sets it.** The
+  block is anchored to the foot of the sheet and the copy column to
+  `22vh`, so they close on each other as the window shortens. The hero
+  card is the tall one — 586px near enough whatever the width, because
+  its headline clamps at 200px — making the clearance a race between
+  `0.22vh + 586` and `vh - 135`. Measured: 40px of clearance at 980, 21px
+  at 955, 9px at 940. A floor panel is 452px and would clear from about
+  750, but a block that appears on floor two and not at ground reads as a
+  bug, so the first sheet sets the gate.
+
+The first version of this gate was 700px, set by testing at 980 only and
+reasoning about the floors rather than the hero. It put the title block
+through the "Climb" link on every laptop.
+
+## The scroll has a speed limit now
+
+`Smoother` in `SiteScene.tsx`. The comment there used to claim scroll was
+never applied raw and nothing jumped; damping does not do that.
+`THREE.MathUtils.damp` bounds the distance left to travel, never the
+speed of travel, and the rate it opens at is proportional to the size of
+the jump — so a flick of the wheel to the foot of the page moved the
+build several floors inside one frame. Everything that reads as
+construction happens inside that frame.
+
+`MAX_FLOORS_PER_SECOND = 1.6` is the cap: about six tenths of a second a
+floor, whatever the scroll does. Raising it is the knob for "the catch-up
+feels slow"; lowering it is the knob for "I did not get to see it land".
+The frame delta is clamped to 50ms first, or a stalled frame's recovery
+reintroduces the jump.
+
+Measured by flinging the page to the bottom and capturing: at 0.4s the
+frame is two storeys up, at 3.0s it has topped out. Before, both frames
+were the finished building.
+
+A rebuild resets `section` and `build` to 0. They used to carry the old
+height across, which was invisible at the old speed; with a cap the new
+site stood up fully built and then spent four seconds dismantling itself
+down to the ground the scroll had already returned to.
 
 ## Finding a deployment URL - and the trap in it
 
@@ -1127,7 +1200,7 @@ In the order Efe wants them.
    deployed. See named item 5.
 4. ~~**The annotation layer**, in the monospace voice the reference
    uses.~~ Done. See *The sheet the site is drawn on*.
-5. **Density inside the floor panel**, now the top of the list.
+5. ~~**Density inside the floor panel.**~~ Done.
 6. **Fix the night shift.** Reference to come. Until it lands the *Do not
    touch* rule stands; `CranePose.hitched` is optional precisely so that
    block has stayed byte-for-byte.

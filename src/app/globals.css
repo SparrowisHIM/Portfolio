@@ -165,7 +165,22 @@ body {
   display: none;
 }
 
-@media (min-width: 768px) and (min-height: 700px) {
+/*
+  950, and it is the hero that sets it, not the floors.
+
+  The block is anchored to the foot of the sheet and the copy column is
+  anchored at 22vh, so they close on each other as the window gets
+  shorter. The hero card is the tall one - 586px, near enough whatever the
+  width, because its headline clamps at 200px - which makes the clearance
+  a race between 0.22vh + 586 and vh - 135. Measured: 40px of
+  clearance at 980, 9px at 940. 950 keeps it around 19px, which is the
+  smallest gap that still reads as two things rather than one.
+
+  A floor panel is 452px and clears from around 750, so this gate is
+  generous to every sheet but the first. It is set by the first because a
+  block that appears on floor two and not at ground reads as a bug.
+*/
+@media (min-width: 768px) and (min-height: 950px) {
   .sheet-block {
     display: block;
   }
