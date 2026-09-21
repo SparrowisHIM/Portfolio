@@ -3,7 +3,7 @@
 import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { Site } from "@/lib/site-generator";
+import { SCAFFOLD_GAP, type Site } from "@/lib/site-generator";
 import {
   BEARER_H,
   DUNNAGE_H,
@@ -17,7 +17,8 @@ import {
 import { craneReach, plinth, SLAB } from "@/lib/building";
 import { createRandom } from "@/lib/random";
 import { materials } from "./materials";
-import { insideHoarding } from "./Hoarding";
+import { INSET as HOARDING_INSET } from "./Hoarding";
+import { ROW } from "./Scaffold";
 import { Beam } from "./Beam";
 
 /**
@@ -40,6 +41,13 @@ import { Beam } from "./Beam";
 /** The laydown stacks exactly what the crane lifts. */
 const PLATE = { w: PLANK.width, d: PLANK.depth };
 
+/**
+ * How far past the face of the building the scaffold reaches: the inner row
+ * of standards stands `SCAFFOLD_GAP` off it and the outer row is a bay
+ * beyond that. Nothing in the yard may stand inside this.
+ */
+const SCAFFOLD_OUT = SCAFFOLD_GAP + ROW;
+
 export function SiteYard({
   site,
   build,
@@ -53,7 +61,34 @@ export function SiteYard({
 
   const layout = useMemo(() => {
     const rnd = createRandom(site.seed ^ 0x51de);
-    const half = Math.max(site.floors[0].width, site.floors[0].depth) / 2;
+
+    /*
+      How far the building reaches on a given bearing.
+
+      This used to be one number for every direction - half the longer side
+      - which is only correct on the two bearings pointing at the middle of
+      the long faces. On a diagonal the building's corner reaches
+      sqrt(hx^2 + hz^2): about 8.4m on a typical plan, against a `half` of
+      5.7. Everything placed on a diagonal at a radius under that was
+      standing inside the building, and the site cabin was sitting in the
+      corner of it.
+
+      So the radius follows the plan: a ray from the centre against the box,
+      where the box is the slab grown by the scaffold, because standing a
+      cabin inside the scaffold is no better than standing it in the frame.
+    */
+    const hull = {
+      hx: site.floors[0].width / 2 + SCAFFOLD_OUT,
+      hz: site.floors[0].depth / 2 + SCAFFOLD_OUT,
+    };
+    const reachOn = (a: number) => {
+      const sx = Math.abs(Math.sin(a));
+      const sz = Math.abs(Math.cos(a));
+      return Math.min(
+        sx < 1e-6 ? Infinity : hull.hx / sx,
+        sz < 1e-6 ? Infinity : hull.hz / sz,
+      );
+    };
     /*
       Which hand the laydown is on, as a bearing off the open face. The
       dressing is placed on bearings and the laydown is snapped to an axis,
@@ -94,6 +129,7 @@ export function SiteYard({
         : { hx: PLANK.depth / 2, hz: PLANK.width / 2 };
     const reach = craneReach(site);
     const blockers = [
+      { x: 0, z: 0, hx: hull.hx, hz: hull.hz },
       { x: pile[0], z: pile[2], ...pileHalf },
       { x: site.crane.position[0], z: site.crane.position[2], hx: reach, hz: reach },
     ];
@@ -117,24 +153,83 @@ export function SiteYard({
       the world origin and its beams are aimed off its own position, so it
       lights the site correctly from wherever it ends up.
     */
+    /*
+      How far a piece may travel along a bearing before it touches the fence.
+
+      This is the half of the problem that `insideHoarding` got wrong, and
+      the reason the cabin was in the building even after the radius was
+      fixed. That clamp works per axis: a piece too far out gets pulled
+      straight back along x, or along z, whichever overran. On a bearing
+      that is mostly sideways to the deck that pull is sideways too, and it
+      walks the piece along the face of the building and into it. It was
+      1.69m into the frame on every seed - dead constant, because the deck
+      is sized off the building, so the geometry that produced it never
+      varied.
+
+      A piece belongs on its bearing. So it is the radius that gives, not
+      the position: slide it in along the ray until it fits, and if the
+      bearing cannot hold it at all, say so and let the caller try another
+      one rather than putting it somewhere wrong.
+    */
+    const fenceRadius = (a: number, keep: number) => {
+      const d = [Math.sin(a), Math.cos(a)] as const;
+      const centre = [base.offsetX, base.offsetZ] as const;
+      // The fence line, less the piece's own radius, less a hand's breadth:
+      // the posts stand proud of the panels and a piece grazing them reads
+      // as a piece through them.
+      const halves = [
+        base.width / 2 - HOARDING_INSET - 0.25 - keep,
+        base.depth / 2 - HOARDING_INSET - 0.25 - keep,
+      ];
+      let exit = Infinity;
+      for (let i = 0; i < 2; i++) {
+        if (Math.abs(d[i]) < 1e-6) continue;
+        const lo = (centre[i] - halves[i]) / d[i];
+        const hi = (centre[i] + halves[i]) / d[i];
+        exit = Math.min(exit, Math.max(lo, hi));
+      }
+      return exit;
+    };
+
     const at = (offset: number, out: number, keep = 0.6) => {
-      const put = (a: number): [number, number] =>
-        insideHoarding(base, [Math.sin(a) * (half + out), Math.cos(a) * (half + out)], keep);
+      // `out` is the clear gap between the scaffold and the near face of the
+      // piece, so it reads as a distance on the deck rather than as an
+      // offset from a number that meant nothing in particular.
+      const put = (a: number): [number, number] | null => {
+        const want = reachOn(a) + out + keep;
+        const room = fenceRadius(a, keep);
+        if (room < want) return null;
+        return [Math.sin(a) * want, Math.cos(a) * want];
+      };
       const a0 = site.viewAngle + offset;
-      // A tenth of a radian at a time, alternating hands, so a piece that
-      // has to move ends up as near its own bearing as it can.
+      // A tenth of a radian at a time, alternating hands, so a piece that has
+      // to move ends up as near its own bearing as it can.
       const walk = () => {
-        for (let step = 1; step <= 16; step++) {
+        for (let step = 1; step <= 24; step++) {
           for (const dir of [1, -1] as const) {
-            const a = a0 + dir * step * 0.1;
+            const a = a0 + dir * step * 0.13;
             const q = put(a);
-            if (clears(q, keep)) return { p: q, a };
+            if (q && clears(q, keep)) return { p: q, a };
           }
         }
         return null;
       };
+      /*
+        Nothing fits: push it as far out on its own bearing as the fence
+        allows, but never nearer the frame than the hull. The old fallback
+        put the piece on the hull and let `insideHoarding` clamp it, which
+        is how the cabin ended up half through the hoarding - the clamp
+        pulls sideways, and sideways from there is into the building. If
+        this ever fires the deck is too small, and it is better to see a
+        piece crowding the fence than one inside the frame.
+      */
+      const crowd = () => {
+        const floor = reachOn(a0) + keep;
+        const r = Math.max(floor, Math.min(reachOn(a0) + out + keep, fenceRadius(a0, keep)));
+        return { p: [Math.sin(a0) * r, Math.cos(a0) * r] as [number, number], a: a0 };
+      };
       const first = put(a0);
-      const spot = clears(first, keep) ? { p: first, a: a0 } : (walk() ?? { p: first, a: a0 });
+      const spot = first && clears(first, keep) ? { p: first, a: a0 } : (walk() ?? crowd());
       blockers.push({ x: spot.p[0], z: spot.p[1], hx: keep, hz: keep });
       return spot;
     };
@@ -148,10 +243,24 @@ export function SiteYard({
       1.5 x 1.1 (0.94). Three of these were rounded down and each one let
       a corner through the hoarding.
     */
-    const cabin = at(2.45, 2.8, 2.23);
-    const skip = at(-2.15, 2.7, 1.25);
-    const rebar = at(1.5, 2.6, 1.4);
-    const mast = at(clearOfPile * 1.35, 3.1, 0.5);
+    /*
+      `keep` is the radius of the circle about the piece's OWN ORIGIN that
+      contains it - not about the middle of its largest box. The cabin is
+      the trap: its body is centred, but the steps hang off the door side
+      at z +1.65, so the footprint is not centred on the group and the true
+      radius is the one about that origin, not about the body. The cabin
+      is centred on its own footprint now (see `Cabin`), which brings it
+      from 2.37 to 2.15: x reaches 1.7 and z reaches 1.315 either way.
+      Measure every child, including the ones bolted on the outside.
+    */
+    const cabin = at(2.45, 0.8, 2.15);
+    const skip = at(-2.15, 1.2, 1.25);
+    const rebar = at(1.5, 1.0, 1.4);
+    const mast = at(clearOfPile * 1.35, 1.6, 0.5);
+    const tubes = at(2.0, 1.0, 1.56);
+    const panels = at(-2.7, 1.0, 1.30);
+    const genset = at(-1.2, 1.1, 0.94);
+    const drums = at(0.95, 0.9, 0.74);
     return {
       cabin: cabin.p,
       cabinTurn: cabin.a,
@@ -160,8 +269,28 @@ export function SiteYard({
       rebar: rebar.p,
       rebarTurn: rebar.a,
       mast: mast.p,
-      cones: [at(-0.6, 2.2, 0.3).p, at(0.55, 2.4, 0.3).p, at(1.05, 1.9, 0.3).p],
-      pallets: [at(-1.75, 2.6, 0.94).p, at(2.95, 2.8, 0.94).p],
+      tubes: tubes.p,
+      tubesTurn: tubes.a,
+      panels: panels.p,
+      panelsTurn: panels.a,
+      genset: genset.p,
+      gensetTurn: genset.a,
+      drums: drums.p,
+      drumsTurn: drums.a,
+      /*
+        The small stuff last, so it fills whatever the big pieces left
+        rather than pushing them around. The apron is wide enough now that
+        a bare deck reads as an empty car park, which is the failure mode
+        on the other side of everything standing in the building.
+      */
+      cones: [
+        at(-0.6, 0.7, 0.3).p,
+        at(0.55, 0.9, 0.3).p,
+        at(1.05, 0.6, 0.3).p,
+        at(-1.45, 0.8, 0.3).p,
+        at(1.9, 0.7, 0.3).p,
+      ],
+      pallets: [at(-1.75, 1.0, 0.94).p, at(2.95, 1.2, 0.94).p, at(0.35, 1.1, 0.94).p],
       jitter: rnd.range(-0.15, 0.15),
     };
   }, [site, base]);
@@ -268,6 +397,10 @@ export function SiteYard({
       <Skip position={[layout.skip[0], deck, layout.skip[1]]} turn={layout.skipTurn} m={m} />
       <RebarStack position={[layout.rebar[0], deck, layout.rebar[1]]} turn={layout.rebarTurn} m={m} />
       <Mast position={[layout.mast[0], deck, layout.mast[1]]} m={m} />
+      <TubeStack position={[layout.tubes[0], deck, layout.tubes[1]]} turn={layout.tubesTurn} m={m} />
+      <PanelStack position={[layout.panels[0], deck, layout.panels[1]]} turn={layout.panelsTurn} m={m} />
+      <Genset position={[layout.genset[0], deck, layout.genset[1]]} turn={layout.gensetTurn} m={m} />
+      <Drums position={[layout.drums[0], deck, layout.drums[1]]} turn={layout.drumsTurn} m={m} />
 
       {layout.cones.map((c, i) => (
         <Cone key={i} position={[c[0], deck, c[1]]} m={m} />
@@ -287,25 +420,33 @@ type Kit = ReturnType<typeof materials>;
 function Cabin({ position, turn, m }: { position: [number, number, number]; turn: number; m: Kit }) {
   return (
     <group position={position} rotation={[0, turn, 0]}>
-      <mesh position={[0, 0.98, 0]} castShadow receiveShadow material={m.cabin}>
-        <boxGeometry args={[4.0, 1.95, 1.95]} />
+      {/*
+        Every child is shifted back 0.34 so the group origin sits in the
+        middle of the real footprint, steps included. It is not cosmetic:
+        the yard keeps pieces off each other with a radius measured about
+        this origin, and an off-centre body inflates that radius by the
+        whole of the overhang - which for this cabin was the difference
+        between fitting on the deck and standing through the fence.
+      */}
+      <mesh position={[0, 0.98, -0.34]} castShadow receiveShadow material={m.cabin}>
+        <boxGeometry args={[3.4, 1.95, 1.95]} />
       </mesh>
       {/* Corrugation, as four shallow ribs rather than a texture. */}
-      {[-1.4, -0.47, 0.47, 1.4].map((x) => (
-        <mesh key={x} position={[x, 0.98, 0.99]} material={m.steelDark}>
+      {[-1.18, -0.39, 0.39, 1.18].map((x) => (
+        <mesh key={x} position={[x, 0.98, 0.65]} material={m.steelDark}>
           <boxGeometry args={[0.07, 1.8, 0.05]} />
         </mesh>
       ))}
       {/* The one warm window: the thing that says somebody is in there. */}
-      <mesh position={[1.0, 1.15, 0.985]}>
+      <mesh position={[0.78, 1.15, 0.645]}>
         <planeGeometry args={[0.8, 0.52]} />
         <meshBasicMaterial color="#ffc87a" toneMapped={false} />
       </mesh>
-      <mesh position={[-0.95, 0.95, 0.985]} material={m.steelDark}>
+      <mesh position={[-0.76, 0.95, 0.645]} material={m.steelDark}>
         <boxGeometry args={[0.7, 1.55, 0.04]} />
       </mesh>
       {/* Steps up to the door. */}
-      <mesh position={[-0.95, 0.1, 1.35]} castShadow material={m.steelDark}>
+      <mesh position={[-0.76, 0.1, 1.01]} castShadow material={m.steelDark}>
         <boxGeometry args={[0.85, 0.2, 0.6]} />
       </mesh>
     </group>
@@ -425,6 +566,128 @@ function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
       />
       {aim.map((a, i) => (
         <Beam key={i} from={a.from} to={a.to} spread={0.3} strength={0.62} />
+      ))}
+    </group>
+  );
+}
+
+/**
+ * Scaffold tube, bundled on bearers.
+ *
+ * The scaffold on the building has to have come from somewhere, and a run
+ * of tube reads as the most site-like thing you can put on a deck: long,
+ * cheap, stacked in a triangle because that is how round stock stacks.
+ */
+function TubeStack({ position, turn, m }: { position: [number, number, number]; turn: number; m: Kit }) {
+  const rows = [
+    { y: 0.19, n: 7 },
+    { y: 0.31, n: 6 },
+    { y: 0.43, n: 5 },
+  ];
+  return (
+    <group position={position} rotation={[0, turn, 0]}>
+      {[-1.15, 1.15].map((x) => (
+        <mesh key={x} position={[x, 0.06, 0]} material={m.timber}>
+          <boxGeometry args={[0.16, 0.12, 0.9]} />
+        </mesh>
+      ))}
+      {rows.map((row) =>
+        Array.from({ length: row.n }, (_, i) => (
+          <mesh
+            key={`${row.y}-${i}`}
+            position={[0, row.y, (i - (row.n - 1) / 2) * 0.115]}
+            rotation={[0, 0, Math.PI / 2]}
+            castShadow
+            material={m.rebar}
+          >
+            <cylinderGeometry args={[0.052, 0.052, 3.0, 7]} />
+          </mesh>
+        )),
+      )}
+    </group>
+  );
+}
+
+/**
+ * Formwork panels, leaned against a low rack.
+ *
+ * Everything else in the yard is flat on the deck. One thing standing at
+ * an angle is what stops the whole compound reading as a plan.
+ */
+function PanelStack({ position, turn, m }: { position: [number, number, number]; turn: number; m: Kit }) {
+  return (
+    <group position={position} rotation={[0, turn, 0]}>
+      {[-0.9, 0.9].map((x) => (
+        <mesh key={x} position={[x, 0.42, 0.18]} rotation={[0.26, 0, 0]} material={m.steelDark}>
+          <boxGeometry args={[0.08, 0.9, 0.08]} />
+        </mesh>
+      ))}
+      {[0, 1, 2, 3].map((i) => (
+        <mesh
+          key={i}
+          position={[0, 0.5 - i * 0.012, 0.3 + i * 0.07]}
+          rotation={[0.26, 0, 0]}
+          castShadow
+          material={m.timber}
+        >
+          <boxGeometry args={[2.1, 1.25, 0.05]} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.05, 0.52]} material={m.timber}>
+        <boxGeometry args={[2.2, 0.1, 0.2]} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Site generator: the reason any of the lights are on. */
+function Genset({ position, turn, m }: { position: [number, number, number]; turn: number; m: Kit }) {
+  return (
+    <group position={position} rotation={[0, turn, 0]}>
+      <mesh position={[0, 0.07, 0]} material={m.steelDark}>
+        <boxGeometry args={[1.62, 0.14, 0.92]} />
+      </mesh>
+      <mesh position={[0, 0.52, 0]} castShadow receiveShadow material={m.cabin}>
+        <boxGeometry args={[1.5, 0.76, 0.84]} />
+      </mesh>
+      {/* Radiator grille, as ribs. */}
+      {[-0.2, -0.07, 0.06, 0.19].map((z) => (
+        <mesh key={z} position={[0.752, 0.52, z]} material={m.steelDark}>
+          <boxGeometry args={[0.03, 0.5, 0.05]} />
+        </mesh>
+      ))}
+      <mesh position={[-0.5, 1.02, 0.2]} material={m.steelDark}>
+        <cylinderGeometry args={[0.055, 0.055, 0.42, 8]} />
+      </mesh>
+      {/* One green pilot lamp: it is running. */}
+      <mesh position={[0.6, 0.72, 0.425]}>
+        <planeGeometry args={[0.07, 0.05]} />
+        <meshBasicMaterial color="#7dffa8" toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Fuel drums, because the generator has to drink something. */
+function Drums({ position, turn, m }: { position: [number, number, number]; turn: number; m: Kit }) {
+  const at: [number, number][] = [
+    [-0.34, -0.16],
+    [0.02, 0.2],
+    [0.38, -0.1],
+  ];
+  return (
+    <group position={position} rotation={[0, turn, 0]}>
+      {at.map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh position={[0, 0.29, 0]} castShadow material={m.skip}>
+            <cylinderGeometry args={[0.17, 0.17, 0.58, 12]} />
+          </mesh>
+          {[0.14, 0.44].map((y) => (
+            <mesh key={y} position={[0, y, 0]} material={m.steelDark}>
+              <cylinderGeometry args={[0.178, 0.178, 0.035, 12]} />
+            </mesh>
+          ))}
+        </group>
       ))}
     </group>
   );

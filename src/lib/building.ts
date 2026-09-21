@@ -529,8 +529,8 @@ export function plinth(site: Site) {
     compound had nothing spare anywhere. A metre and a bit on every face is
     the difference between a site and a site that has been packed.
   */
-  const workSide = yardRadius(site) + PLANK.depth / 2 + 2.0;
-  const farSide = reach + 3.6;
+  const workSide = yardRadius(site) + PLANK.depth / 2 + 3.8;
+  const farSide = reach + 6.0;
   const along = workSide + farSide;
   /*
     The other axis carries the crane, and the crane needs deck under its
@@ -545,7 +545,7 @@ export function plinth(site: Site) {
     much as the crane asks for on its side, the old margin on the other.
   */
   const sideOf = onX ? site.crane.position[2] : site.crane.position[0];
-  const margin = (onX ? floor.depth : floor.width) / 2 + SLAB_OVERHANG + 3.5;
+  const margin = (onX ? floor.depth : floor.width) / 2 + SLAB_OVERHANG + 6.6;
   const craneRoom = Math.max(margin, Math.abs(sideOf) + CRANE_PAD);
   const across = craneRoom + margin;
   // The base is no longer centred on the building; it is pushed out the way

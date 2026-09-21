@@ -12,8 +12,12 @@ import { Instances } from "./Instances";
 /** Scaffold tube is 48mm. */
 const TUBE = 0.048;
 const BRACE = 0.044;
-/** Bay width: the gap between the inner and outer row of standards. */
-const ROW = 0.9;
+/**
+ * Bay width: the gap between the inner and outer row of standards.
+ *
+ * Exported so the yard can work out where the scaffold actually stops.
+ */
+export const ROW = 0.9;
 /** A scaffold board is 225mm wide and 38mm thick. */
 const BOARD = 0.038;
 /** Guard rail, mid rail and toe board, above the boards they protect. */

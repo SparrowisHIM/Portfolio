@@ -21,29 +21,16 @@ const BAY = 2.4;
 /** How far in from the edge of the deck the line runs. */
 export const INSET = 0.38;
 
-/**
- * Pull a point inside the hoarding, allowing for the footprint of whatever
- * is being placed.
- *
- * The site dressing is laid out on bearings off the open face at radii that
- * know nothing about the shape of the deck, which was harmless while the
- * deck simply stopped at its edge. With a fence on that edge, anything that
- * overran it now stands half in and half out — the cabin was doing exactly
- * that at the corner.
- */
-export function insideHoarding(
-  base: { width: number; depth: number; offsetX: number; offsetZ: number },
-  p: readonly [number, number],
-  radius: number,
-): [number, number] {
-  const hw = Math.max(0, base.width / 2 - INSET - 0.25 - radius);
-  const hd = Math.max(0, base.depth / 2 - INSET - 0.25 - radius);
-  const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
-  return [
-    clamp(p[0], base.offsetX - hw, base.offsetX + hw),
-    clamp(p[1], base.offsetZ - hd, base.offsetZ + hd),
-  ];
-}
+/*
+  `insideHoarding` used to live here: a per-axis clamp that pulled anything
+  overrunning the deck back to the fence line. It is gone because the pull
+  is sideways as often as it is inward, and sideways along a face walks a
+  piece straight into the building - which is exactly what it did to the
+  site cabin. The yard clamps along the bearing instead, in `SiteYard`, so
+  a piece gives up radius rather than position. `INSET` above is what it
+  reads from here.
+*/
+
 /** Clear opening for the gate, on the side the laydown is served from. */
 const GATE = 5.2;
 /** The contractor's board, on the face the site is read from. */

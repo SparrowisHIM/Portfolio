@@ -129,6 +129,15 @@ export const LAMPS: Lamp[] = [
   { name: "arc", color: "#7fb4ff" },
 ];
 
+/**
+ * How far the inner row of scaffold standards stands off the face.
+ *
+ * Exported because the yard has to keep its dressing outside the scaffold
+ * as well as outside the building, and a second copy of this number would
+ * drift the moment either moved.
+ */
+export const SCAFFOLD_GAP = 0.9;
+
 /** Bays across the plan in each direction. Three reads as a frame; two reads as a shed. */
 export const BAYS_X = 3;
 export const BAYS_Z = 3;
@@ -278,7 +287,7 @@ export function generateSite(seed: number, floorFlags: { finished: boolean }[]):
     hookDrop: rnd.range(3, 5),
   };
 
-  const gap = 0.9;
+  const gap = SCAFFOLD_GAP;
   const scaffolds: ScaffoldRun[] = scaffoldSides.map((side) => {
     const horizontal = side === "+z" || side === "-z";
     const span = (horizontal ? baseWidth : baseDepth) + 2.2;
