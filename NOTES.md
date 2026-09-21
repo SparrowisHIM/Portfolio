@@ -44,11 +44,15 @@ he had already named.
 3. ~~The crane is broken between floor five and the roof section.~~ Fixed.
 4. ~~Everything is very broken on a fast scroll.~~ Fixed. Both were one
    root cause; see *The crane flying through the building*.
-5. ~~Every floor needs its project link.~~ Fixed. All five open their
-   site. The four "missing" URLs were never missing - see *Finding a
-   deployment URL* below. Kinetic Network Globe came off the front page in
-   the same change, because it is a built piece rather than a site, and
-   Mimi Crochet took its storey.
+5. **Every floor needs its project link.** Two of five are in and
+   verified: Vault Market (`vault-market-seven`) and Mimi Crochet
+   (`mimicrochet-taupe`), both off the repo's own `homepage` field.
+   **Three still need Efe**: Multi-currency Wallet, Betslip Printer and
+   One Piece Cards. Read *Finding a deployment URL* before going near
+   these - guessing the alias shipped links to strangers' sites once
+   already. Kinetic Network Globe came off the front page in the same
+   change, because it is a built piece rather than a site, and Mimi
+   Crochet took its storey.
 6. **The night shift is to be fixed**, not rebuilt from scratch as the note
    below assumed. A reference is coming. Until it arrives the *Do not
    touch* rule still stands.
@@ -260,26 +264,41 @@ the mesh with an empty matrix buffer. Same rule as `hover.ts` and
 from an effect, which the lint rule catches, and it needs a null server
 snapshot or the time in the HTML hydrates to a different one.
 
-## Finding a deployment URL - do not ask for what is public
+## Finding a deployment URL - and the trap in it
 
-Four floors sat linkless for a session because the note said **Efe has to
-supply four URLs**. He had not. They were public the whole time:
+**`vercel.app` is one global namespace, not one per account.** Guessing
+`<project-name>.vercel.app` off a repo name resolves most of the time - to
+whoever claimed it first. It cost a session here: three floors shipped
+pointing at strangers' sites, and one floor's copy was written off a
+Colombian crochet shop that has nothing to do with Efe.
+`vault-market.vercel.app` is not his. `mimicrochet.vercel.app` is not his.
+**A 200 and a plausible `<title>` are not evidence.** The real aliases
+carry a random suffix - `-seven`, `-taupe` - precisely because the bare
+name was already taken, and that suffix is unguessable by design.
 
-- `gh repo list --json name,description,homepageUrl` carried two of them in
-  the repo homepage field.
-- Every other one answers at its canonical `<project-name>.vercel.app`
-  alias. Vercel assigns it alongside the suffixed production URL, which is
-  why `vault-market.vercel.app` works as well as `vault-market-seven`. The
-  suffixed form is unguessable; the canonical one is just the repo name.
-- Confirm by reading the page `<title>`, not the status code. A private or
-  password-walled deployment answers 200 with an auth page.
-- The `vercel` CLI is installed but its token is expired. It is not needed.
+What is actually authoritative, in order:
 
-Copy for a floor can be written off the live site the same way - one curl
-with the tags stripped gives the whole thing. Mimi Crochet's was.
+- **The repo `homepage` field.** `gh repo list --json name,homepageUrl`,
+  or `gh api repos/SparrowisHIM/<repo> --jq .homepage`. Efe set these.
+- **The repo's Vercel deployment records.** `gh api
+  repos/SparrowisHIM/<repo>/deployments` and then `/statuses` on the newest
+  id. The `environment_url` is a build-specific URL rather than the
+  production alias, but the host contains the account scope
+  (`efe-ebomwonyis-projects`), which at least proves whose project it is.
+  `environment` says `Production` or `Preview`; a repo with only Preview
+  deployments has no stable alias to link at all.
+- **Efe.** When neither of the above has it, ask - and say which repo and
+  what was already tried, so the ask is one line rather than a request to
+  go and look things up.
 
-The rule: before writing "needs X from Efe", spend two minutes checking
-whether X is already somewhere public. He has asked for this directly.
+Two of the five were recoverable this way. Three were not: Multi-currency
+Wallet and One Piece Cards have no deployment record on the repo, and
+Betslip Printer has Preview deployments only.
+
+The lesson is not "do not look" - the homepage field really was sitting
+there and should have been used first. It is that **the check has to prove
+the thing belongs to him**, and only the repo can do that. `projects.ts`
+carries the rule on the `live` field now.
 
 ## The crane flying through the building: what it was, and the fix
 
@@ -1091,8 +1110,8 @@ In the order Efe wants them.
    than a progress bar, because a bar says how far through a page you
    are — the browser's job — and a rule says how high up a building you
    are, which is the thing actually happening.
-3. ~~**Links on every floor.**~~ Done. All five, plus Mimi Crochet in and
-   the globe parked in `yardProjects` for the yard.
+3. **Links on every floor.** Two of five verified and in. Three still
+   need Efe - see named item 5.
 4. ~~**The annotation layer**, in the monospace voice the reference
    uses.~~ Done. See *The sheet the site is drawn on*.
 5. **Density inside the floor panel**, now the top of the list.
