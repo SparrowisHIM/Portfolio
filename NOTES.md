@@ -44,12 +44,11 @@ he had already named.
 3. ~~The crane is broken between floor five and the roof section.~~ Fixed.
 4. ~~Everything is very broken on a fast scroll.~~ Fixed. Both were one
    root cause; see *The crane flying through the building*.
-5. **Every floor needs its project link.** Two of five are in and
-   verified: Vault Market (`vault-market-seven`) and Mimi Crochet
-   (`mimicrochet-taupe`), both off the repo's own `homepage` field.
-   **Three still need Efe**: Multi-currency Wallet, Betslip Printer and
-   One Piece Cards. Read *Finding a deployment URL* before going near
-   these - guessing the alias shipped links to strangers' sites once
+5. ~~Every floor needs its project link.~~ Done. Four of five link out,
+   all from `vercel projects ls` under his own scope. **Multi-currency
+   Wallet has no Vercel project at all** - built, never deployed - and the
+   panel says so. Read *Finding a deployment URL* before touching any of
+   these: guessing the alias shipped links to strangers' sites once
    already. Kinetic Network Globe came off the front page in the same
    change, because it is a built piece rather than a site, and Mimi
    Crochet took its storey.
@@ -278,6 +277,12 @@ name was already taken, and that suffix is unguessable by design.
 
 What is actually authoritative, in order:
 
+- **`vercel projects ls`.** The fastest and the most complete: it prints
+  every project in the scope with its Latest Production URL. Needs a live
+  token - if it reports one expired, ask Efe to run `vercel login` rather
+  than trying to authenticate for him. His only scope is
+  `efe-ebomwonyis-projects`; `vercel teams ls` confirms there is no other,
+  so a project missing from that list is not deployed anywhere.
 - **The repo `homepage` field.** `gh repo list --json name,homepageUrl`,
   or `gh api repos/SparrowisHIM/<repo> --jq .homepage`. Efe set these.
 - **The repo's Vercel deployment records.** `gh api
@@ -291,9 +296,17 @@ What is actually authoritative, in order:
   what was already tried, so the ask is one line rather than a request to
   go and look things up.
 
-Two of the five were recoverable this way. Three were not: Multi-currency
-Wallet and One Piece Cards have no deployment record on the repo, and
-Betslip Printer has Preview deployments only.
+Note the GitHub deployment records under-report: Betslip Printer shows
+only `Preview` deployments there and yet has a production alias. Trust
+`vercel projects ls` over them.
+
+The final tally, and the reason the guess is indefensible: of six aliases
+guessed off repo names, **two were right**. `betslip-printer` and
+`kinetic-network-globe` really are his. `vault-market`, `mimicrochet` and
+`one-piece-cards` belong to strangers - his carry `-seven`, `-taupe` and
+`-rose`. `multi-currency-wallet` resolves to a stranger's site and he has
+no such project at all. From outside the account those cases are
+indistinguishable.
 
 The lesson is not "do not look" - the homepage field really was sitting
 there and should have been used first. It is that **the check has to prove
@@ -1110,8 +1123,8 @@ In the order Efe wants them.
    than a progress bar, because a bar says how far through a page you
    are — the browser's job — and a rule says how high up a building you
    are, which is the thing actually happening.
-3. **Links on every floor.** Two of five verified and in. Three still
-   need Efe - see named item 5.
+3. ~~**Links on every floor.**~~ Done. Four of five; the fifth is not
+   deployed. See named item 5.
 4. ~~**The annotation layer**, in the monospace voice the reference
    uses.~~ Done. See *The sheet the site is drawn on*.
 5. **Density inside the floor panel**, now the top of the list.
