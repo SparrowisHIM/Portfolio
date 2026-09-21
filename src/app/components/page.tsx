@@ -3,7 +3,8 @@ import { SiteSign } from "@/components/overlay/SiteSign";
 import { ComponentYard } from "@/components/yard/ComponentYard";
 
 export const metadata: Metadata = {
-  title: "Component yard, Build site",
+  // The layout's template appends his name.
+  title: "Component yard",
   description:
     "The parts Efe Ebomwonyi builds interfaces from: magnetic buttons, scrambled headlines, spring card stacks, rolling counters and a toast delivered by crane.",
 };

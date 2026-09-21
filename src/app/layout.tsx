@@ -3,6 +3,7 @@ import "@fontsource-variable/big-shoulders";
 import "@fontsource-variable/archivo";
 import "@fontsource-variable/roboto-mono";
 import "./globals.css";
+import { owner } from "@/lib/projects";
 
 const DESCRIPTION =
   "Efe Ebomwonyi's portfolio, under construction. A design engineer who builds animated interfaces, presented as a procedural night-shift construction site.";
@@ -23,19 +24,31 @@ const site =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000");
 
+/*
+  The tab, the search result and the shared card all carry his name, not
+  the conceit. "Build site" is the headline on the page and the shape of
+  the thing; it is not what a portfolio is called when someone sends the
+  link on. Taken from `owner` so there is one spelling of it in the
+  codebase, the same one the wordmark reads.
+*/
+const TITLE = `${owner.name} — ${owner.role}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(site),
-  title: "Build site",
+  title: {
+    default: TITLE,
+    template: `%s — ${owner.name}`,
+  },
   description: DESCRIPTION,
   openGraph: {
-    title: "Build site",
+    title: TITLE,
     description: DESCRIPTION,
-    siteName: "Efe Ebomwonyi",
+    siteName: owner.name,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Build site",
+    title: TITLE,
     description: DESCRIPTION,
   },
 };
