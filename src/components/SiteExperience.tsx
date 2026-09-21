@@ -16,6 +16,9 @@ import { Roof } from "./overlay/Roof";
 import { RebuildButton } from "./overlay/RebuildButton";
 import { FloorRail } from "./overlay/FloorRail";
 import { ClimbRule } from "./overlay/ClimbRule";
+import { SheetFrame } from "./overlay/SheetFrame";
+import { TitleBlock } from "./overlay/TitleBlock";
+import { FloorSchedule } from "./overlay/FloorSchedule";
 import { Loader } from "./overlay/Loader";
 import { WalkIn } from "./overlay/WalkIn";
 import { NightShift } from "./overlay/NightShift";
@@ -135,9 +138,13 @@ export function SiteExperience() {
         <Roof active={section === SECTION_COUNT - 1 && !playing} onPlay={clockOn} />
       </div>
 
-      {!playing && <RebuildButton seed={seed} lamp={site.lamp.name} onRebuild={rebuild} onPlay={clockOn} />}
+      {!playing && <RebuildButton onRebuild={rebuild} onPlay={clockOn} />}
       {!playing && <FloorRail section={section} sectionCount={SECTION_COUNT} />}
       {!playing && <ClimbRule section={section} />}
+      {/* The drawing sheet: the frame, what is on each level, and who drew it. */}
+      {!playing && <SheetFrame />}
+      {!playing && <FloorSchedule section={section} />}
+      {!playing && <TitleBlock section={section} seed={seed} lamp={site.lamp.name} />}
       <NightShift onAgain={again} onLeave={clockOff} />
       <WalkIn project={walkIn} onClose={closeWalkIn} />
     </div>

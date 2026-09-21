@@ -1,8 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { FLOOR_HEIGHT } from "@/lib/site-generator";
-import { projects } from "@/lib/projects";
+import { LEVELS, elevation, levelAt } from "@/lib/sheets";
 
 /** Height of the rule, in pixels. */
 const TRACK = 248;
@@ -28,20 +27,11 @@ export function ClimbRule({ section }: { section: number }) {
   // elevation is drawn.
   const y = useTransform(scrollYProgress, [0, 1], [TRACK, 0]);
 
-  const stops = [
-    { key: "ground", href: "#ground", code: "G", level: null as number | null },
-    ...projects.map((project, i) => ({
-      key: project.slug,
-      href: `#${project.slug}`,
-      code: String(i + 1).padStart(2, "0"),
-      level: i,
-    })),
-    { key: "contact", href: "#contact", code: "R", level: projects.length },
-  ];
-
+  // The set is shared with the floor schedule and the title block, so the
+  // rule and the table cannot disagree about where a floor is.
+  const stops = LEVELS;
   const here = Math.min(stops.length - 1, Math.max(0, section));
-  const at = stops[here];
-  const metres = at.level === null ? null : at.level * FLOOR_HEIGHT;
+  const metres = elevation(levelAt(section).elevation);
 
   return (
     <nav
@@ -70,7 +60,7 @@ export function ClimbRule({ section }: { section: number }) {
           style={{ y }}
           className="absolute right-[40px] top-0 -translate-y-1/2 whitespace-nowrap font-mono text-[10px] tracking-tight text-sodium tabular-nums"
         >
-          {metres === null ? "±0.00" : `+${metres.toFixed(2)}`}
+          {metres}
         </motion.span>
 
         <ul>

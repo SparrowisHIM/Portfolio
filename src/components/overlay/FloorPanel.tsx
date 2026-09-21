@@ -76,6 +76,13 @@ export function FloorPanel({ project, number, active, onWalkIn }: FloorPanelProp
           }
           className="rounded-xl border border-steel-dim/45 bg-night-deep/80 p-4 backdrop-blur-md md:rounded-none md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
         >
+        {/* The copy column joins the drawing set: sheet number, and the
+            status the schedule is reporting for this level. */}
+        <p className="mb-2 hidden font-mono text-[10px] uppercase tracking-[0.2em] text-steel md:block">
+          Sheet {String(number).padStart(2, "0")}
+          <span className="text-steel-dim"> · </span>
+          {project.finished ? "Complete" : "In the works"}
+        </p>
         <p className="flex items-baseline gap-3">
           <span className="select-none font-display text-[46px] font-extrabold leading-none text-sodium md:text-[84px]">
             {number}

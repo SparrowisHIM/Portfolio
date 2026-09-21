@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { COPY_IN, LIFT } from "@/lib/handover";
-import { owner } from "@/lib/projects";
+import { owner, projects } from "@/lib/projects";
 
 export function Roof({ active, onPlay }: { active: boolean; onPlay: () => void }) {
   const reduced = useReducedMotion();
@@ -29,6 +29,10 @@ export function Roof({ active, onPlay }: { active: boolean; onPlay: () => void }
           pointerEvents: active ? "auto" : "none",
         }}
       >
+        <p className="mb-2 hidden font-mono text-[10px] uppercase tracking-[0.2em] text-steel md:block">
+          Sheet {String(projects.length + 1).padStart(2, "0")}
+          <span className="text-steel-dim"> · </span>Handover
+        </p>
         <h2 className="select-none font-display text-[clamp(38px,8vw,96px)] font-extrabold uppercase leading-[0.9] tracking-tight text-chalk">
           Next floor
           <br />

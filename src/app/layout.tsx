@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/big-shoulders";
 import "@fontsource-variable/archivo";
+import "@fontsource-variable/roboto-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {

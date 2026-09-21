@@ -34,6 +34,16 @@
   --color-foreground: var(--foreground);
   --font-display: "Big Shoulders Variable", "Big Shoulders", Impact, sans-serif;
   --font-sans: "Archivo Variable", Archivo, system-ui, sans-serif;
+  /*
+    The annotation register. Display carries the headlines, sans carries
+    the prose, and this carries everything the drawing says about itself:
+    sheet numbers, elevations, the title block, the coordinate readout.
+    Until it was loaded, `font-mono` fell through to whatever the visitor's
+    OS ships, so the one line on the page already written in this voice
+    rendered as Consolas on Windows and Menlo on a Mac. A drawing sheet
+    cannot have a house style that changes by machine.
+  */
+  --font-mono: "Roboto Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -115,6 +125,73 @@ body {
 
 .level-bar {
   animation: level-bar 1.4s ease-in-out infinite;
+}
+
+/*
+  Sheet rulers.
+
+  Drawn as two repeating gradients on one element rather than as tick
+  marks in the DOM: a 10px minor tick down a 1920px edge is 192 nodes,
+  and there are two edges. Gradients cost one paint and no layout.
+
+  Minor tick every 10px, major every 50, measured from the corner the
+  ruler starts at so both edges agree at the origin.
+*/
+.rule-x {
+  background-image:
+    repeating-linear-gradient(to right, rgba(124, 135, 151, 0.7) 0 1px, transparent 1px 50px),
+    repeating-linear-gradient(to right, rgba(124, 135, 151, 0.36) 0 1px, transparent 1px 10px);
+  background-size: 100% 9px, 100% 5px;
+  background-repeat: no-repeat;
+}
+
+.rule-y {
+  background-image:
+    repeating-linear-gradient(to bottom, rgba(124, 135, 151, 0.7) 0 1px, transparent 1px 50px),
+    repeating-linear-gradient(to bottom, rgba(124, 135, 151, 0.36) 0 1px, transparent 1px 10px);
+  background-size: 9px 100%, 5px 100%;
+  background-repeat: no-repeat;
+}
+
+/*
+  The sheet furniture only appears when there is sheet to put it on.
+
+  The title block needs height under the copy column, and the schedule
+  needs a margin the model is not already using - at 1400 the model and
+  the copy have taken the width and there is nothing left to annotate
+  into. Below these the page is the page it was.
+*/
+.sheet-block {
+  display: none;
+}
+
+@media (min-width: 768px) and (min-height: 700px) {
+  .sheet-block {
+    display: block;
+  }
+}
+
+.sheet-wide {
+  display: none;
+}
+
+/*
+  1760, not 1400.
+
+  The model is 758px wide at every desktop width - a perspective camera's
+  vertical fov does not care how wide the window is - so the margin beside
+  it is whatever the window has spare. At 1440 that margin is about 270px
+  and the schedule printed straight across the scaffold. At 1920 it is
+  about 470px and the schedule sits in it with room to spare.
+
+  So the schedule appears exactly when there is margin to put it in, which
+  is the same measurement that said the frame was 40% empty in the first
+  place. Do not lower this without re-measuring the model's right edge.
+*/
+@media (min-width: 1760px) and (min-height: 640px) {
+  .sheet-wide {
+    display: block;
+  }
 }
 
 /* Component yard: a faint setting-out grid behind each bay, and the sky. */

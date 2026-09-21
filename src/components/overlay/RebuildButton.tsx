@@ -3,15 +3,18 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 type RebuildButtonProps = {
-  seed: number;
-  /** Name of the lighting rig on the current site. */
-  lamp: string;
   onRebuild: () => void;
   onPlay: () => void;
 };
 
-/** Tear the site down and put it up again from a new seed. */
-export function RebuildButton({ seed, lamp, onRebuild, onPlay }: RebuildButtonProps) {
+/**
+ * Tear the site down and put it up again from a new seed.
+ *
+ * The seed and the lamp used to be printed under these buttons as a loose
+ * line with nothing to belong to. They are rows in the title block now,
+ * which is where a drawing states them.
+ */
+export function RebuildButton({ onRebuild, onPlay }: RebuildButtonProps) {
   const reduced = useReducedMotion();
   return (
     // On a phone these move to the left edge, opposite the floor rail: the
@@ -60,9 +63,6 @@ export function RebuildButton({ seed, lamp, onRebuild, onPlay }: RebuildButtonPr
         <span className="hidden md:inline">Rebuild</span>
       </motion.button>
       </div>
-      <p className="hidden text-[11px] tabular-nums text-steel md:block" aria-live="polite">
-        Site no. {seed.toString(16).padStart(8, "0")}, {lamp} lighting
-      </p>
     </div>
   );
 }

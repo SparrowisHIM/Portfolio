@@ -65,6 +65,9 @@ export function Hero({ started }: { started: boolean }) {
         style={{ opacity: travel, y: reduced ? 0 : rise, pointerEvents: catches }}
         className="pointer-events-auto fixed inset-x-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] rounded-xl border border-steel-dim/45 bg-night-deep/80 p-4 backdrop-blur-md md:inset-x-auto md:bottom-auto md:left-8 md:top-[22vh] md:w-auto md:max-w-[34rem] md:rounded-none md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
       >
+        <p className="mb-2 hidden font-mono text-[10px] uppercase tracking-[0.2em] text-steel md:block">
+          Sheet 00<span className="text-steel-dim"> · </span>Setting out
+        </p>
         <h1 className="select-none font-display text-[clamp(58px,16vw,200px)] font-extrabold uppercase leading-[0.86] tracking-tight text-chalk">
           <Line delay={1.3} started={started}>
             Build
