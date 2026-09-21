@@ -7,13 +7,15 @@ export type Project = {
   /**
    * The site itself. Floors without one are still being fitted out.
    *
-   * **Only ever a URL Efe has confirmed, or one read off the repo's own
-   * `homepage` field or its Vercel deployment record.** `<project-name>
-   * .vercel.app` is a single global namespace on Vercel, not a per-account
-   * one, so the obvious guess for a project name usually resolves - to a
-   * stranger's deployment. `vault-market.vercel.app` serves someone else's
-   * "Vault Market"; his is `vault-market-seven`. A 200 and a plausible
-   * `<title>` prove nothing. Do not guess these.
+   * **Only ever a URL from `vercel projects ls`, from the repo's own
+   * `homepage` field, or from Efe.** `<project-name>.vercel.app` is a
+   * single global namespace on Vercel, not a per-account one, so the
+   * obvious guess for a project name usually resolves - to a stranger's
+   * deployment. Guessing all six of these got two right by luck, and
+   * there is no way to tell which two from outside the account:
+   * `betslip-printer` really is his, `one-piece-cards` is not - his is
+   * `one-piece-cards-rose`. A 200 and a plausible `<title>` prove
+   * nothing. Do not guess these.
    */
   live?: string;
   /** Whether the floor reads as finished (glazed) or still raw structure. */
@@ -56,8 +58,9 @@ export const projects: Project[] = [
       "A wallet interface for holding and moving between currencies. Balances, conversions and transfers as a calm, tactile flow.",
     stack: ["React", "TypeScript", "Framer Motion"],
     year: "2026",
-    // Deployed, but the URL is not recoverable from here: the repo has no
-    // `homepage` and no Vercel deployment record on GitHub. Needs Efe.
+    // No Vercel project under `efe-ebomwonyis-projects`, which is his only
+    // scope, so this one is built but has never been deployed. The panel
+    // says exactly that: "Finished. Not published yet."
     finished: true,
   },
   {
@@ -67,8 +70,7 @@ export const projects: Project[] = [
       "A betslip that prints itself. Line-by-line receipt motion with thermal-printer timing, recreated from frame captures of the real thing.",
     stack: ["React", "Framer Motion", "Vite"],
     year: "2026",
-    // Only Preview deployments on the repo, never a Production one, so
-    // there is no stable alias to link. Needs Efe.
+    live: "https://betslip-printer.vercel.app",
     finished: false,
   },
   {
@@ -78,7 +80,7 @@ export const projects: Project[] = [
       "An animated stack of character cards. Drag, flick and reshuffle with spring physics tuned so every card feels like it has weight.",
     stack: ["React", "Framer Motion", "Tailwind CSS"],
     year: "2026",
-    // No deployment record on the repo. Needs Efe.
+    live: "https://one-piece-cards-rose.vercel.app",
     finished: false,
   },
 ];
@@ -96,7 +98,7 @@ export const yardProjects: Project[] = [
       "A spinning globe with live network arcs between cities. Built directly on three.js to keep the whole thing under one frame budget.",
     stack: ["React", "three.js", "Vite"],
     year: "2026",
-    // No deployment record on the repo. Needs Efe.
+    live: "https://kinetic-network-globe.vercel.app",
     finished: true,
   },
 ];
