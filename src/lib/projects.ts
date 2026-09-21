@@ -13,6 +13,10 @@ export type Project = {
 /**
  * Floors are ordered bottom to top: the first project is the ground floor,
  * the last one is closest to the crane.
+ *
+ * The count drives the building: `generateSite`, the section count, the climb
+ * rule and the floor rail all read `projects.length`. Adding or removing one
+ * changes the massing, so swap rather than append unless that is the intent.
  */
 export const projects: Project[] = [
   {
@@ -22,16 +26,17 @@ export const projects: Project[] = [
       "A trust-first marketplace for graded collectibles. Inspect slabs up close, read market context, and route exceptional cards into specialist review.",
     stack: ["Next.js", "TypeScript", "Tailwind CSS"],
     year: "2026",
-    live: "https://vault-market-seven.vercel.app",
+    live: "https://vault-market.vercel.app",
     finished: true,
   },
   {
-    slug: "kinetic-network-globe",
-    title: "Kinetic Network Globe",
+    slug: "mimi-crochet",
+    title: "Mimi Crochet",
     description:
-      "A spinning globe with live network arcs between cities. Built directly on three.js to keep the whole thing under one frame budget.",
-    stack: ["React", "three.js", "Vite"],
+      "A storefront for a Colombian crochet maker, built in Spanish for her customers. Hand-made bags and accessories carrying their own colour variants, testimonials from buyers, and every order handed off to WhatsApp.",
+    stack: ["Next.js", "TypeScript", "Tailwind CSS"],
     year: "2026",
+    live: "https://mimicrochet.vercel.app",
     finished: true,
   },
   {
@@ -41,6 +46,7 @@ export const projects: Project[] = [
       "A wallet interface for holding and moving between currencies. Balances, conversions and transfers as a calm, tactile flow.",
     stack: ["React", "TypeScript", "Framer Motion"],
     year: "2026",
+    live: "https://multi-currency-wallet.vercel.app",
     finished: true,
   },
   {
@@ -50,6 +56,7 @@ export const projects: Project[] = [
       "A betslip that prints itself. Line-by-line receipt motion with thermal-printer timing, recreated from frame captures of the real thing.",
     stack: ["React", "Framer Motion", "Vite"],
     year: "2026",
+    live: "https://betslip-printer.vercel.app",
     finished: false,
   },
   {
@@ -59,7 +66,26 @@ export const projects: Project[] = [
       "An animated stack of character cards. Drag, flick and reshuffle with spring physics tuned so every card feels like it has weight.",
     stack: ["React", "Framer Motion", "Tailwind CSS"],
     year: "2026",
+    live: "https://one-piece-cards.vercel.app",
     finished: false,
+  },
+];
+
+/**
+ * Bound for the component yard rather than a floor: a built thing rather than
+ * a site. Kept here so the copy and the deployment survive until the yard is
+ * rebuilt. Nothing on the front page reads this.
+ */
+export const yardProjects: Project[] = [
+  {
+    slug: "kinetic-network-globe",
+    title: "Kinetic Network Globe",
+    description:
+      "A spinning globe with live network arcs between cities. Built directly on three.js to keep the whole thing under one frame budget.",
+    stack: ["React", "three.js", "Vite"],
+    year: "2026",
+    live: "https://kinetic-network-globe.vercel.app",
+    finished: true,
   },
 ];
 
