@@ -44,11 +44,11 @@ he had already named.
 3. ~~The crane is broken between floor five and the roof section.~~ Fixed.
 4. ~~Everything is very broken on a fast scroll.~~ Fixed. Both were one
    root cause; see *The crane flying through the building*.
-5. **Every floor needs its project link.** Only `vault-market` has a `live`
-   URL in `projects.ts`. **Efe has to supply four URLs** - ask, they cannot
-   be invented. The contradiction is patched in the meantime: a finished
-   floor with no link says "Finished. Not published yet." rather than
-   claiming a fit-out it has completed.
+5. ~~Every floor needs its project link.~~ Fixed. All five open their
+   site. The four "missing" URLs were never missing - see *Finding a
+   deployment URL* below. Kinetic Network Globe came off the front page in
+   the same change, because it is a built piece rather than a site, and
+   Mimi Crochet took its storey.
 6. **The night shift is to be fixed**, not rebuilt from scratch as the note
    below assumed. A reference is coming. Until it arrives the *Do not
    touch* rule still stands.
@@ -204,6 +204,27 @@ lines and it is the only way to see a transition as a whole.
   finished tower. Worth asking whether the rule should say so.
 - **Capture with `--url` between shots.** Without a reload the tower is
   still up from the last run and the climb cannot be judged.
+
+## Finding a deployment URL - do not ask for what is public
+
+Four floors sat linkless for a session because the note said **Efe has to
+supply four URLs**. He had not. They were public the whole time:
+
+- `gh repo list --json name,description,homepageUrl` carried two of them in
+  the repo homepage field.
+- Every other one answers at its canonical `<project-name>.vercel.app`
+  alias. Vercel assigns it alongside the suffixed production URL, which is
+  why `vault-market.vercel.app` works as well as `vault-market-seven`. The
+  suffixed form is unguessable; the canonical one is just the repo name.
+- Confirm by reading the page `<title>`, not the status code. A private or
+  password-walled deployment answers 200 with an auth page.
+- The `vercel` CLI is installed but its token is expired. It is not needed.
+
+Copy for a floor can be written off the live site the same way - one curl
+with the tags stripped gives the whole thing. Mimi Crochet's was.
+
+The rule: before writing "needs X from Efe", spend two minutes checking
+whether X is already somewhere public. He has asked for this directly.
 
 ## The crane flying through the building: what it was, and the fix
 
@@ -1015,7 +1036,8 @@ In the order Efe wants them.
    than a progress bar, because a bar says how far through a page you
    are — the browser's job — and a rule says how high up a building you
    are, which is the thing actually happening.
-3. **Links on every floor.** Needs four URLs from Efe.
+3. ~~**Links on every floor.**~~ Done. All five, plus Mimi Crochet in and
+   the globe parked in `yardProjects` for the yard.
 4. **The annotation layer**, in the monospace voice the reference uses.
 5. **Fix the night shift.** Reference to come. Until it lands the *Do not
    touch* rule stands; `CranePose.hitched` is optional precisely so that
@@ -1025,6 +1047,22 @@ In the order Efe wants them.
 
 `/components`, at imdaryl.com's level of detail and count. A week is fine.
 Do not start it before the front page is signed off.
+
+**Efe wants something different there from what is built, and that idea is
+not written down anywhere.** These notes carry a bar (imdaryl.com) and a
+shape (the filter and sort bar, status tags, date ranges, draggable
+timeline) - both of which are observations about the reference, not a
+concept for the yard. He is sending a screen recording of a second site to
+copy-but-not-fully-copy, the way imdaryl was handled. **Do not design the
+yard off imdaryl alone. Wait for it, and ask what he wants taken from it.**
+
+What is there now, so the cost of replacing it is known: 662 lines across
+`ComponentYard.tsx`, `Bay.tsx` and seven live demos on numbered bays -
+magnetic button, scrambled headline, card stack, segmented control, rolling
+counter, cable toast, hold to confirm. Header reads "PARTS ON THE SHELF".
+No filter, sort, count, timeline, status tag or date anywhere. Against the
+imdaryl bar it is about a fifth of the density. The seven demos are good
+and reusable whatever frame ends up around them.
 
 ### Loose ends, any time
 
