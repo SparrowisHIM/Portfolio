@@ -14,7 +14,7 @@ import {
   yardPosition,
   yardTurn,
 } from "@/lib/construction";
-import { plinth, SLAB } from "@/lib/building";
+import { craneReach, plinth, SLAB } from "@/lib/building";
 import { createRandom } from "@/lib/random";
 import { materials } from "./materials";
 import { insideHoarding } from "./Hoarding";
@@ -66,26 +66,102 @@ export function SiteYard({
       Math.cos(Math.atan2(pile[0], pile[2]) - site.viewAngle),
     );
     const clearOfPile = toPile >= 0 ? -1 : 1;
-    // Polar placement relative to the open face, so the near side of the
-    // plinth stays clear and the dressing reads behind and beside.
-    // Placed on a bearing off the open face, then pulled inside the fence:
-    // the bearing decides where a thing belongs, the deck decides whether it
-    // fits. `keep` is the footprint radius of whatever is being placed.
-    const at = (offset: number, out: number, keep = 0.6): [number, number] => {
-      const a = site.viewAngle + offset;
-      const p: [number, number] = [Math.sin(a) * (half + out), Math.cos(a) * (half + out)];
-      return insideHoarding(base, p, keep);
+
+    /*
+      What a new piece of dressing has to miss.
+
+      Bearings alone were not enough. They are fixed offsets off the open
+      face, so two of them can sit a tenth of a radian apart - and at this
+      radius that is close enough to interpenetrate. The lighting mast
+      stood inside the rebar stack on every seed that put the laydown on
+      the far hand, because the mast's bearing is +/-1.35 and the rebar's
+      is a fixed +1.5. Measured at seed 20260916: 1.32m apart, needing
+      1.90m.
+
+      Clamping made it worse rather than better. `insideHoarding` pulls
+      anything that overruns the deck back to the boundary, so two pieces
+      whose bearings both leave the deck are pulled onto the same piece of
+      fence and end up inside each other.
+
+      Everything already down is treated as a rectangle and tested against
+      a circle of the new piece's own footprint radius - generous for the
+      round things, which is the right way to be wrong here. The laydown
+      and the crane base are down before any of it.
+    */
+    const pileHalf =
+      yardTurn(site) === 0
+        ? { hx: PLANK.width / 2, hz: PLANK.depth / 2 }
+        : { hx: PLANK.depth / 2, hz: PLANK.width / 2 };
+    const reach = craneReach(site);
+    const blockers = [
+      { x: pile[0], z: pile[2], ...pileHalf },
+      { x: site.crane.position[0], z: site.crane.position[2], hx: reach, hz: reach },
+    ];
+    const clears = (q: readonly [number, number], keep: number) =>
+      blockers.every((b) => {
+        const dx = Math.max(Math.abs(q[0] - b.x) - b.hx, 0);
+        const dz = Math.max(Math.abs(q[1] - b.z) - b.hz, 0);
+        return dx * dx + dz * dz >= keep * keep;
+      });
+
+    /*
+      Place a piece on a bearing off the open face, then make it fit: pull
+      it inside the fence, and if it has landed on something already down,
+      walk it round the face until it is clear.
+
+      The bearing decides where a thing belongs, the deck decides whether
+      it fits, and this decides who gives way - which is whoever arrives
+      last. The order below is therefore a priority order: the cabin, the
+      skip and the rebar keep their bearings and the mast, the pallets and
+      the cones move around them. The mast can afford to: its spot aims at
+      the world origin and its beams are aimed off its own position, so it
+      lights the site correctly from wherever it ends up.
+    */
+    const at = (offset: number, out: number, keep = 0.6) => {
+      const put = (a: number): [number, number] =>
+        insideHoarding(base, [Math.sin(a) * (half + out), Math.cos(a) * (half + out)], keep);
+      const a0 = site.viewAngle + offset;
+      // A tenth of a radian at a time, alternating hands, so a piece that
+      // has to move ends up as near its own bearing as it can.
+      const walk = () => {
+        for (let step = 1; step <= 16; step++) {
+          for (const dir of [1, -1] as const) {
+            const a = a0 + dir * step * 0.1;
+            const q = put(a);
+            if (clears(q, keep)) return { p: q, a };
+          }
+        }
+        return null;
+      };
+      const first = put(a0);
+      const spot = clears(first, keep) ? { p: first, a: a0 } : (walk() ?? { p: first, a: a0 });
+      blockers.push({ x: spot.p[0], z: spot.p[1], hx: keep, hz: keep });
+      return spot;
     };
+
+    /*
+      `keep` is the radius of the circle that contains the piece, which for
+      a box is its half-diagonal and not its half-width: every one of these
+      is turned to an arbitrary bearing, so the short side is not the one
+      facing the fence. The cabin is 4.0 x 1.95 (2.23), the skip 2.1 x 1.34
+      (1.25), the rebar 2.6 long on 0.79 of bundles (1.36), the pallets
+      1.5 x 1.1 (0.94). Three of these were rounded down and each one let
+      a corner through the hoarding.
+    */
+    const cabin = at(2.45, 2.8, 2.23);
+    const skip = at(-2.15, 2.7, 1.25);
+    const rebar = at(1.5, 2.6, 1.4);
+    const mast = at(clearOfPile * 1.35, 3.1, 0.5);
     return {
-      cabin: at(2.45, 2.8, 2.2),
-      cabinTurn: site.viewAngle + 2.45,
-      skip: at(-2.15, 2.7, 1.2),
-      skipTurn: site.viewAngle - 2.15,
-      rebar: at(1.5, 2.6, 1.4),
-      rebarTurn: site.viewAngle + 1.5,
-      mast: at(clearOfPile * 1.35, 3.1, 0.5),
-      cones: [at(-0.6, 2.2, 0.3), at(0.55, 2.4, 0.3), at(1.05, 1.9, 0.3)],
-      pallets: [at(-1.75, 2.6, 0.9), at(2.95, 2.8, 0.9)],
+      cabin: cabin.p,
+      cabinTurn: cabin.a,
+      skip: skip.p,
+      skipTurn: skip.a,
+      rebar: rebar.p,
+      rebarTurn: rebar.a,
+      mast: mast.p,
+      cones: [at(-0.6, 2.2, 0.3).p, at(0.55, 2.4, 0.3).p, at(1.05, 1.9, 0.3).p],
+      pallets: [at(-1.75, 2.6, 0.94).p, at(2.95, 2.8, 0.94).p],
       jitter: rnd.range(-0.15, 0.15),
     };
   }, [site, base]);

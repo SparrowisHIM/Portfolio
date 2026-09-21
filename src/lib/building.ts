@@ -564,6 +564,23 @@ export function plinth(site: Site) {
 }
 
 /**
+ * How far the crane's cruciform base reaches across the deck, in metres.
+ *
+ * The crane sizes its own base from this and the yard has to keep its
+ * dressing off it, so it lives here rather than being worked out twice.
+ * It backs off far enough that the hoarding can pass outside the base as
+ * well: the fence line is set in from the edge and its posts stand proud.
+ */
+export function craneReach(site: Site): number {
+  const base = plinth(site);
+  const room = (c: number, centre: number, half: number) =>
+    Math.min(centre + half - c, c - (centre - half));
+  const x = room(site.crane.position[0], base.offsetX, base.width / 2);
+  const z = room(site.crane.position[2], base.offsetZ, base.depth / 2);
+  return Math.max(1.1, Math.min(x, z) - 0.8);
+}
+
+/**
  * Which storey is currently being joined, or -1 when nothing is.
  *
  * Shared so the arc and the welder standing at it never disagree about where

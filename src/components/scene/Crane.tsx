@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { HOOK_ABOVE_SLAB, TROLLEY_Y, cranePose } from "@/lib/construction";
 import { box, lattice, strut, truss, type Instance, type Vec3 } from "@/lib/geometry";
-import { plinth, SLAB } from "@/lib/building";
+import { craneReach, plinth, SLAB } from "@/lib/building";
 import { PLANK } from "@/lib/construction";
 import { wind } from "@/lib/wind";
 import { game } from "@/lib/stack-game";
@@ -103,16 +103,8 @@ export function Crane({ site, build, animate }: CraneProps) {
     always is; not invisible from a free orbit, and not once there is a
     fence along that edge to run through.
   */
-  const reach = useMemo(() => {
-    const b = plinth(site);
-    const room = (c: number, centre: number, half: number) =>
-      Math.min(centre + half - c, c - (centre - half));
-    const x = room(crane.position[0], b.offsetX, b.width / 2);
-    const z = room(crane.position[2], b.offsetZ, b.depth / 2);
-    // Back off far enough that the hoarding can pass outside the base as
-    // well: its line is set in from the edge and its posts stand proud.
-    return Math.max(1.1, Math.min(x, z) - 0.8);
-  }, [site, crane]);
+  // Shared with the yard, which keeps its dressing off the base.
+  const reach = useMemo(() => craneReach(site), [site]);
   const slew = useRef<THREE.Group>(null);
   const trolley = useRef<THREE.Group>(null);
   const load = useRef<THREE.Group>(null);
