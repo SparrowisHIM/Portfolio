@@ -165,26 +165,20 @@ lines and it is the only way to see a transition as a whole.
 
 ### Left, in the order that would move the number
 
-1. **The frame is 40% empty and the model cannot fill it.** Measured:
-   the model is **758px wide at both 1440 and 1920** — 53% of the frame
-   Efe's framing was tuned in, 39% of the one he uses. It does not scale
-   with width because a perspective camera's vertical fov does not, and
-   `WIDE_BACK` pulls *back* on every landscape screen without ever asking
-   how wide. The reflex is to dolly in on ultra-wide. **Do not**: the
-   shot is already height-bound, the crane's head is already at the top
-   edge, and coming in crops it worse. The extra 480px is not a camera
-   problem. It is where the drawing sheet goes — which makes the next
-   item the same item.
-2. **The annotation layer.** Named item 4, and now the biggest single
-   move available. The reference's margins are the model; ours are black.
-   Everything needed is already in the app and unsaid: the seed, the lamp
-   name, the elevation, the floor count, the stack, the year, the site
-   number. See *The reference* for the four devices in the recording.
-3. **Density inside the panel.** A floor carries a number, a title, two
+1. ~~The frame is 40% empty and the model cannot fill it.~~ and
+   ~~the annotation layer.~~ Done, and they were one job. See *The sheet
+   the site is drawn on* below. The measurement that named the problem —
+   the model is **758px wide at both 1440 and 1920**, and does not scale
+   with width because a perspective camera's vertical fov does not — is
+   now the thing that gates the furniture. **The reflex is still to dolly
+   in on ultra-wide. Do not**: the shot is height-bound, the crane's head
+   is at the top edge, and coming in crops it worse.
+2. **Density inside the panel.** A floor carries a number, a title, two
    lines, a stack list and two links. The reference's equivalent row
    carries a paragraph, a figure, a caption, a date range, a status tag,
-   a filter and a count. The year is in now; the rest is not.
-4. **Nothing says the model is live.** You can orbit it and point at a
+   a filter and a count. The year and a sheet label with the status are
+   in now; the rest is not. **This is the next job.**
+3. **Nothing says the model is live.** You can orbit it and point at a
    storey and the page never mentions either. Efe removed the tooltip and
    was right to. The reference's form — permanent, in the annotation
    voice, sounding like a person — is the one to copy. **Ask first.**
@@ -204,6 +198,67 @@ lines and it is the only way to see a transition as a whole.
   finished tower. Worth asking whether the rule should say so.
 - **Capture with `--url` between shots.** Without a reload the tower is
   still up from the last run and the climb cannot be judged.
+
+## The sheet the site is drawn on
+
+The annotation layer, and the answer to the empty 40%. The two were one
+job: the margin is not a camera problem, it is where the drawing goes.
+
+`src/lib/sheets.ts` owns the set. Seven sheets, 00 to 06, one per section,
+and `LEVELS` carries each one's code, name, elevation and status. The
+climb rule reads it too now - it used to derive its own stops from
+`projects`, which is how a rule and a table end up disagreeing about where
+floor three is.
+
+Four pieces, all `overlay/`:
+
+- **`SheetFrame`** - border, crop marks, tick rulers down two edges, and a
+  coordinate readout. The rulers are two repeating gradients on one
+  element, not tick marks in the DOM: a 10px tick down a 1920px edge is
+  192 nodes and there are two edges.
+- **`FloorSchedule`** - every level, in the margin beside the model. It
+  carries **status, not elevation**, because the rule prints the elevation
+  80px to its right and two identical numbers read as a bug.
+- **`TitleBlock`** - seed, lamp, levels, and a live clock that decides the
+  shift. The loose `Site no. 20260916` line has moved in here off the
+  rebuild button, which is why `RebuildButton` no longer takes `seed`.
+- **Sheet labels** on every copy card.
+
+### The third register
+
+`--font-mono` is Roboto Mono now. It was never set, so `font-mono` fell
+through to the OS stack and the one line already in this voice rendered as
+Consolas here and Menlo on a Mac. Roboto Mono over JetBrains Mono because
+Archivo is a grotesque and this had to read as engineering annotation
+rather than as a code editor.
+
+### Two numbers that are measurements, not taste
+
+**The schedule needs 1760px.** The margin beside the model is whatever the
+window has spare: about 270px at 1440, about 470px at 1920. At 1440 the
+schedule printed straight across the scaffold. Do not lower the gate
+without re-measuring the model's right edge.
+
+**The title block is four rows.** The hero card is the tallest copy on the
+page and runs to y=802 at 1920x980. Anchored to the foot of the sheet, a
+six-row block started at 758 and "Climb" printed through it. Four rows
+start at 820. Add a row back and it collides on the ground sheet only -
+the kind of fault that looks fine on whichever floor you screenshot.
+
+Both were found by reading `getBoundingClientRect` off the two elements
+and subtracting, not by looking. Eyeballing said the title block was
+clipped at the bottom; it was not, and the thing overlapping it was the
+Next dev-tools badge, which does not exist in production.
+
+### The readout does not go through React
+
+`SheetFrame` writes the cursor position straight to its node and coalesces
+moves onto one frame. A pointer move that re-renders hands every
+`instancedMesh` a fresh `args` array, and r3f answers that by rebuilding
+the mesh with an empty matrix buffer. Same rule as `hover.ts` and
+`orbit.ts`. The clock is a `useSyncExternalStore` rather than state set
+from an effect, which the lint rule catches, and it needs a null server
+snapshot or the time in the HTML hydrates to a different one.
 
 ## Finding a deployment URL - do not ask for what is public
 
@@ -1038,8 +1093,10 @@ In the order Efe wants them.
    are, which is the thing actually happening.
 3. ~~**Links on every floor.**~~ Done. All five, plus Mimi Crochet in and
    the globe parked in `yardProjects` for the yard.
-4. **The annotation layer**, in the monospace voice the reference uses.
-5. **Fix the night shift.** Reference to come. Until it lands the *Do not
+4. ~~**The annotation layer**, in the monospace voice the reference
+   uses.~~ Done. See *The sheet the site is drawn on*.
+5. **Density inside the floor panel**, now the top of the list.
+6. **Fix the night shift.** Reference to come. Until it lands the *Do not
    touch* rule stands; `CranePose.hitched` is optional precisely so that
    block has stayed byte-for-byte.
 
@@ -1069,9 +1126,9 @@ and reusable whatever frame ends up around them.
 - **Mobile.** Built and pushed, then parked: Efe has not decided what he
   wants there. Behind `md:` and the `tall` keyframe overrides, so it is
   self-contained if it needs reworking.
-- The `metadataBase` warning in `next build`, plus an OpenGraph block. Ten
-  minutes, and without it an X post has no preview card - which matters for
-  a site whose whole purpose is being seen.
+- ~~The `metadataBase` warning, plus an OpenGraph block.~~ Done. Nothing is
+  hard-coded: Vercel injects `VERCEL_PROJECT_PRODUCTION_URL` at build time
+  and `NEXT_PUBLIC_SITE_URL` overrides it for a custom domain.
 - Load time. 1.4s in production. Chase only if Efe finds it slow.
 - `Instances.tsx` still fills from a `useLayoutEffect` rather than the frame
   loop. It has not bitten, but it is the same hazard as the blank building.
