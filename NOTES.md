@@ -102,6 +102,46 @@ all of them at the level Efe means when he says "that much detail":
   · THE STUB, SPRUNG`. The stub is draggable - `REACH · 120 PX · LET GO
   BEYOND` - with a live readout of RX, RY, AIM, LIGHT beside it. t=236s.
 
+### The whole recording, section by section
+
+Watched end to end, 0:00 to 5:17. The earlier notes covered four devices;
+this is the structure they sit in, because **this page is now the model for
+the works page and the four devices are not enough to build from.**
+
+- **0:00 — blueprint mode.** Flat blue, fine grid, every block a labelled
+  hatched box: `COPY 01`, `TITLE`, `PLATE 01`. Real dimension lines with
+  running numbers, 641 and 1860. `sheet 01 · identity · setting out`
+  top-left and `issue P4 · blue for setting out` top-right, both in a hand.
+  A live `47%` readout follows the cursor. **It is a toggle over the whole
+  site, not a page.** Nothing here has this and it would suit this site
+  better than his — this one is already a construction drawing.
+- **0:06 — who he is.** Name, three short paragraphs, contact links.
+- **0:18 to 2:20 — the work rows**, repeating about eight times. Each
+  carries a media panel that is often a **playable video with a scrubber**;
+  title and date; category pills plus `Open project →`; a **draggable
+  timeline** with a year axis, two expandable lanes (Product, Marketing), a
+  diamond per shipped thing and a `2 of 6` counter; a **sort and filter
+  bar** (`SORT Oldest first | Newest first | A-Z`, `CARRYING Design Motion
+  Brand Web Launch Social Edu`, live `6 / 6`); a **list** of rows with an
+  amber `IN THE WORKS` pill and a date range; and a case study reading
+  **The problem / What shipped / What I'd change**. Hovering a list row
+  floats a thumbnail card out beside it.
+- **Throughout — margin notes in a hand** down both edges, each with a
+  dashed leader curving into the row it annotates, plus small sketches.
+- **2:18 — `◇ SHEET 03 · OFF-CUTS`.** "Experiments", a paragraph, then a
+  **full-bleed mosaic of about fifty pieces**, every aspect ratio, edge to
+  edge, no card chrome. A live demo dropped inline. Tiles link to the real
+  posts. Closes: *"This is the short list."*
+- **2:42 — Things I love doing.** A personal checklist with **scattered
+  polaroids**, each handwritten.
+- **3:12 to the end — Say hello.** Blue footer, world map with dots,
+  top-ten country table, the draggable ticket stub with the visitor on it,
+  the spring maths of that drag printed in mono, a metadata table.
+
+**Note he numbers his own sheets** — `SHEET 01 · IDENTITY`, `SHEET 03 ·
+OFF-CUTS`. That settles it: the sheet system belongs across the whole site,
+not just the front page.
+
 **We are not copying it.** It is a paper-white technical drawing sheet and
 this is a black construction site at night. What transfers is the
 discipline, and specifically five things.
@@ -511,13 +551,16 @@ raycast through the same pixel had already reported the sky at distance
 
 ## Do not touch
 
-- The night-shift game: `src/lib/stack-game.ts`,
-  `src/components/scene/StackGame.tsx`, `src/components/overlay/NightShift.tsx`.
-  The `game.active` block in `Crane.tsx` stays byte-for-byte.
-  **Efe now wants the game fixed rather than rebuilt from scratch, and is
-  sending a reference for it.** Until that arrives, leave these files alone
-  and do not let them block anything.
-- The component yard: `src/app/components/`, `src/components/yard/`.
+- ~~The night-shift game.~~ **Rule lifted.** Rebuilt and shipped in
+  `18834de` by Efe working in another tool. `tools/test-stack-game.mjs` is
+  the guard now — 21 simulation and geometry checks, and the first tests
+  this repo has ever had. Run them after touching `stack-game.ts`,
+  `StackGame.tsx`, `game-floor.ts` or `game-window-texture.ts`. They cover
+  the things that actually bite: frame-rate independence at 30 and 120 Hz,
+  a resumed background tab not fast-forwarding the sim, blocked storage,
+  and the render budget.
+- The component yard: `src/app/components/`, `src/components/yard/`. Still
+  do not build on it, but for a new reason — see *The works page*.
 
 ## Ground rules
 
@@ -1227,30 +1270,92 @@ In the order Efe wants them.
 4. ~~**The annotation layer**, in the monospace voice the reference
    uses.~~ Done. See *The sheet the site is drawn on*.
 5. ~~**Density inside the floor panel.**~~ Done.
-6. **Fix the night shift.** Reference to come. Until it lands the *Do not
-   touch* rule stands; `CranePose.hitched` is optional precisely so that
-   block has stayed byte-for-byte.
+6. ~~**Fix the night shift.**~~ Done in `18834de`, and rebuilt rather
+   than fixed: architectural floors with real glazing, a straight-on
+   camera, suspended drops, directional sway, stability recovery and
+   collapse. Verified independently here — 21 checks, `tsc`, lint, and a
+   play through to collapse and restart with the record persisting.
 
-### Then the component yard
+### Then the works page
 
-`/components`, at imdaryl.com's level of detail and count. A week is fine.
-Do not start it before the front page is signed off.
+**Renamed.** "Component yard" is going; Efe wants it called **Works**, or
+something near it. The nav label and the route follow.
 
-**Efe wants something different there from what is built, and that idea is
-not written down anywhere.** These notes carry a bar (imdaryl.com) and a
-shape (the filter and sort bar, status tags, date ranges, draggable
-timeline) - both of which are observations about the reference, not a
-concept for the yard. He is sending a screen recording of a second site to
-copy-but-not-fully-copy, the way imdaryl was handled. **Do not design the
-yard off imdaryl alone. Wait for it, and ask what he wants taken from it.**
+**It goes empty first, and that is deliberate.** Two separate discoveries
+got it here and both matter:
 
-What is there now, so the cost of replacing it is known: 662 lines across
-`ComponentYard.tsx`, `Bay.tsx` and seven live demos on numbered bays -
-magnetic button, scrambled headline, card stack, segmented control, rolling
-counter, cable toast, hold to confirm. Header reads "PARTS ON THE SHELF".
-No filter, sort, count, timeline, status tag or date anywhere. Against the
-imdaryl bar it is about a fifth of the density. The seven demos are good
-and reusable whatever frame ends up around them.
+1. **The seven components on `/components` are not Efe's work.** They were
+   invented by the tool that first scaffolded this repo, from a prompt that
+   asked for a portfolio page and a component page and said nothing about
+   what the component page should hold. He expected it blank. Magnetic
+   button, scrambled headline, card stack, segmented control, rolling
+   counter, cable toast, hold to confirm — **none of it is his and none of
+   it is to be presented.** This is not thin content, it is wrong content,
+   and it was live under his name for a day. Strip it.
+2. **The work that belongs there does not exist yet.** He has not built or
+   designed it. That is the hard part and it is the next real job.
+
+So the page holds nothing until there is something true to put in it. When
+that is built, `yardProjects` in `projects.ts` already holds Kinetic Network
+Globe waiting — Efe classes it as a component rather than a site, so it
+lands here and not on a floor.
+
+**An empty page must not read as a broken one.** The site has a language for
+this: a hoarded plot, a sheet issued with nothing on it. Deliberately empty,
+in the annotation voice, not a blank screen.
+
+Things that break when the seven are removed, so handle them together: the
+`/components` metadata description names them; the header copy claims *every
+interface on the site is put together from parts like these*, which becomes
+false; the nav says "Components".
+
+### The five floors are placeholders
+
+**They are Efe's own work — that was checked — but he rates them weak and
+intends to replace them.** Vault Market, Mimi Crochet, Multi-currency
+Wallet, Betslip Printer, One Piece Cards are standing in. The plan is to
+design and build five strong projects and swap them.
+
+The good news, and it is worth knowing before anyone plans a rebuild:
+**swapping them is a data change, not an architecture change.**
+`projects.ts` drives the floor count, the massing, the section count, the
+climb rule, the floor schedule and the sheet numbering. Five new entries and
+the building reshapes itself.
+
+**How a project should present.** Efe wants each one shown *running in the
+frame*, doing what it does, with a link out to the live site. Three ways to
+do that and they are not equal: a **recorded video loop** is what the
+reference uses and is the recommendation — reliable, fast, offline, fully
+controlled, and it costs one screen recording per project. A **live iframe**
+is genuinely live but slow, fragile, and refused by many sites. A **static
+image** defeats the point. Whichever wins, **the recording is easiest to
+capture while the project is being built**, not afterwards.
+
+**First candidate: the movie app.** `movie-search-app`, JavaScript, March
+2025, and its API is dead — so a rebuild rather than a polish. TMDB is the
+replacement: posters, backdrops, cast, ratings, and **official trailers**,
+which gives real video playing inside the project preview. Efe wants a
+splash with an animated S, Netflix-style. Notes on that:
+
+- **Lottie or SVG?** If the animation is complex and authored in After
+  Effects or LottieLab, Lottie — as `.lottie`, because `lottie-web` is
+  ~250KB for something that plays once. If it is a letterform drawing
+  itself on, **SVG plus Framer Motion is lighter and adds no dependency**,
+  and Framer Motion is already in the stack. Design first, then choose.
+- **Three things make or break a splash:** once per session and not every
+  load (`sessionStorage`, which is exactly what Mimi Crochet does with
+  `mimi-intro-shown`); always skippable on any key or click; and cut
+  straight through under `prefers-reduced-motion`.
+- The *interface* is the portfolio value. Browse, search, detail, player.
+  Wiring it to pirated sources is not something to build, and it costs
+  nothing — TMDB trailers give real video in a real player.
+
+**What is still needed from Efe:** which of the smaller repos are genuinely
+his rather than follow-alongs (`refero-styles`, `animejs-motion`,
+`shuffle-text-motion` are the ones to ask about — presenting a tutorial as
+work is the same mistake as the seven components, just less visible), and
+what to do with `forme`, which is private, undeployed, on neither page, and
+described as an editorial storefront with cinematic scroll motion.
 
 ### Loose ends, any time
 
