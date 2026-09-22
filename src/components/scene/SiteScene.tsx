@@ -10,6 +10,7 @@ import { toppedOutAt } from "@/lib/construction";
 import { Building, InteriorLights, PlinthLights } from "./Building";
 import { StudioEnvironment } from "./StudioEnvironment";
 import { Surroundings } from "./Surroundings";
+import { GameEnvironment } from "./GameEnvironment";
 import { Crane } from "./Crane";
 import { Welding } from "./Welding";
 import { Workers } from "./Workers";
@@ -239,6 +240,7 @@ export function SiteScene({
       */}
       <color attach="background" args={["#05080f"]} />
       <group visible={!playing}><Surroundings seed={site.seed} /></group>
+      {playing && <GameEnvironment seed={site.seed} animate={animate} />}
       <StudioEnvironment />
       {/* Barely there, and cool, so the concrete has somewhere to sit in shadow. */}
       <ambientLight intensity={0.35} color="#4f4b43" />
