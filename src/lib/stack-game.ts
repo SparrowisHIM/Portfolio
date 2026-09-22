@@ -11,6 +11,8 @@ export type Block = {
   /** Underside, in the standing tower's coordinates. */
   y: number;
   perfect: boolean;
+  /** Facade identity stays fixed while its world height changes. */
+  designLevel?: number;
   /** Kept for reusable architectural section geometry. Gameplay uses whole floors. */
   section?: { offsetX: number; offsetZ: number; width: number; depth: number };
 };
@@ -35,6 +37,7 @@ export type GameState = {
   /** World coordinates while suspended or falling. */
   moving: Block | null;
   movingRotation: number;
+  movingVelocity: { x: number; y: number };
   fallProgress: number;
   axis: Axis;
   dir: 1 | -1;
@@ -74,11 +77,13 @@ const BEST_KEY = "build-site:night-shift:best";
 const listeners = new Set<() => void>();
 let swingPhase = -Math.PI / 2;
 let swingDirection = 1;
-let flight: { elapsed: number; duration: number; fromY: number; fromRotation: number } | null = null;
+const GRAVITY = 14;
+let flight: { fromY: number; fromRotation: number } | null = null;
 
 export const game: GameState = {
   active: false, over: false, phase: "swinging", overReason: null,
   blocks: [], moving: null, movingRotation: 0, fallProgress: 0,
+  movingVelocity: { x: 0, y: 0 },
   axis: "x", dir: 1, speed: 3.2, range: 3.2,
   debris: [], score: 0, best: 0, streak: 0,
   lastDrop: -10, lastLanding: -10, lastPerfect: false, lastQuality: null, recovery: false,
@@ -163,6 +168,9 @@ function updateSwing() {
   if (!moving) return;
   const displacement = Math.sin(swingPhase) * game.range;
   const length = Math.max(CABLE_LENGTH, game.range * 1.5);
+  const vx = Math.cos(swingPhase) * game.speed * swingDirection;
+  game.movingVelocity.x = vx;
+  game.movingVelocity.y = displacement * vx / Math.sqrt(length * length - displacement * displacement);
   moving.x = game.hook[0] + displacement;
   moving.z = game.hook[2];
   moving.y = game.hook[1] - Math.sqrt(length * length - displacement * displacement) - GAME_SLAB_HEIGHT;
@@ -178,8 +186,8 @@ function spawn() {
   swingPhase = game.score % 2 === 0 ? -Math.PI / 2 : Math.PI / 2;
   swingDirection = game.score % 2 === 0 ? 1 : -1;
   game.axis = "x";
-  game.speed = Math.min(7.2, 3.2 + game.score * 0.13);
-  game.moving = { x: 0, y: 0, z: base.z, width: base.width, depth: base.depth, perfect: false };
+  game.speed = Math.min(6.2, 3.2 + game.score * 0.10);
+  game.moving = { x: 0, y: 0, z: base.z, width: base.width, depth: base.depth, perfect: false, designLevel: game.score + 1 };
   const target = landingTarget();
   const length = Math.max(CABLE_LENGTH, game.range * 1.5);
   game.hook = [target.x, target.y + GAME_SLAB_HEIGHT + LIFT_GAP + length, target.z];
@@ -247,7 +255,7 @@ function collapse() {
 
 function addDebris(block: Block, direction: number) {
   if (game.debris.length >= GAME_MAX_DEBRIS) game.debris.shift();
-  game.debris.push({ ...block, perfect: false, vx: direction * 1.35, vy: -1.5, vz: 0,
+  game.debris.push({ ...block, perfect: false, vx: game.movingVelocity.x || direction * 1.35, vy: game.movingVelocity.y, vz: 0,
     spin: -direction * 1.6, rotationZ: game.movingRotation, life: 4 });
 }
 
@@ -303,7 +311,7 @@ function resolveLanding() {
   game.lastQuality = perfect ? "perfect" : steady ? "steady" : "off-centre";
   game.streak = perfect ? game.streak + 1 : 0;
   game.blocks.push({ x: perfect ? top.x : contact.localX, y: contact.localY, z: top.z,
-    width: moving.width, depth: moving.depth, perfect });
+    width: moving.width, depth: moving.depth, perfect, designLevel: moving.designLevel });
   game.score++;
   saveBest();
   if (game.strain >= 1 || Math.abs(game.imbalance) >= MAX_IMBALANCE) collapse();
@@ -316,9 +324,7 @@ function resolveLanding() {
 export function drop() {
   const moving = game.moving;
   if (!game.active || game.over || !moving || game.phase !== "swinging" || game.time - game.lastDrop < DROP_COOLDOWN) return;
-  const contact = landingAt(moving.x);
-  flight = { elapsed: 0, duration: clamp(GAME_DROP_DURATION + Math.max(0, moving.y - contact.worldY - LIFT_GAP) * 0.03, GAME_DROP_DURATION, 0.4),
-    fromY: moving.y, fromRotation: game.movingRotation };
+  flight = { fromY: moving.y, fromRotation: game.movingRotation };
   game.phase = "falling";
   game.fallProgress = 0;
   game.lastDrop = game.time;
@@ -334,8 +340,9 @@ function step(dt: number) {
     game.leanVelocity = 0;
   } else {
     const targetLean = clamp(-game.imbalance * 0.17, -0.26, 0.26);
-    const stiffness = Math.max(13, 26 - game.score * 0.22);
-    const acceleration = (targetLean - game.lean) * stiffness - game.leanVelocity * 6.2;
+    const stiffness = Math.max(10, 22 - game.score * 0.22);
+    const damping = 1.05 * Math.sqrt(stiffness);
+    const acceleration = (targetLean - game.lean) * stiffness - game.leanVelocity * damping;
     game.leanVelocity += acceleration * dt;
     game.lean += game.leanVelocity * dt;
     if (!game.over && Math.abs(game.lean) > 0.33) { collapse(); notify(); }
@@ -346,20 +353,25 @@ function step(dt: number) {
       swingPhase += game.speed / game.range * swingDirection * dt;
       updateSwing();
     } else if (flight) {
-      flight.elapsed += dt;
-      const progress = clamp(flight.elapsed / flight.duration, 0, 1);
-      const falling = progress * progress;
+      // Ballistic release retains the actual tangent velocity of the suspended floor.
+      // The roof can sway underneath it; it does not pull the falling floor down.
+      game.moving.x += game.movingVelocity.x * dt;
+      game.moving.y += game.movingVelocity.y * dt - 0.5 * GRAVITY * dt * dt;
+      game.movingVelocity.y -= GRAVITY * dt;
       const contact = landingAt(game.moving.x);
+      const progress = clamp((flight.fromY - game.moving.y) / Math.max(0.01, flight.fromY - contact.worldY), 0, 1);
       game.fallProgress = progress;
-      game.moving.y = flight.fromY + (contact.worldY - flight.fromY) * falling;
-      game.movingRotation = flight.fromRotation + (game.lean - flight.fromRotation) * falling;
-      if (progress >= 1) resolveLanding();
+      game.movingRotation = flight.fromRotation + (game.lean - flight.fromRotation) * progress * progress;
+      if (game.moving.y <= contact.worldY && game.movingVelocity.y < 0) {
+        game.moving.y = contact.worldY;
+        resolveLanding();
+      }
     }
   }
 
   for (let i = game.debris.length - 1; i >= 0; i--) {
     const piece = game.debris[i];
-    piece.vy -= 18 * dt;
+    piece.vy -= GRAVITY * dt;
     piece.x += piece.vx * dt;
     piece.z += piece.vz * dt;
     piece.y += piece.vy * dt;

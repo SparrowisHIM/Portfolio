@@ -344,7 +344,9 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
         ? targetY
         : THREE.MathUtils.damp(shiftLook.current, targetY, 6, Math.min(delta, 0.05));
       const radius = distance * Math.cos(elevation);
-      const impact = animate && !game.over ? Math.exp(-Math.max(0, game.time - game.lastLanding) * 18) * 0.035 : 0;
+      const impactAge = Math.max(0, game.time - game.lastLanding);
+      const impact = animate && !game.over
+        ? Math.sin(impactAge * 32) * Math.exp(-impactAge * 10) * 0.028 : 0;
       camera.position.set(shiftCentre.current, shiftLook.current + distance * Math.sin(elevation) + impact, base.z + radius);
       camera.lookAt(shiftCentre.current, shiftLook.current, base.z);
       orbit.free = false;

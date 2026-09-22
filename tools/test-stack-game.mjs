@@ -29,6 +29,7 @@ const aim = fraction => {
   game.moving.x = target.x + Math.cos(game.lean) * base.width * fraction;
   game.moving.y = target.y + 0.72;
   game.movingRotation = game.lean;
+  game.movingVelocity = { x: 0, y: 0 };
 };
 const place = fraction => {
   // Let the essential sway settle, then aim at the same visible roof used by the renderer.
@@ -39,6 +40,22 @@ const place = fraction => {
 };
 let checks = 0;
 function check(label, fn) { fn(); checks++; process.stdout.write(`PASS ${label}\n`); }
+
+check('released floors preserve pendulum momentum and accelerate under gravity', () => {
+  startGame(base); advance(1);
+  const { x, y } = game.moving;
+  const velocity = { ...game.movingVelocity };
+  drop(); advance(.1);
+  near(game.moving.x, x + velocity.x * .1, 'horizontal momentum');
+  near(game.moving.y, y + velocity.y * .1 - .5 * 14 * .1 ** 2, 'ballistic height');
+  near(game.movingVelocity.y, velocity.y - 1.4, 'gravity accelerates fall');
+});
+
+check('ballistic release agrees at 30 and 120 frames per second', () => {
+  const run = dt => { startGame(base); advance(1); drop(); advance(.2,dt); return { ...game.moving }; };
+  const fast=run(1/120), slow=run(1/30);
+  near(fast.x,slow.x,'fall X'); near(fast.y,slow.y,'fall Y');
+});
 
 check('front-view pendulum starts with full floors and a bounded horizontal range', () => {
   startGame(base);

@@ -17,7 +17,7 @@ export function floorParts(block: Block): FloorPart[] {
   const w = source.width;
   const d = source.depth;
   const h = GAME_SLAB_HEIGHT;
-  const level = Math.max(0, Math.round(block.y / h));
+  const level = block.designLevel ?? Math.max(0, Math.round(block.y / h));
   const add = (finish: Finish, x: number, y: number, z: number, width: number, height: number, depth: number, tint = "#ffffff") => {
     const left = Math.max(-block.width / 2, cx + x - width / 2);
     const right = Math.min(block.width / 2, cx + x + width / 2);
