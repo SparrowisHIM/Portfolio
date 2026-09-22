@@ -1276,10 +1276,47 @@ In the order Efe wants them.
    collapse. Verified independently here — 21 checks, `tsc`, lint, and a
    play through to collapse and restart with the record persisting.
 
-### Then the works page
+### The works page
 
-**Renamed.** "Component yard" is going; Efe wants it called **Works**, or
-something near it. The nav label and the route follow.
+**Done, and it exists.** `/components` is gone — route, page, `yard/`
+components and the `.bay-grid` style with it. It is `/works` now, the nav
+says Works, and the page is `SHEET 07 · WORKS` so the sheet system carries
+across from the front page the way the reference carries across its own.
+
+**The format is craft.momoyi.design's**, which Efe picked: running number
+and tag, title, a sentence or two, the date, and the live piece on a light
+stage beside it. `Piece.tsx` is deliberately plain and **expects to be
+replaced** — Efe designs, this is the shelf the work stands on meanwhile.
+
+**The stage is light on purpose.** These are interface artefacts, not site
+chrome. A UI built for a white product page reads as a lie when it is
+recoloured to match a night construction site, so it gets its own surface,
+the same instinct as a product shot.
+
+**The rule that comes with the page: a rebuild of someone else's
+interaction names them, every time.** momoyi does it on all seven of his
+("Inspired by George Vanjek", "Original interaction & video was created by
+Nitish Khagwal") and it is the difference between this page and the one it
+replaced. It is in the page copy, not just a comment.
+
+**Piece 01 is the voice note.** `works/VoiceNote.tsx`. Four states in one
+control that changes shape — idle, recording, recorded, playing. The
+clock is an SVG rounded rect with `pathLength` normalised to 1, so the
+stroke traces the pill's real border rather than approximating it; a conic
+gradient or a border-image cuts the corners and it shows badly on a shape
+this round. Original interaction by Nitish Khagwal, rebuilt not copied.
+
+**The microphone is a meter, not a recorder, and says so on the page.**
+Asking permission for the mic on a page someone is browsing is hostile for
+a piece of craft, and a denied prompt leaves the demo dead.
+
+Next pieces, from momoyi's list and all buildable in this stack: data-table
+filtering, comment box reply, predictive text, filtering and sorting, the
+AI chat input that scales to its content, the assistant notification path.
+
+**Do not confuse these with the five floors.** A voice note is a component.
+The floors need real products. If the front page ends up carrying seven UI
+exercises the building is carrying party tricks.
 
 **It goes empty first, and that is deliberate.** Two separate discoveries
 got it here and both matter:

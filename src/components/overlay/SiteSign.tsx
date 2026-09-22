@@ -7,7 +7,7 @@ import { owner, projects } from "@/lib/projects";
 
 const modes = [
   { label: "Site", href: "/" },
-  { label: "Components", href: "/components" },
+  { label: "Works", href: "/works" },
 ];
 
 /** The site sign at the gate: who is building here, and where to go. */

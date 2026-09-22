@@ -224,15 +224,8 @@ body {
   }
 }
 
-/* Component yard: a faint setting-out grid behind each bay, and the sky. */
-.bay-grid {
-  background-image:
-    linear-gradient(to right, rgba(124, 135, 151, 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(124, 135, 151, 0.09) 1px, transparent 1px);
-  background-size: 24px 24px;
-  mask-image: radial-gradient(ellipse at center, black 40%, transparent 78%);
-}
-
+/* Works: the sky behind the sheet. `.bay-grid` lived here too and went
+   with the seven components it sat behind. */
 .yard-backdrop {
   background:
     radial-gradient(60% 50% at 70% 0%, rgba(245, 176, 67, 0.08), transparent 70%),
