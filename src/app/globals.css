@@ -52,6 +52,37 @@ html {
   scroll-behavior: smooth;
 }
 
+/*
+  No scrollbars, anywhere.
+
+  Hidden, not disabled: the page still scrolls by wheel, trackpad, touch,
+  space bar, arrow keys, Page Up and Down, Home and End, and scrollIntoView
+  still works - which is what the floor rail and the levels rule use. The
+  only thing that goes is the bar itself and the ability to drag it.
+
+  Worth knowing what that costs, because it is a real trade: the bar is
+  also the thing that tells a reader there is more page below and roughly
+  how much. This site answers both on its own - the levels rule on the
+  right gives position and the climb gives extent - which is why it can
+  afford to lose it where an ordinary page could not.
+
+  Three declarations because three engines disagree. `scrollbar-width` is
+  the standard one and covers Firefox and Chromium from 121; the WebKit
+  pseudo-element covers Safari and older Chromium; `-ms-overflow-style` is
+  there for old Edge. Applied to the element as well as the document so
+  any inner scroller inherits the same treatment.
+*/
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
