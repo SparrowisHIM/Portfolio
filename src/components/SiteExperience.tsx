@@ -53,20 +53,17 @@ export function SiteExperience() {
     setSeed(randomSeed());
   }, []);
 
-  // The night shift stacks on top of the tower as designed, so the whole
-  // thing is built first, then the page stops scrolling until you clock off.
-  const base = useMemo(
-    () => ({ x: 0, z: 0, width: site.topLevel.width * 0.92, depth: site.topLevel.depth * 0.92, y: site.topLevel.y }),
-    [site],
-  );
+  // A dedicated stacking platform shares the site's renderer and materials.
+  const base = useMemo(() => ({ x: 0, z: 0, width: 6.4, depth: 6.4, y: 0 }), []);
   const clockOn = useCallback(() => {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
     startGame(base);
     setPlaying(true);
   }, [base]);
   const clockOff = useCallback(() => {
     endGame();
     setPlaying(false);
+    window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('button[aria-label="Clock on for a night shift"]')?.focus({ preventScroll: true }));
   }, []);
   const again = useCallback(() => startGame(base), [base]);
   useEffect(() => {
@@ -98,11 +95,13 @@ export function SiteExperience() {
           sectionCount={SECTION_COUNT}
           animate={!reduced}
           started={ready}
+          playing={playing}
           rich={wide}
           shiftX={wide ? HERO.shift : 0}
           shiftY={wide ? 0 : 0.155}
           onReady={onReady}
           onSelectFloor={(index) => {
+            if (playing) return;
             document.getElementById(projects[index].slug)?.scrollIntoView({
               behavior: reduced ? "auto" : "smooth",
             });
@@ -111,12 +110,12 @@ export function SiteExperience() {
         {/* Keep the copy column legible where the tower runs behind it. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] bg-gradient-to-r from-background/85 via-background/40 to-transparent md:block"
+          className={"pointer-events-none absolute inset-y-0 left-0 hidden w-[46%] bg-gradient-to-r from-background/85 via-background/40 to-transparent" + (playing ? "" : " md:block")}
         />
         {/* On small screens the copy sits over the ground, so shade it. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] bg-gradient-to-t from-background via-background/45 to-transparent md:hidden"
+          className={"pointer-events-none absolute inset-x-0 bottom-0 h-[44%] bg-gradient-to-t from-background via-background/45 to-transparent md:hidden" + (playing ? " hidden" : "")}
         />
       </div>
 
@@ -124,6 +123,7 @@ export function SiteExperience() {
       <div
         className={"pointer-events-none relative z-10 -mt-[100vh] transition-opacity duration-300" + (playing ? " opacity-0" : "")}
         aria-hidden={playing}
+        inert={playing}
       >
         <Hero started={ready} />
         {projects.map((project, i) => (

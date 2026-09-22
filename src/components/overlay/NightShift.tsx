@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { game, snapshot, subscribe } from "@/lib/stack-game";
 
@@ -10,97 +10,222 @@ type NightShiftProps = {
 };
 
 const ease = [0.16, 1, 0.3, 1] as const;
+const focus = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sodium";
 
-/** The game HUD: floor count, the drop hint, and the end-of-shift card. */
-export function NightShift({ onAgain, onLeave }: NightShiftProps) {
-  useSyncExternalStore(subscribe, snapshot, snapshot);
-  const reduced = useReducedMotion();
+/** Sample the simulation directly: a moving needle does not need React renders. */
+function BalanceMeter({ reduced }: { reduced: boolean }) {
+  const meter = useRef<HTMLDivElement>(null);
+  const needle = useRef<HTMLSpanElement>(null);
+  const label = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (!game.active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onLeave();
+    const update = () => {
+      const stability = Math.max(0, Math.min(1, game.stability));
+      const state = stability > 0.66 ? "Stable" : stability > 0.32 ? "Swaying" : "Critical";
+      const color = stability > 0.66 ? "#d8d4cb" : stability > 0.32 ? "#eab77a" : "#ef957f";
+      // Rotation around Z is negative when the visible tower leans right.
+      const offset = Math.max(-1, Math.min(1, -game.lean / 0.22)) * 70;
+
+      if (needle.current) {
+        needle.current.style.transform = `translateX(${offset}px)`;
+        needle.current.style.backgroundColor = color;
+      }
+      if (label.current) {
+        label.current.textContent = state;
+        label.current.style.color = color;
+      }
+      meter.current?.setAttribute("aria-valuenow", String(Math.round(stability * 100)));
+      meter.current?.setAttribute("aria-valuetext", `${state}. ${Math.round(stability * 100)} percent stability.`);
+    };
+
+    update();
+    const timer = window.setInterval(update, 100);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <div
+      ref={meter}
+      role="meter"
+      aria-label="Tower stability"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={100}
+      aria-valuetext="Stable. 100 percent stability."
+      className="w-[160px] select-none"
+    >
+      <div aria-hidden="true" className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]">
+        <span className="text-chalk-dim">Balance</span>
+        <span ref={label} className="text-chalk">Stable</span>
+      </div>
+      <div aria-hidden="true" className="relative h-3">
+        <span className="absolute inset-x-0 top-[5px] h-px bg-steel" />
+        <span className="absolute inset-y-1 left-0 w-px bg-sodium/70" />
+        <span className="absolute inset-y-1 right-0 w-px bg-sodium/70" />
+        <span className="absolute inset-y-0 left-1/2 w-px bg-chalk-dim/50" />
+        <span
+          ref={needle}
+          className="absolute top-[3px] left-1/2 -ml-[3px] size-[6px] rounded-[1px] bg-chalk"
+          style={{ transition: reduced ? "none" : "transform 100ms linear, background-color 150ms linear" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** This feedback expires once per landing, independently of animation frames. */
+function PlacementFeedback({ reduced, perfect, recovery }: { reduced: boolean; perfect: boolean; recovery: boolean }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(false), 1150);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={reduced ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: reduced ? 0 : -6 }}
+          transition={{ duration: reduced ? 0 : 0.22, ease }}
+          className="absolute bottom-full mb-5 select-none text-center"
+        >
+          <p className="font-display text-[28px] font-bold uppercase tracking-[0.08em] text-sodium md:text-[32px]">
+            {perfect ? "Perfect" : "Steadying"}
+          </p>
+          {perfect && recovery && <p className="mt-1 text-[11px] tracking-[0.04em] text-chalk-dim">Balance improving</p>}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function ShiftResult({ onAgain, onLeave, reduced, collapsed, score, best }: NightShiftProps & {
+  reduced: boolean;
+  collapsed: boolean;
+  score: number;
+  best: number;
+}) {
+  const [visible, setVisible] = useState(false);
+  const restart = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), collapsed ? 1100 : 450);
+    return () => window.clearTimeout(timer);
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const frame = window.requestAnimationFrame(() => restart.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: reduced ? 0 : 0.25, ease }}
+      className="pointer-events-auto w-full max-w-[24rem] rounded-lg border border-steel-dim bg-night-deep/90 p-5 text-center backdrop-blur md:p-6"
+    >
+      <p className="text-[11px] uppercase tracking-[0.2em] text-sodium">{collapsed ? "Tower down" : "Shift over"}</p>
+      <p className="mt-2 font-display text-[44px] font-extrabold uppercase leading-none text-chalk">
+        {score} {score === 1 ? "floor" : "floors"}
+      </p>
+      <p className="mt-3 text-[12px] text-chalk-dim">
+        {collapsed ? "The tower lost its balance." : "The floor missed its landing."}
+      </p>
+      <p className="mt-2 text-[11px] text-chalk-dim tabular-nums">{score === best && score > 0 ? "Best shift." : `Best shift: ${best}`}</p>
+      <div className="mt-5 flex flex-col gap-2">
+        <button
+          ref={restart}
+          type="button"
+          onClick={onAgain}
+          className={`min-h-11 rounded bg-sodium px-5 py-3 text-[12px] font-medium uppercase tracking-[0.1em] text-night-deep transition-[opacity,transform] hover:opacity-90 motion-safe:active:scale-[0.96] ${focus}`}
+        >
+          Restart shift
+        </button>
+        <button
+          type="button"
+          onClick={onLeave}
+          className={`min-h-11 rounded px-4 py-3 text-[12px] text-chalk-dim transition-[color,transform] hover:text-chalk motion-safe:active:scale-[0.96] ${focus}`}
+        >
+          Back to the site
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+export function NightShift({ onAgain, onLeave }: NightShiftProps) {
+  useSyncExternalStore(subscribe, snapshot, snapshot);
+  const reduced = Boolean(useReducedMotion());
+  const { active, over, score, best, lastPerfect, lastLanding, recovery, collapse } = game;
+
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onLeave();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onLeave]);
+  }, [active, onLeave]);
 
-  if (!game.active) return null;
-  const perfect = game.lastPerfect && game.time - game.lastDrop < 1.2;
+  if (!active) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-30 flex flex-col justify-between px-5 py-5 md:px-8 md:py-7">
-      <div className="flex items-start justify-between">
+    <div className="pointer-events-none fixed inset-0 z-30 flex flex-col justify-between px-5 pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-8 md:pt-7 md:pb-7">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[12px] uppercase tracking-[0.2em] text-sodium">Night shift</p>
-          <p className="mt-1 flex items-baseline gap-3">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-sodium">Night shift</p>
+          <p className="mt-2 flex items-baseline gap-2.5">
             <motion.span
-              key={game.score}
-              initial={reduced ? false : { y: 12, opacity: 0 }}
+              key={score}
+              initial={reduced ? false : { y: 6, opacity: 0.5 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.4, ease }}
-              className="select-none font-display text-[96px] font-extrabold leading-none text-chalk tabular-nums"
+              transition={{ duration: reduced ? 0 : 0.22, ease }}
+              className="select-none font-display text-[64px] font-extrabold leading-none text-chalk tabular-nums md:text-[80px]"
             >
-              {game.score}
+              {score}
             </motion.span>
-            <span className="text-[14px] text-chalk-dim">{game.score === 1 ? "floor" : "floors"} up</span>
+            <span className="text-[12px] uppercase tracking-[0.12em] text-chalk-dim">{score === 1 ? "floor" : "floors"}</span>
           </p>
-          <p className="mt-1 text-[13px] text-steel tabular-nums">Best shift {Math.max(game.best, game.score)}</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-chalk-dim tabular-nums">Best {best}</p>
+          <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+            {over
+              ? `${collapse ? "The tower lost its balance." : "The floor missed its landing."} Shift over. ${score} floors.`
+              : `Floor ${score}.${lastPerfect ? " Perfect placement." : ""}${recovery ? " Balance improving." : ""}`}
+          </p>
         </div>
         <button
           type="button"
           onClick={onLeave}
-          className="pointer-events-auto rounded-full border border-steel-dim bg-night-deep/70 px-4 py-2 text-[14px] text-chalk backdrop-blur transition-colors hover:border-sodium hover:text-sodium"
+          aria-label="Clock off and return to the portfolio"
+          className={`pointer-events-auto min-h-11 rounded-full border border-steel-dim bg-night-deep/75 px-4 py-2 text-[12px] text-chalk backdrop-blur transition-[color,border-color,transform] hover:border-sodium hover:text-sodium motion-safe:active:scale-[0.96] ${focus}`}
         >
-          Clock off
+          Clock off <span aria-hidden="true" className="ml-2 text-steel">↗</span>
         </button>
       </div>
 
-      <div className="relative flex justify-center">
-        <AnimatePresence>
-          {perfect && !game.over && (
-            <motion.p
-              key={game.lastDrop}
-              initial={reduced ? false : { opacity: 0, y: 10, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -14 }}
-              transition={{ duration: 0.35, ease }}
-              className="absolute bottom-full mb-6 select-none font-display text-[40px] font-extrabold uppercase tracking-wide text-sodium"
-            >
-              Dead level{game.streak >= 3 ? ". Slab reclaimed" : ""}
-            </motion.p>
-          )}
-        </AnimatePresence>
-        {!game.over ? (
-          <p className="text-center text-[14px] text-chalk-dim">
-            Click, tap or press <kbd className="rounded border border-steel-dim px-1.5 py-0.5 text-[12px] text-chalk">space</kbd> to land the slab.
-            Whatever hangs over the edge comes off.
-          </p>
+      <div className={`relative flex flex-col items-center self-center ${!over ? "rounded-lg bg-night-deep/85 px-5 py-3 backdrop-blur-sm" : "w-full"}`}>
+        {!over ? (
+          <>
+            {score > 0 && (lastPerfect || recovery) && (
+              <PlacementFeedback key={`${score}:${lastLanding}`} reduced={reduced} perfect={lastPerfect} recovery={recovery} />
+            )}
+            <BalanceMeter reduced={reduced} />
+            <p className="mt-3 select-none rounded-full border border-steel-dim/50 bg-night-deep/70 px-4 py-3 text-center text-[10px] uppercase tracking-[0.15em] text-chalk-dim backdrop-blur-sm md:text-[11px]">
+              Click / Tap / <kbd className="text-chalk">Space</kbd> to drop
+            </p>
+            <p className="mt-2 text-center text-[11px] text-chalk-dim">Land near the centre to restore balance.</p>
+          </>
         ) : (
-          <motion.div
-            initial={reduced ? false : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease }}
-            className="pointer-events-auto max-w-[30rem] rounded-lg border border-steel-dim bg-night-deep/85 p-6 text-center backdrop-blur"
-          >
-            <p className="text-[12px] uppercase tracking-[0.2em] text-safety">Site closed</p>
-            <p className="mt-2 font-display text-[44px] font-extrabold uppercase leading-none text-chalk">
-              {game.score} {game.score === 1 ? "floor" : "floors"} on the hook
-            </p>
-            <p className="mt-3 text-[14px] text-chalk-dim">
-              {game.score >= game.best && game.score > 0
-                ? "Best shift on this site. The crane driver is impressed."
-                : `Best shift so far: ${game.best} floors.`}
-            </p>
-            <div className="mt-5 flex justify-center gap-6 text-[14px]">
-              <button type="button" onClick={onAgain} className="text-chalk underline decoration-sodium decoration-1 underline-offset-[6px] transition-colors hover:text-sodium">
-                Another shift
-              </button>
-              <button type="button" onClick={onLeave} className="text-chalk underline decoration-steel-dim decoration-1 underline-offset-[6px] transition-colors hover:text-sodium">
-                Back to the site
-              </button>
-            </div>
-          </motion.div>
+          <ShiftResult onAgain={onAgain} onLeave={onLeave} reduced={reduced} collapsed={Boolean(collapse)} score={score} best={best} />
         )}
       </div>
     </div>

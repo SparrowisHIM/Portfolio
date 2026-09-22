@@ -4,175 +4,328 @@ import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
-import { FLOOR_HEIGHT, SLAB_THICKNESS } from "@/lib/site-generator";
-import { drop, game, snapshot, stepGame, subscribe, type Block } from "@/lib/stack-game";
-import { ceilingTexture } from "@/lib/textures";
-import { materials, palette } from "./materials";
+import { blockPose, drop, game, GAME_SLAB_HEIGHT, landingTarget, movingPose, snapshot, stepGame, subscribe, towerPose, type Block } from "@/lib/stack-game";
+import { floorParts, type Finish, type FloorPart } from "@/lib/game-floor";
+import { gameWindowTexture } from "@/lib/game-window-texture";
+import { boardConcreteTexture, siteDeckTexture } from "@/lib/textures";
+import { hover } from "@/lib/hover";
 
-type StackGameProps = {
-  site: Site;
-  animate: boolean;
-};
+const VISIBLE_FLOORS = 32;
+const CAPACITY = 2048;
+const SPARKS = 24;
+const FINISHES: Finish[] = ["concrete", "steel", "window", "light", "interior"];
+const emptyCounts = (): Record<Finish, number> => ({ concrete: 0, steel: 0, window: 0, light: 0, interior: 0 });
+type Meshes = Partial<Record<Finish, THREE.InstancedMesh>>;
 
-const WALL = FLOOR_HEIGHT - SLAB_THICKNESS;
+type StackGameProps = { site: Site; animate: boolean };
 
-/** One stacked floor: slab, a lit glass box and a soffit. */
-function Storey({ block, glass, ceiling, flash }: { block: Block; glass: THREE.Material; ceiling: THREE.Material; flash: number }) {
-  const m = materials();
-  const light = useRef<THREE.PointLight>(null);
-  useFrame((_, delta) => {
-    if (light.current) light.current.intensity = THREE.MathUtils.damp(light.current.intensity, 5 + flash * 30, 4, delta);
-  });
-  return (
-    <group position={[block.x, block.y, block.z]}>
-      <mesh position={[0, SLAB_THICKNESS / 2, 0]} material={m.concrete}>
-        <boxGeometry args={[block.width, SLAB_THICKNESS, block.depth]} />
-      </mesh>
-      <mesh position={[0, -0.004, 0]} rotation={[Math.PI / 2, 0, 0]} material={ceiling}>
-        <planeGeometry args={[block.width - 0.1, block.depth - 0.1]} />
-      </mesh>
-      <mesh position={[0, SLAB_THICKNESS + WALL / 2, 0]} material={glass}>
-        <boxGeometry args={[block.width - 0.06, WALL, block.depth - 0.06]} />
-      </mesh>
-      {/* Corner columns so the box reads as a frame. */}
-      {[-1, 1].map((sx) =>
-        [-1, 1].map((sz) => (
-          <mesh key={`${sx}${sz}`} position={[(sx * (block.width - 0.4)) / 2, SLAB_THICKNESS + WALL / 2, (sz * (block.depth - 0.4)) / 2]} material={m.steel}>
-            <boxGeometry args={[0.24, WALL, 0.24]} />
-          </mesh>
-        )),
-      )}
-      <pointLight ref={light} position={[0, FLOOR_HEIGHT * 0.6, 0]} color={palette.sodium} intensity={0} distance={12} decay={2} />
-    </group>
-  );
+function FloorBatch({ meshes, concrete, windows, capacity }: {
+  meshes: { current: Meshes }; concrete: THREE.Texture; windows: THREE.Texture; capacity: number;
+}) {
+  return FINISHES.map((finish) => (
+    <instancedMesh key={finish}
+      ref={(mesh) => { if (mesh) meshes.current[finish] = mesh; else delete meshes.current[finish]; }}
+      args={[undefined, undefined, capacity]} frustumCulled={false}
+      castShadow={finish === "concrete"} receiveShadow={finish !== "light"}>
+      <boxGeometry />
+      {finish === "concrete" && <meshStandardMaterial map={concrete} roughness={0.78} metalness={0.05} />}
+      {finish === "steel" && <meshStandardMaterial color="#23333f" roughness={0.38} metalness={0.75} />}
+      {finish === "window" && <meshStandardMaterial map={windows} emissiveMap={windows} emissive="#ead8b3" emissiveIntensity={0.22} roughness={0.27} metalness={0.28} envMapIntensity={0.55} />}
+      {finish === "light" && <meshBasicMaterial toneMapped={false} />}
+      {finish === "interior" && <meshStandardMaterial roughness={0.95} />}
+    </instancedMesh>
+  ));
 }
 
-/**
- * The stacking game inside the site. Placed floors are React state; the
- * sliding slab and the falling offcuts are moved every frame.
- */
+/** Architecture stays batched; the engine's rigid tower transform supplies the actual lean. */
 export function StackGame({ site, animate }: StackGameProps) {
-  const m = materials();
   const version = useSyncExternalStore(subscribe, snapshot, snapshot);
-  const moving = useRef<THREE.Group>(null);
-  const hookLight = useRef<THREE.PointLight>(null);
-  const debris = useRef<THREE.Group>(null);
-  const domElement = useThree((s) => s.gl.domElement);
+  const active = game.active;
+  const gl = useThree((state) => state.gl);
+  const meshes = useRef<Meshes>({});
+  const airborne = useRef<Meshes>({});
+  const tower = useRef<THREE.Group>(null);
+  const entrance = useRef<THREE.Group>(null);
+  const sparks = useRef<THREE.InstancedMesh>(null);
+  const rig = useRef<THREE.InstancedMesh>(null);
+  const light = useRef<THREE.PointLight>(null);
+  const illumination = useRef<THREE.Group>(null);
+  const key = useRef<THREE.DirectionalLight>(null);
+  const keyTarget = useMemo(() => new THREE.Object3D(), []);
+  const matrix = useMemo(() => new THREE.Object3D(), []);
+  const parent = useMemo(() => new THREE.Object3D(), []);
+  const world = useMemo(() => new THREE.Matrix4(), []);
+  const color = useMemo(() => new THREE.Color(), []);
+  const from = useMemo(() => new THREE.Vector3(), []);
+  const to = useMemo(() => new THREE.Vector3(), []);
+  const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const concrete = useMemo(() => boardConcreteTexture(site.seed), [site.seed]);
+  const deck = useMemo(() => siteDeckTexture(site.seed), [site.seed]);
+  const windowMap = useMemo(() => gameWindowTexture(), []);
+  const geometry = useRef(new WeakMap<Block, FloorPart[]>());
+  const staticBatch = useRef({ version: -1, counts: emptyCounts() });
 
-  const glass = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: palette.glass,
-        emissive: site.lamp.color,
-        emissiveIntensity: 0.07,
-        roughness: 0.12,
-        metalness: 0.5,
-        transparent: true,
-        opacity: 0.42,
-      }),
-    [site.lamp.color],
-  );
-  const perfectGlass = useMemo(() => {
-    const mat = glass.clone();
-    mat.emissiveIntensity = 0.22;
-    return mat;
-  }, [glass]);
-  const ceiling = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        map: ceilingTexture(site.lamp.color),
-        emissiveMap: ceilingTexture(site.lamp.color),
-        emissive: "#ffffff",
-        emissiveIntensity: 1.2,
-        roughness: 0.8,
-      }),
-    [site.lamp.color],
-  );
+  useEffect(() => () => windowMap.dispose(), [windowMap]);
 
-  // Drop on click, tap, space or enter.
   useEffect(() => {
-    if (!game.active) return;
-    const onPointer = (e: PointerEvent) => {
-      if (e.button === 0) drop();
+    if (!active) return;
+    const element = gl.domElement;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousTabIndex = element.getAttribute("tabindex");
+    const previousTouchAction = element.style.touchAction;
+    const previousCursor = element.style.cursor;
+    element.tabIndex = 0;
+    element.style.touchAction = "none";
+    element.style.cursor = "crosshair";
+    element.setAttribute("aria-label", "Night Shift. Press Space to release the floor. Centre your landings to steady the tower. Escape to leave.");
+    element.focus({ preventScroll: true });
+    const onPointer = (event: PointerEvent) => {
+      if (!event.isPrimary || event.button !== 0) return;
+      event.preventDefault();
+      element.focus({ preventScroll: true });
+      drop();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === " " || e.key === "Enter") {
-        e.preventDefault();
-        drop();
-      }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      if (event.target instanceof HTMLElement && event.target.closest("button, a, input, textarea, select, [contenteditable=true]")) return;
+      event.preventDefault();
+      if (!event.repeat) drop();
     };
-    domElement.addEventListener("pointerdown", onPointer);
+    element.addEventListener("pointerdown", onPointer);
     window.addEventListener("keydown", onKey);
     return () => {
-      domElement.removeEventListener("pointerdown", onPointer);
+      element.removeEventListener("pointerdown", onPointer);
       window.removeEventListener("keydown", onKey);
+      if (previousTabIndex === null) element.removeAttribute("tabindex");
+      else element.setAttribute("tabindex", previousTabIndex);
+      element.removeAttribute("aria-label");
+      element.style.touchAction = previousTouchAction;
+      element.style.cursor = previousCursor;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
-  }, [domElement, version]);
+  }, [active, gl]);
+
+  useEffect(() => {
+    if (game.active && game.score === 0 && !game.over) gl.domElement.focus({ preventScroll: true });
+  }, [version, gl]);
 
   useFrame((_, delta) => {
-    stepGame(Math.min(delta, 1 / 30));
-    const mv = game.moving;
-    if (moving.current) {
-      moving.current.visible = !!mv && game.active;
-      if (mv) {
-        moving.current.position.set(mv.x, mv.y, mv.z);
-        moving.current.scale.set(mv.width, 1, mv.depth);
-      }
-      if (hookLight.current) {
-        hookLight.current.visible = !!mv && game.active;
-        if (mv) hookLight.current.position.set(mv.x, mv.y + 1.4, mv.z);
-        hookLight.current.intensity = mv ? 24 : 0;
-      }
+    if (!game.active || FINISHES.some((finish) => !meshes.current[finish] || !airborne.current[finish])) return;
+    hover.index = -1;
+    // Cache an airborne section's architectural details before its height changes.
+    for (const piece of game.debris) {
+      if (!geometry.current.has(piece)) geometry.current.set(piece, floorParts(piece));
     }
-    if (debris.current) {
-      const children = debris.current.children;
-      for (let i = 0; i < children.length; i++) {
-        const d = game.debris[i];
-        const mesh = children[i];
-        mesh.visible = !!d;
-        if (!d) continue;
-        mesh.position.set(d.x, d.y, d.z);
-        mesh.scale.set(d.width, 1, d.depth);
-        mesh.rotation.z = (4 - d.life) * d.spin * (d.vx !== 0 ? 1 : 0);
-        mesh.rotation.x = (4 - d.life) * d.spin * (d.vz !== 0 ? -1 : 0);
+    stepGame(delta);
+    const top = game.blocks[game.blocks.length - 1];
+    const age = Math.max(0, game.time - game.lastLanding);
+    const pulse = animate && !game.over ? Math.exp(-age * 14) : 0;
+    const counts = emptyCounts();
+    const renderFloor = (block: Block, destination: Meshes, falling = false, moving = false) => {
+      let parts = geometry.current.get(block);
+      if (!parts) {
+        parts = floorParts(block);
+        geometry.current.set(block, parts);
       }
-    }
-  });
+      parent.position.set(block.x, block.y, block.z);
+      parent.rotation.set(0, 0, 0);
+      if (moving) {
+        const pose = movingPose();
+        if (pose) {
+          parent.position.set(pose.x, pose.y, pose.z);
+          parent.rotation.z = pose.rotationZ;
+        }
+      }
+      if (falling && "life" in block) {
+        const piece = block as (typeof game.debris)[number];
+        parent.rotation.z = piece.rotationZ;
+      }
+      parent.updateMatrix();
+      for (const part of parts) {
+        const mesh = destination[part.finish]!;
+        const index = counts[part.finish]++;
+        matrix.position.set(part.x, part.y, part.z);
+        matrix.rotation.set(0, 0, 0);
+        matrix.scale.set(part.width, part.height, part.depth);
+        matrix.updateMatrix();
+        world.multiplyMatrices(parent.matrix, matrix.matrix);
+        mesh.setMatrixAt(index, world);
+        color.set(part.tint);
+        if (part.finish === "light") color.multiplyScalar(moving ? 1.5 : falling ? 0.05 : 0.65);
+        if (part.finish === "window" && moving) color.multiplyScalar(1.12);
+        mesh.setColorAt(index, color);
+      }
+    };
 
-  if (!game.active) return null;
-  const blocks = game.blocks.slice(1);
-  const recentFlash = animate && game.time - game.lastDrop < 0.6 ? 1 - (game.time - game.lastDrop) / 0.6 : 0;
+    const rebuild = staticBatch.current.version !== game.version;
+    if (rebuild) {
+      const first = Math.max(0, game.blocks.length - VISIBLE_FLOORS);
+      for (let i = first; i < game.blocks.length; i++) renderFloor(game.blocks[i], meshes.current);
+      staticBatch.current = { version: game.version, counts: { ...counts } };
+      for (const finish of FINISHES) {
+        const mesh = meshes.current[finish]!;
+        mesh.count = counts[finish];
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      }
+    }
+    const pose = towerPose();
+    for (const group of [tower.current, entrance.current]) {
+      if (!group) continue;
+      group.position.set(pose.x, pose.y, pose.z);
+      group.rotation.z = pose.rotationZ;
+    }
+    Object.assign(counts, emptyCounts());
+    if (game.moving) renderFloor(game.moving, airborne.current, false, true);
+    for (const piece of game.debris) renderFloor(piece, airborne.current, true);
+    for (const finish of FINISHES) {
+      const mesh = airborne.current[finish]!;
+      mesh.count = counts[finish];
+      mesh.instanceMatrix.clearUpdateRanges();
+      mesh.instanceMatrix.addUpdateRange(0, counts[finish] * 16);
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) {
+        mesh.instanceColor.clearUpdateRanges();
+        mesh.instanceColor.addUpdateRange(0, counts[finish] * 3);
+        mesh.instanceColor.needsUpdate = true;
+      }
+    }
+
+    const box = (mesh: THREE.InstancedMesh, index: number, x: number, y: number, z: number, w: number, h: number, d: number) => {
+      matrix.position.set(x, y, z);
+      matrix.rotation.set(0, 0, 0);
+      matrix.scale.set(w, h, d);
+      matrix.updateMatrix();
+      mesh.setMatrixAt(index, matrix.matrix);
+    };
+    // Four lifting slings and a spreader travel with the complete prefab floor.
+    if (rig.current) {
+      rig.current.count = game.moving && game.phase === "swinging" ? 7 : 0;
+      if (game.moving && game.phase === "swinging") {
+        const block = game.moving;
+        const moving = movingPose()!;
+        const angle = moving.rotationZ;
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+        const y = moving.y + GAME_SLAB_HEIGHT * c;
+        const x = moving.x - GAME_SLAB_HEIGHT * s;
+        for (let i = 0; i < 4; i++) {
+          const sx = i % 2 ? 1 : -1;
+          const sz = i < 2 ? 1 : -1;
+          from.set(x + sx * block.width * 0.38 * c, y + sx * block.width * 0.38 * s + 0.04, block.z + sz * block.depth * 0.38);
+          to.set(x + sx * block.width * 0.16, y + 1.05, block.z);
+          matrix.position.copy(from).add(to).multiplyScalar(0.5);
+          matrix.scale.set(0.025, from.distanceTo(to), 0.025);
+          matrix.quaternion.setFromUnitVectors(up, to.sub(from).normalize());
+          matrix.updateMatrix(); rig.current.setMatrixAt(i, matrix.matrix);
+          color.set("#627585"); rig.current.setColorAt(i, color);
+        }
+        box(rig.current, 4, x, y + 1.09, block.z, Math.max(0.1, block.width * 0.44), 0.11, 0.13);
+        rig.current.setColorAt(4, color.set("#ce9140"));
+        box(rig.current, 5, x, y + 1.25, block.z, 0.13, 0.24, 0.13);
+        rig.current.setColorAt(5, color.set("#a3b3bf"));
+        from.set(x, y + 1.37, block.z);
+        to.set(game.hook[0], game.hook[1], game.hook[2]);
+        matrix.position.copy(from).add(to).multiplyScalar(0.5);
+        matrix.scale.set(0.026, from.distanceTo(to), 0.026);
+        matrix.quaternion.setFromUnitVectors(up, to.sub(from).normalize());
+        matrix.updateMatrix(); rig.current.setMatrixAt(6, matrix.matrix);
+        rig.current.setColorAt(6, color.set("#5d6c79"));
+        rig.current.instanceMatrix.needsUpdate = true;
+        if (rig.current.instanceColor) rig.current.instanceColor.needsUpdate = true;
+      }
+    }
+
+    if (sparks.current) {
+      const placed = blockPose(top);
+      sparks.current.count = animate && !game.over && age < 0.65 && game.score > 0 ? SPARKS : 0;
+      for (let i = 0; i < sparks.current.count; i++) {
+        const theta = i * 2.39996;
+        const velocity = 1.1 + (i % 5) * 0.28;
+        box(sparks.current, i,
+          placed.x + (i % 2 ? 1 : -1) * top.width / 2 + Math.cos(theta) * age * velocity,
+          placed.y + 0.16 + age * (1.5 + i % 3) - 6 * age * age,
+          placed.z + (i % 4 < 2 ? 1 : -1) * top.depth / 2 + Math.sin(theta) * age * velocity,
+          0.025, 0.055 * (1 - age), 0.025);
+      }
+      sparks.current.instanceMatrix.needsUpdate = true;
+    }
+    if (light.current) {
+      const placed = blockPose(top);
+      light.current.position.set(placed.x, placed.y + 0.7, placed.z);
+      light.current.intensity = pulse * (game.lastPerfect ? 24 : 10);
+    }
+    const target = landingTarget();
+    if (illumination.current) illumination.current.position.y = target.y;
+    if (key.current) {
+      key.current.position.set(-8, target.y + 12, 10);
+      keyTarget.position.set(0, target.y - 2, 0);
+      keyTarget.updateMatrixWorld();
+    }
+  }, -1);
+
+  if (!active) return null;
 
   return (
     <group>
-      {blocks.map((block, i) => (
-        <Storey
-          key={i}
-          block={block}
-          glass={block.perfect ? perfectGlass : glass}
-          ceiling={ceiling}
-          flash={i === blocks.length - 1 && game.lastPerfect ? recentFlash : 0}
-        />
+      <group ref={tower}>
+        <FloorBatch meshes={meshes} concrete={concrete} windows={windowMap} capacity={CAPACITY} />
+      </group>
+      <FloorBatch meshes={airborne} concrete={concrete} windows={windowMap} capacity={640} />
+      <instancedMesh ref={rig} args={[undefined, undefined, 7]} frustumCulled={false}>
+        <boxGeometry /><meshStandardMaterial roughness={0.42} metalness={0.7} />
+      </instancedMesh>
+      <instancedMesh ref={sparks} args={[undefined, undefined, SPARKS]} frustumCulled={false}>
+        <boxGeometry /><meshBasicMaterial color="#ffc16a" toneMapped={false} />
+      </instancedMesh>
+      <pointLight ref={light} color="#c1ddff" intensity={0} distance={11} decay={2} />
+      <group ref={illumination}>
+        <pointLight position={[-7, 5, -4]} color="#ffd39a" intensity={45} distance={26} decay={2} />
+        <pointLight position={[6, 6, 8]} color="#bad6ed" intensity={40} distance={24} decay={2} />
+      </group>
+      <primitive object={keyTarget} />
+      <directionalLight ref={key} target={keyTarget} intensity={1.7} color="#bed9ed" castShadow
+        shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} shadow-normalBias={0.035}
+        shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-14}
+        shadow-camera-near={1} shadow-camera-far={45} />
+      {/* Stepped footings, a lit entrance canopy, and a small paved site datum. */}
+      <mesh position={[0, -0.15, 0]} receiveShadow>
+        <boxGeometry args={[7, 0.3, 7]} /><meshStandardMaterial map={concrete} color="#91a1ad" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, -0.39, 0]} receiveShadow>
+        <boxGeometry args={[8, 0.18, 8]} /><meshStandardMaterial map={deck} color="#7e8d97" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, -0.52, 0]} receiveShadow>
+        <boxGeometry args={[9.1, 0.1, 9.1]} /><meshStandardMaterial color="#1e2b35" roughness={0.9} />
+      </mesh>
+      <group ref={entrance}>
+      <mesh position={[0, 1.26, 3.53]} castShadow>
+        <boxGeometry args={[2.1, 0.11, 0.85]} /><meshStandardMaterial color="#33434e" metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 1.2, 3.74]}>
+        <boxGeometry args={[1.8, 0.025, 0.2]} /><meshBasicMaterial color="#dfb676" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.65, 3.23]}>
+        <boxGeometry args={[1.24, 1.12, 0.05]} />
+        <meshStandardMaterial map={windowMap} color="#718999" emissive="#b59c72" emissiveMap={windowMap} emissiveIntensity={0.35} metalness={0.3} roughness={0.25} />
+      </mesh>
+      {[-0.64, 0, 0.64].map((x) => (
+        <mesh key={x} position={[x, 0.65, 3.27]}>
+          <boxGeometry args={[0.035, 1.16, 0.06]} /><meshStandardMaterial color="#2b3e4d" metalness={0.75} roughness={0.3} />
+        </mesh>
       ))}
-      {/* The slab on the hook. */}
-      <group ref={moving}>
-        <mesh position={[0, SLAB_THICKNESS / 2, 0]} material={m.concrete}>
-          <boxGeometry args={[1, SLAB_THICKNESS, 1]} />
+      {[-0.09, 0.09].map((x) => (
+        <mesh key={x} position={[x, 0.65, 3.32]}>
+          <boxGeometry args={[0.022, 0.24, 0.025]} /><meshStandardMaterial color="#9ba8ac" metalness={0.85} roughness={0.2} />
         </mesh>
-        <mesh position={[0, -0.004, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.deck}>
-          <planeGeometry args={[1, 1]} />
-        </mesh>
+      ))}
       </group>
-      {/* A work light rides on the spreader so the slab reads against the sky. */}
-      <pointLight ref={hookLight} color={site.lamp.color} intensity={0} distance={9} decay={2} />
-      {/* Offcuts, at most a handful in the air at once. */}
-      <group ref={debris}>
-        {Array.from({ length: 6 }, (_, i) => (
-          <mesh key={i} position={[0, SLAB_THICKNESS / 2, 0]} material={m.concreteDark} visible={false}>
-            <boxGeometry args={[1, SLAB_THICKNESS, 1]} />
-          </mesh>
-        ))}
-      </group>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * 3.8, -0.29, 3.8]}>
+          <mesh position={[0, 0.26, 0]}><boxGeometry args={[0.09, 0.5, 0.09]} /><meshStandardMaterial color="#263944" /></mesh>
+          <mesh position={[0, 0.47, 0]}><boxGeometry args={[0.1, 0.075, 0.1]} /><meshBasicMaterial color="#d1b683" toneMapped={false} /></mesh>
+        </group>
+      ))}
     </group>
   );
 }

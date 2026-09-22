@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Site } from "@/lib/site-generator";
 import { HERO } from "@/lib/site-generator";
 import { floorProgress, smoothstep } from "@/lib/construction";
-import { game, stackTop } from "@/lib/stack-game";
+import { game, GAME_SLAB_HEIGHT } from "@/lib/stack-game";
 import { orbit } from "@/lib/orbit";
 
 type Keyframe = {
@@ -247,6 +247,8 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
   const pointer = useRef({ x: 0, y: 0 });
   const current = useRef<Keyframe | null>(null);
   const look = useRef(new THREE.Vector3());
+  const shiftLook = useRef<number | null>(null);
+  const shiftCentre = useRef<number | null>(null);
   // Scratch for the two keyframes being blended toward their portrait forms.
   const shapeA = useMemo<Keyframe>(() => ({ lookY: 0, rise: 0, radius: 0, angle: 0, fit: 0 }), []);
   const shapeB = useMemo<Keyframe>(() => ({ lookY: 0, rise: 0, radius: 0, angle: 0, fit: 0 }), []);
@@ -318,6 +320,40 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
   }, [domElement]);
 
   useFrame((state, delta) => {
+    if (game.active) {
+      // Front elevation: horizontal swing and tower lean share the screen's X axis.
+      // Fit the near facade, hold scale, and let the lower floors leave the shot.
+      const base = game.blocks[0];
+      const perspective = camera as THREE.PerspectiveCamera;
+      const aspect = state.size.width / state.size.height;
+      const elevation = 0.08;
+      const halfWidth = game.range + base.width / 2 + 0.35;
+      const distance = Math.max(24, base.depth / 2 + halfWidth /
+        (Math.tan(THREE.MathUtils.degToRad(perspective.fov / 2)) * aspect * 0.94));
+      const topY = game.blocks[game.blocks.length - 1].y + GAME_SLAB_HEIGHT;
+      // Use standing height, so the camera does not chase the tower as it falls.
+      const targetY = Math.max(base.y + 3, topY - 2.8);
+      const topX = game.hook[0];
+      // The crane anchor is fixed for each swing, so framing never cancels live sway.
+      // Following it between floors also keeps tall leaning towers within phone width.
+      if (!game.over || shiftCentre.current === null) {
+        shiftCentre.current = shiftCentre.current === null || !animate ? topX
+          : THREE.MathUtils.damp(shiftCentre.current, topX, 4, Math.min(delta, 0.05));
+      }
+      shiftLook.current = shiftLook.current === null || !animate
+        ? targetY
+        : THREE.MathUtils.damp(shiftLook.current, targetY, 6, Math.min(delta, 0.05));
+      const radius = distance * Math.cos(elevation);
+      const impact = animate && !game.over ? Math.exp(-Math.max(0, game.time - game.lastLanding) * 18) * 0.035 : 0;
+      camera.position.set(shiftCentre.current, shiftLook.current + distance * Math.sin(elevation) + impact, base.z + radius);
+      camera.lookAt(shiftCentre.current, shiftLook.current, base.z);
+      orbit.free = false;
+      orbit.dragging = false;
+      drag.current.active = false;
+      return;
+    }
+    shiftLook.current = null;
+    shiftCentre.current = null;
     const f = section.current ?? 0;
     const i = Math.min(frames.length - 2, Math.max(0, Math.floor(f)));
     const t = f - i;
@@ -355,15 +391,6 @@ export function CameraRig({ site, section, build, topped, sectionCount, animate,
       const done = smoothstep(0.66, 0.98, p);
       target.radius *= 1 - 0.05 * framing + 0.06 * done;
       target.rise += 0.3 * done;
-    }
-
-    // Night shift: hold on the top of the stack and drift slowly round it.
-    if (game.active) {
-      const roof = frames[frames.length - 1];
-      target.lookY = stackTop() - 0.6;
-      target.rise = 3.2;
-      target.radius = (20 + game.score * 0.25) * fit;
-      target.angle = roof.angle - 0.3 + Math.sin(game.time * 0.12) * 0.35;
     }
 
     // Intro: start far and low, ease in to the ground-level shot.

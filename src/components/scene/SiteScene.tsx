@@ -29,6 +29,7 @@ type SiteSceneProps = {
   animate?: boolean;
   /** The intro plays once this is true (the loader has gone). */
   started?: boolean;
+  playing?: boolean;
   /** Wide screens get the full effect budget. */
   rich?: boolean;
   shiftX?: number;
@@ -157,6 +158,7 @@ export function SiteScene({
   sectionCount,
   animate = true,
   started = true,
+  playing = false,
   rich = true,
   shiftX = 0,
   shiftY = 0,
@@ -236,7 +238,7 @@ export function SiteScene({
         to draw, and it matches the sky at the zenith so that is invisible.
       */}
       <color attach="background" args={["#05080f"]} />
-      <Surroundings seed={site.seed} />
+      <group visible={!playing}><Surroundings seed={site.seed} /></group>
       <StudioEnvironment />
       {/* Barely there, and cool, so the concrete has somewhere to sit in shadow. */}
       <ambientLight intensity={0.35} color="#4f4b43" />
@@ -251,7 +253,7 @@ export function SiteScene({
         position={[14, 26, 16]}
         intensity={4.3}
         color="#f8f3ea"
-        castShadow
+        castShadow={!playing}
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0008}
         shadow-normalBias={0.02}
@@ -271,11 +273,11 @@ export function SiteScene({
       */}
       <directionalLight position={[-4, 8, 24]} intensity={0.85} color="#a6aebc" />
       <Smoother site={site} progress={progress} sectionCount={sectionCount} section={section} build={build} topped={topped} below={below} animate={animate} />
+      <group visible={!playing}>
       <Building site={site} build={build} topped={topped} animate={animate} onSelectFloor={onSelectFloor} />
       <PlinthLights site={site} />
       <InteriorLights site={site} build={build} />
       <Crane site={site} build={build} animate={animate} />
-      <StackGame site={site} animate={animate} />
       <Workers site={site} build={build} animate={animate} />
       <Hoarding site={site} />
       <Scaffold site={site} build={build} />
@@ -289,6 +291,8 @@ export function SiteScene({
       <Welding site={site} build={build} animate={animate} />
       <Bursts animate={animate} />
       <Pointer site={site} animate={animate} />
+      </group>
+      <StackGame site={site} animate={animate} />
       <CameraRig site={site} section={section} build={build} topped={topped} sectionCount={sectionCount} animate={animate} started={started} shiftX={shiftX} shiftY={shiftY} />
       {/*
         The floor was 32 when this scene was a frame and a crane. It now
@@ -320,7 +324,7 @@ export function SiteScene({
           */}
           <Bloom luminanceThreshold={0.82} mipmapBlur intensity={rich ? 0.5 : 0.6} radius={0.55} />
           <Vignette offset={0.32} darkness={rich ? 0.24 : 0.18} />
-          {rich ? <Noise opacity={0.035} /> : <></>}
+          {rich && !playing ? <Noise opacity={0.035} /> : <></>}
         </EffectComposer>
       )}
       <Ready onReady={onReady} />
