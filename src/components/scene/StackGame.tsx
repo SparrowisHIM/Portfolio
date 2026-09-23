@@ -19,6 +19,114 @@ type Meshes = Partial<Record<Finish, THREE.InstancedMesh>>;
 
 type StackGameProps = { site: Site; animate: boolean };
 
+// Scratch objects, reused every frame.
+const scratch = new THREE.Object3D();
+const color = new THREE.Color();
+const from = new THREE.Vector3();
+const to = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+
+function setBox(mesh: THREE.InstancedMesh, index: number, x: number, y: number, z: number, w: number, h: number, d: number) {
+  scratch.position.set(x, y, z);
+  scratch.rotation.set(0, 0, 0);
+  scratch.scale.set(w, h, d);
+  scratch.updateMatrix();
+  mesh.setMatrixAt(index, scratch.matrix);
+}
+
+/** A thin box from `from` to `to`, for slings and hoist rope. */
+function setStrut(mesh: THREE.InstancedMesh, index: number, size: number, tint: string) {
+  scratch.position.copy(from).add(to).multiplyScalar(0.5);
+  scratch.scale.set(size, from.distanceTo(to), size);
+  scratch.quaternion.setFromUnitVectors(UP, to.sub(from).normalize());
+  scratch.updateMatrix();
+  mesh.setMatrixAt(index, scratch.matrix);
+  mesh.setColorAt(index, color.set(tint));
+}
+
+/** Four slings, a spreader, a hook block and the hoist rope, travelling with the swinging floor. */
+function updateRig(rig: THREE.InstancedMesh) {
+  const swinging = game.moving && game.phase === "swinging" ? game.moving : null;
+  rig.count = swinging ? 7 : 0;
+  if (!swinging) return;
+  const pose = movingPose()!;
+  const c = Math.cos(pose.rotationZ);
+  const s = Math.sin(pose.rotationZ);
+  const y = pose.y + GAME_SLAB_HEIGHT * c;
+  const x = pose.x - GAME_SLAB_HEIGHT * s;
+  const { width, depth, z } = swinging;
+  for (let i = 0; i < 4; i++) {
+    const sx = i % 2 ? 1 : -1;
+    const sz = i < 2 ? 1 : -1;
+    from.set(x + sx * width * 0.38 * c, y + sx * width * 0.38 * s + 0.04, z + sz * depth * 0.38);
+    to.set(x + sx * width * 0.16, y + 1.05, z);
+    setStrut(rig, i, 0.025, "#627585");
+  }
+  setBox(rig, 4, x, y + 1.09, z, Math.max(0.1, width * 0.44), 0.11, 0.13);
+  rig.setColorAt(4, color.set("#ce9140"));
+  setBox(rig, 5, x, y + 1.25, z, 0.13, 0.24, 0.13);
+  rig.setColorAt(5, color.set("#a3b3bf"));
+  from.set(x, y + 1.37, z);
+  to.set(...game.hook);
+  setStrut(rig, 6, 0.026, "#5d6c79");
+  rig.instanceMatrix.needsUpdate = true;
+  if (rig.instanceColor) rig.instanceColor.needsUpdate = true;
+}
+
+/** Welding sparks thrown off both edges of the floor that just landed. */
+function updateSparks(sparks: THREE.InstancedMesh, top: Block, age: number, on: boolean) {
+  const placed = blockPose(top);
+  sparks.count = on ? SPARKS : 0;
+  for (let i = 0; i < sparks.count; i++) {
+    const theta = i * 2.39996;
+    const velocity = 1.1 + (i % 5) * 0.28;
+    setBox(sparks, i,
+      placed.x + (i % 2 ? 1 : -1) * top.width / 2 + Math.cos(theta) * age * velocity,
+      placed.y + 0.16 + age * (1.5 + i % 3) - 6 * age * age,
+      placed.z + (i % 4 < 2 ? 1 : -1) * top.depth / 2 + Math.sin(theta) * age * velocity,
+      0.025, 0.055 * (1 - age), 0.025);
+  }
+  sparks.instanceMatrix.needsUpdate = true;
+}
+
+/** While a shift is on, the canvas takes focus and the drop input: click, tap, Space or Enter. */
+function useShiftControls(active: boolean, element: HTMLCanvasElement) {
+  useEffect(() => {
+    if (!active) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousTabIndex = element.getAttribute("tabindex");
+    const { touchAction, cursor } = element.style;
+    element.tabIndex = 0;
+    element.style.touchAction = "none";
+    element.style.cursor = "crosshair";
+    element.setAttribute("aria-label", "Night Shift. Press Space to release the floor. Centre your landings to steady the tower. Escape to leave.");
+    element.focus({ preventScroll: true });
+    const onPointer = (event: PointerEvent) => {
+      if (!event.isPrimary || event.button !== 0) return;
+      event.preventDefault();
+      element.focus({ preventScroll: true });
+      drop();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      if (event.target instanceof HTMLElement && event.target.closest("button, a, input, textarea, select, [contenteditable=true]")) return;
+      event.preventDefault();
+      if (!event.repeat) drop();
+    };
+    element.addEventListener("pointerdown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      element.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("keydown", onKey);
+      if (previousTabIndex === null) element.removeAttribute("tabindex");
+      else element.setAttribute("tabindex", previousTabIndex);
+      element.removeAttribute("aria-label");
+      Object.assign(element.style, { touchAction, cursor });
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [active, element]);
+}
+
 function FloorBatch({ meshes, concrete, windows, capacity }: {
   meshes: { current: Meshes }; concrete: THREE.Texture; windows: THREE.Texture; capacity: number;
 }) {
@@ -45,20 +153,14 @@ export function StackGame({ site, animate }: StackGameProps) {
   const meshes = useRef<Meshes>({});
   const airborne = useRef<Meshes>({});
   const tower = useRef<THREE.Group>(null);
-  const entrance = useRef<THREE.Group>(null);
   const sparks = useRef<THREE.InstancedMesh>(null);
   const rig = useRef<THREE.InstancedMesh>(null);
   const light = useRef<THREE.PointLight>(null);
   const illumination = useRef<THREE.Group>(null);
   const key = useRef<THREE.DirectionalLight>(null);
   const keyTarget = useMemo(() => new THREE.Object3D(), []);
-  const matrix = useMemo(() => new THREE.Object3D(), []);
   const parent = useMemo(() => new THREE.Object3D(), []);
   const world = useMemo(() => new THREE.Matrix4(), []);
-  const color = useMemo(() => new THREE.Color(), []);
-  const from = useMemo(() => new THREE.Vector3(), []);
-  const to = useMemo(() => new THREE.Vector3(), []);
-  const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
   const concrete = useMemo(() => boardConcreteTexture(site.seed), [site.seed]);
   const deck = useMemo(() => siteDeckTexture(site.seed), [site.seed]);
   const windowMap = useMemo(() => gameWindowTexture(), []);
@@ -67,43 +169,7 @@ export function StackGame({ site, animate }: StackGameProps) {
 
   useEffect(() => () => windowMap.dispose(), [windowMap]);
 
-  useEffect(() => {
-    if (!active) return;
-    const element = gl.domElement;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousTabIndex = element.getAttribute("tabindex");
-    const previousTouchAction = element.style.touchAction;
-    const previousCursor = element.style.cursor;
-    element.tabIndex = 0;
-    element.style.touchAction = "none";
-    element.style.cursor = "crosshair";
-    element.setAttribute("aria-label", "Night Shift. Press Space to release the floor. Centre your landings to steady the tower. Escape to leave.");
-    element.focus({ preventScroll: true });
-    const onPointer = (event: PointerEvent) => {
-      if (!event.isPrimary || event.button !== 0) return;
-      event.preventDefault();
-      element.focus({ preventScroll: true });
-      drop();
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== " " && event.key !== "Enter") return;
-      if (event.target instanceof HTMLElement && event.target.closest("button, a, input, textarea, select, [contenteditable=true]")) return;
-      event.preventDefault();
-      if (!event.repeat) drop();
-    };
-    element.addEventListener("pointerdown", onPointer);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      element.removeEventListener("pointerdown", onPointer);
-      window.removeEventListener("keydown", onKey);
-      if (previousTabIndex === null) element.removeAttribute("tabindex");
-      else element.setAttribute("tabindex", previousTabIndex);
-      element.removeAttribute("aria-label");
-      element.style.touchAction = previousTouchAction;
-      element.style.cursor = previousCursor;
-      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
-    };
-  }, [active, gl]);
+  useShiftControls(active, gl.domElement);
 
   useEffect(() => {
     if (game.active && game.score === 0 && !game.over) gl.domElement.focus({ preventScroll: true });
@@ -144,11 +210,11 @@ export function StackGame({ site, animate }: StackGameProps) {
       for (const part of parts) {
         const mesh = destination[part.finish]!;
         const index = counts[part.finish]++;
-        matrix.position.set(part.x, part.y, part.z);
-        matrix.rotation.set(0, 0, 0);
-        matrix.scale.set(part.width, part.height, part.depth);
-        matrix.updateMatrix();
-        world.multiplyMatrices(parent.matrix, matrix.matrix);
+        scratch.position.set(part.x, part.y, part.z);
+        scratch.rotation.set(0, 0, 0);
+        scratch.scale.set(part.width, part.height, part.depth);
+        scratch.updateMatrix();
+        world.multiplyMatrices(parent.matrix, scratch.matrix);
         mesh.setMatrixAt(index, world);
         color.set(part.tint);
         if (part.finish === "light") color.multiplyScalar(moving ? 1.5 : falling ? 0.05 : 0.65);
@@ -170,10 +236,9 @@ export function StackGame({ site, animate }: StackGameProps) {
       }
     }
     const pose = towerPose();
-    for (const group of [tower.current, entrance.current]) {
-      if (!group) continue;
-      group.position.set(pose.x, pose.y, pose.z);
-      group.rotation.z = pose.rotationZ;
+    if (tower.current) {
+      tower.current.position.set(pose.x, pose.y, pose.z);
+      tower.current.rotation.z = pose.rotationZ;
     }
     Object.assign(counts, emptyCounts());
     if (game.moving) renderFloor(game.moving, airborne.current, false, true);
@@ -191,65 +256,8 @@ export function StackGame({ site, animate }: StackGameProps) {
       }
     }
 
-    const box = (mesh: THREE.InstancedMesh, index: number, x: number, y: number, z: number, w: number, h: number, d: number) => {
-      matrix.position.set(x, y, z);
-      matrix.rotation.set(0, 0, 0);
-      matrix.scale.set(w, h, d);
-      matrix.updateMatrix();
-      mesh.setMatrixAt(index, matrix.matrix);
-    };
-    // Four lifting slings and a spreader travel with the complete prefab floor.
-    if (rig.current) {
-      rig.current.count = game.moving && game.phase === "swinging" ? 7 : 0;
-      if (game.moving && game.phase === "swinging") {
-        const block = game.moving;
-        const moving = movingPose()!;
-        const angle = moving.rotationZ;
-        const c = Math.cos(angle);
-        const s = Math.sin(angle);
-        const y = moving.y + GAME_SLAB_HEIGHT * c;
-        const x = moving.x - GAME_SLAB_HEIGHT * s;
-        for (let i = 0; i < 4; i++) {
-          const sx = i % 2 ? 1 : -1;
-          const sz = i < 2 ? 1 : -1;
-          from.set(x + sx * block.width * 0.38 * c, y + sx * block.width * 0.38 * s + 0.04, block.z + sz * block.depth * 0.38);
-          to.set(x + sx * block.width * 0.16, y + 1.05, block.z);
-          matrix.position.copy(from).add(to).multiplyScalar(0.5);
-          matrix.scale.set(0.025, from.distanceTo(to), 0.025);
-          matrix.quaternion.setFromUnitVectors(up, to.sub(from).normalize());
-          matrix.updateMatrix(); rig.current.setMatrixAt(i, matrix.matrix);
-          color.set("#627585"); rig.current.setColorAt(i, color);
-        }
-        box(rig.current, 4, x, y + 1.09, block.z, Math.max(0.1, block.width * 0.44), 0.11, 0.13);
-        rig.current.setColorAt(4, color.set("#ce9140"));
-        box(rig.current, 5, x, y + 1.25, block.z, 0.13, 0.24, 0.13);
-        rig.current.setColorAt(5, color.set("#a3b3bf"));
-        from.set(x, y + 1.37, block.z);
-        to.set(game.hook[0], game.hook[1], game.hook[2]);
-        matrix.position.copy(from).add(to).multiplyScalar(0.5);
-        matrix.scale.set(0.026, from.distanceTo(to), 0.026);
-        matrix.quaternion.setFromUnitVectors(up, to.sub(from).normalize());
-        matrix.updateMatrix(); rig.current.setMatrixAt(6, matrix.matrix);
-        rig.current.setColorAt(6, color.set("#5d6c79"));
-        rig.current.instanceMatrix.needsUpdate = true;
-        if (rig.current.instanceColor) rig.current.instanceColor.needsUpdate = true;
-      }
-    }
-
-    if (sparks.current) {
-      const placed = blockPose(top);
-      sparks.current.count = animate && !game.over && age < 0.65 && game.score > 0 ? SPARKS : 0;
-      for (let i = 0; i < sparks.current.count; i++) {
-        const theta = i * 2.39996;
-        const velocity = 1.1 + (i % 5) * 0.28;
-        box(sparks.current, i,
-          placed.x + (i % 2 ? 1 : -1) * top.width / 2 + Math.cos(theta) * age * velocity,
-          placed.y + 0.16 + age * (1.5 + i % 3) - 6 * age * age,
-          placed.z + (i % 4 < 2 ? 1 : -1) * top.depth / 2 + Math.sin(theta) * age * velocity,
-          0.025, 0.055 * (1 - age), 0.025);
-      }
-      sparks.current.instanceMatrix.needsUpdate = true;
-    }
+    if (rig.current) updateRig(rig.current);
+    if (sparks.current) updateSparks(sparks.current, top, age, animate && !game.over && age < 0.65 && game.score > 0);
     if (light.current) {
       const placed = blockPose(top);
       light.current.position.set(placed.x, placed.y + 0.7, placed.z);
@@ -268,8 +276,10 @@ export function StackGame({ site, animate }: StackGameProps) {
 
   return (
     <group>
+      {/* The entrance leans with the tower, so it lives in the tower's group. */}
       <group ref={tower}>
         <FloorBatch meshes={meshes} concrete={concrete} windows={windowMap} capacity={CAPACITY} />
+        <Entrance windows={windowMap} />
       </group>
       <FloorBatch meshes={airborne} concrete={concrete} windows={windowMap} capacity={640} />
       <instancedMesh ref={rig} args={[undefined, undefined, 7]} frustumCulled={false}>
@@ -288,7 +298,15 @@ export function StackGame({ site, animate }: StackGameProps) {
         shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} shadow-normalBias={0.035}
         shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-14}
         shadow-camera-near={1} shadow-camera-far={45} />
-      {/* Stepped footings, a lit entrance canopy, and a small paved site datum. */}
+      <ShiftGround concrete={concrete} deck={deck} />
+    </group>
+  );
+}
+
+/** Stepped footings and a small paved site datum with two bollard lamps. */
+function ShiftGround({ concrete, deck }: { concrete: THREE.Texture; deck: THREE.Texture }) {
+  return (
+    <>
       <mesh position={[0, -0.15, 0]} receiveShadow>
         <boxGeometry args={[7, 0.3, 7]} /><meshStandardMaterial map={concrete} color="#91a1ad" roughness={0.8} />
       </mesh>
@@ -298,7 +316,20 @@ export function StackGame({ site, animate }: StackGameProps) {
       <mesh position={[0, -0.52, 0]} receiveShadow>
         <boxGeometry args={[9.1, 0.1, 9.1]} /><meshStandardMaterial color="#1e2b35" roughness={0.9} />
       </mesh>
-      <group ref={entrance}>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * 3.8, -0.29, 3.8]}>
+          <mesh position={[0, 0.26, 0]}><boxGeometry args={[0.09, 0.5, 0.09]} /><meshStandardMaterial color="#263944" /></mesh>
+          <mesh position={[0, 0.47, 0]}><boxGeometry args={[0.1, 0.075, 0.1]} /><meshBasicMaterial color="#d1b683" toneMapped={false} /></mesh>
+        </group>
+      ))}
+    </>
+  );
+}
+
+/** A lit entrance canopy and glazed door at the foot of the tower. */
+function Entrance({ windows }: { windows: THREE.Texture }) {
+  return (
+    <>
       <mesh position={[0, 1.26, 3.53]} castShadow>
         <boxGeometry args={[2.1, 0.11, 0.85]} /><meshStandardMaterial color="#33434e" metalness={0.6} roughness={0.35} />
       </mesh>
@@ -307,7 +338,7 @@ export function StackGame({ site, animate }: StackGameProps) {
       </mesh>
       <mesh position={[0, 0.65, 3.23]}>
         <boxGeometry args={[1.24, 1.12, 0.05]} />
-        <meshStandardMaterial map={windowMap} color="#718999" emissive="#b59c72" emissiveMap={windowMap} emissiveIntensity={0.35} metalness={0.3} roughness={0.25} />
+        <meshStandardMaterial map={windows} color="#718999" emissive="#b59c72" emissiveMap={windows} emissiveIntensity={0.35} metalness={0.3} roughness={0.25} />
       </mesh>
       {[-0.64, 0, 0.64].map((x) => (
         <mesh key={x} position={[x, 0.65, 3.27]}>
@@ -319,13 +350,6 @@ export function StackGame({ site, animate }: StackGameProps) {
           <boxGeometry args={[0.022, 0.24, 0.025]} /><meshStandardMaterial color="#9ba8ac" metalness={0.85} roughness={0.2} />
         </mesh>
       ))}
-      </group>
-      {[-1, 1].map((side) => (
-        <group key={side} position={[side * 3.8, -0.29, 3.8]}>
-          <mesh position={[0, 0.26, 0]}><boxGeometry args={[0.09, 0.5, 0.09]} /><meshStandardMaterial color="#263944" /></mesh>
-          <mesh position={[0, 0.47, 0]}><boxGeometry args={[0.1, 0.075, 0.1]} /><meshBasicMaterial color="#d1b683" toneMapped={false} /></mesh>
-        </group>
-      ))}
-    </group>
+    </>
   );
 }

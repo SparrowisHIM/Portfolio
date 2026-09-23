@@ -3,385 +3,86 @@
 import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { SCAFFOLD_GAP, type Site } from "@/lib/site-generator";
-import {
-  BEARER_H,
-  DUNNAGE_H,
-  PLANK,
-  STACK_MIN,
-  stackCount,
-  stackPlateY,
-  yardPosition,
-  yardTurn,
-} from "@/lib/construction";
-import { craneReach, plinth, SLAB } from "@/lib/building";
-import { createRandom } from "@/lib/random";
+import type { Site } from "@/lib/site-generator";
+import { BEARER_H, DUNNAGE_H, PLANK, STACK_MIN, stackCount, stackPlateY, yardPosition, yardTurn } from "@/lib/construction";
+import { plinth, SLAB } from "@/lib/building";
 import { materials } from "./materials";
-import { INSET as HOARDING_INSET } from "./Hoarding";
-import { ROW } from "./Scaffold";
 import { Beam } from "./Beam";
-
-/**
- * The site on the plinth.
- *
- * The hero frame was the weakest in the whole scroll: a bare slab and a core
- * box on an empty deck, with the crane reaching off into black to collect a
- * plate from nothing. Everything here is there to answer the question the
- * empty deck raised — someone works here, and the work has not started yet.
- *
- * The laydown is the load-bearing piece. Every lift begins at it, so the
- * stack has to be real and it has to shrink as the building goes up: the
- * plate that leaves the pile is the plate that lands on the frame.
- *
- * Everything sits on the plinth deck, in the band between the edge of the
- * building and the edge of the base, and is kept off the camera's side so it
- * dresses the shot rather than blocking it.
- */
+import { layoutYard } from "./yard-layout";
 
 /** The laydown stacks exactly what the crane lifts. */
 const PLATE = { w: PLANK.width, d: PLANK.depth };
+const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 
 /**
- * How far past the face of the building the scaffold reaches: the inner row
- * of standards stands `SCAFFOLD_GAP` off it and the outer row is a bay
- * beyond that. Nothing in the yard may stand inside this.
+ * The site on the plinth: the laydown the crane lifts from, and the dressing
+ * that says someone works here - cabin, skip, stock, a lighting mast.
+ *
+ * The laydown is the load-bearing piece. Every lift begins at it, so the
+ * pile shrinks as the building goes up: the plate that leaves the pile is
+ * the plate that lands on the frame. It draws down to STACK_MIN and holds
+ * there, because a yard that runs dry reads as one that has finished.
  */
-const SCAFFOLD_OUT = SCAFFOLD_GAP + ROW;
-
-export function SiteYard({
-  site,
-  build,
-}: {
-  site: Site;
-  build: RefObject<number>;
-}) {
+export function SiteYard({ site, build }: { site: Site; build: RefObject<number> }) {
   const m = materials();
   const base = useMemo(() => plinth(site), [site]);
   const deck = base.top;
-
-  const layout = useMemo(() => {
-    const rnd = createRandom(site.seed ^ 0x51de);
-
-    /*
-      How far the building reaches on a given bearing.
-
-      This used to be one number for every direction - half the longer side
-      - which is only correct on the two bearings pointing at the middle of
-      the long faces. On a diagonal the building's corner reaches
-      sqrt(hx^2 + hz^2): about 8.4m on a typical plan, against a `half` of
-      5.7. Everything placed on a diagonal at a radius under that was
-      standing inside the building, and the site cabin was sitting in the
-      corner of it.
-
-      So the radius follows the plan: a ray from the centre against the box,
-      where the box is the slab grown by the scaffold, because standing a
-      cabin inside the scaffold is no better than standing it in the frame.
-    */
-    const hull = {
-      hx: site.floors[0].width / 2 + SCAFFOLD_OUT,
-      hz: site.floors[0].depth / 2 + SCAFFOLD_OUT,
-    };
-    const reachOn = (a: number) => {
-      const sx = Math.abs(Math.sin(a));
-      const sz = Math.abs(Math.cos(a));
-      return Math.min(
-        sx < 1e-6 ? Infinity : hull.hx / sx,
-        sz < 1e-6 ? Infinity : hull.hz / sz,
-      );
-    };
-    /*
-      Which hand the laydown is on, as a bearing off the open face. The
-      dressing is placed on bearings and the laydown is snapped to an axis,
-      so the two were free to land on the same spot — and the lighting mast
-      did, standing up through the middle of the pile.
-    */
-    const pile = yardPosition(site);
-    const toPile = Math.atan2(
-      Math.sin(Math.atan2(pile[0], pile[2]) - site.viewAngle),
-      Math.cos(Math.atan2(pile[0], pile[2]) - site.viewAngle),
-    );
-    const clearOfPile = toPile >= 0 ? -1 : 1;
-
-    /*
-      What a new piece of dressing has to miss.
-
-      Bearings alone were not enough. They are fixed offsets off the open
-      face, so two of them can sit a tenth of a radian apart - and at this
-      radius that is close enough to interpenetrate. The lighting mast
-      stood inside the rebar stack on every seed that put the laydown on
-      the far hand, because the mast's bearing is +/-1.35 and the rebar's
-      is a fixed +1.5. Measured at seed 20260916: 1.32m apart, needing
-      1.90m.
-
-      Clamping made it worse rather than better. `insideHoarding` pulls
-      anything that overruns the deck back to the boundary, so two pieces
-      whose bearings both leave the deck are pulled onto the same piece of
-      fence and end up inside each other.
-
-      Everything already down is treated as a rectangle and tested against
-      a circle of the new piece's own footprint radius - generous for the
-      round things, which is the right way to be wrong here. The laydown
-      and the crane base are down before any of it.
-    */
-    const pileHalf =
-      yardTurn(site) === 0
-        ? { hx: PLANK.width / 2, hz: PLANK.depth / 2 }
-        : { hx: PLANK.depth / 2, hz: PLANK.width / 2 };
-    const reach = craneReach(site);
-    const blockers = [
-      { x: 0, z: 0, hx: hull.hx, hz: hull.hz },
-      { x: pile[0], z: pile[2], ...pileHalf },
-      { x: site.crane.position[0], z: site.crane.position[2], hx: reach, hz: reach },
-    ];
-    const clears = (q: readonly [number, number], keep: number) =>
-      blockers.every((b) => {
-        const dx = Math.max(Math.abs(q[0] - b.x) - b.hx, 0);
-        const dz = Math.max(Math.abs(q[1] - b.z) - b.hz, 0);
-        return dx * dx + dz * dz >= keep * keep;
-      });
-
-    /*
-      Place a piece on a bearing off the open face, then make it fit: pull
-      it inside the fence, and if it has landed on something already down,
-      walk it round the face until it is clear.
-
-      The bearing decides where a thing belongs, the deck decides whether
-      it fits, and this decides who gives way - which is whoever arrives
-      last. The order below is therefore a priority order: the cabin, the
-      skip and the rebar keep their bearings and the mast, the pallets and
-      the cones move around them. The mast can afford to: its spot aims at
-      the world origin and its beams are aimed off its own position, so it
-      lights the site correctly from wherever it ends up.
-    */
-    /*
-      How far a piece may travel along a bearing before it touches the fence.
-
-      This is the half of the problem that `insideHoarding` got wrong, and
-      the reason the cabin was in the building even after the radius was
-      fixed. That clamp works per axis: a piece too far out gets pulled
-      straight back along x, or along z, whichever overran. On a bearing
-      that is mostly sideways to the deck that pull is sideways too, and it
-      walks the piece along the face of the building and into it. It was
-      1.69m into the frame on every seed - dead constant, because the deck
-      is sized off the building, so the geometry that produced it never
-      varied.
-
-      A piece belongs on its bearing. So it is the radius that gives, not
-      the position: slide it in along the ray until it fits, and if the
-      bearing cannot hold it at all, say so and let the caller try another
-      one rather than putting it somewhere wrong.
-    */
-    const fenceRadius = (a: number, keep: number) => {
-      const d = [Math.sin(a), Math.cos(a)] as const;
-      const centre = [base.offsetX, base.offsetZ] as const;
-      // The fence line, less the piece's own radius, less a hand's breadth:
-      // the posts stand proud of the panels and a piece grazing them reads
-      // as a piece through them.
-      const halves = [
-        base.width / 2 - HOARDING_INSET - 0.25 - keep,
-        base.depth / 2 - HOARDING_INSET - 0.25 - keep,
-      ];
-      let exit = Infinity;
-      for (let i = 0; i < 2; i++) {
-        if (Math.abs(d[i]) < 1e-6) continue;
-        const lo = (centre[i] - halves[i]) / d[i];
-        const hi = (centre[i] + halves[i]) / d[i];
-        exit = Math.min(exit, Math.max(lo, hi));
-      }
-      return exit;
-    };
-
-    const at = (offset: number, out: number, keep = 0.6) => {
-      // `out` is the clear gap between the scaffold and the near face of the
-      // piece, so it reads as a distance on the deck rather than as an
-      // offset from a number that meant nothing in particular.
-      const put = (a: number): [number, number] | null => {
-        const want = reachOn(a) + out + keep;
-        const room = fenceRadius(a, keep);
-        if (room < want) return null;
-        return [Math.sin(a) * want, Math.cos(a) * want];
-      };
-      const a0 = site.viewAngle + offset;
-      // A tenth of a radian at a time, alternating hands, so a piece that has
-      // to move ends up as near its own bearing as it can.
-      const walk = () => {
-        for (let step = 1; step <= 24; step++) {
-          for (const dir of [1, -1] as const) {
-            const a = a0 + dir * step * 0.13;
-            const q = put(a);
-            if (q && clears(q, keep)) return { p: q, a };
-          }
-        }
-        return null;
-      };
-      /*
-        Nothing fits: push it as far out on its own bearing as the fence
-        allows, but never nearer the frame than the hull. The old fallback
-        put the piece on the hull and let `insideHoarding` clamp it, which
-        is how the cabin ended up half through the hoarding - the clamp
-        pulls sideways, and sideways from there is into the building. If
-        this ever fires the deck is too small, and it is better to see a
-        piece crowding the fence than one inside the frame.
-      */
-      const crowd = () => {
-        const floor = reachOn(a0) + keep;
-        const r = Math.max(floor, Math.min(reachOn(a0) + out + keep, fenceRadius(a0, keep)));
-        return { p: [Math.sin(a0) * r, Math.cos(a0) * r] as [number, number], a: a0 };
-      };
-      const first = put(a0);
-      const spot = first && clears(first, keep) ? { p: first, a: a0 } : (walk() ?? crowd());
-      blockers.push({ x: spot.p[0], z: spot.p[1], hx: keep, hz: keep });
-      return spot;
-    };
-
-    /*
-      `keep` is the radius of the circle that contains the piece, which for
-      a box is its half-diagonal and not its half-width: every one of these
-      is turned to an arbitrary bearing, so the short side is not the one
-      facing the fence. The cabin is 4.0 x 1.95 (2.23), the skip 2.1 x 1.34
-      (1.25), the rebar 2.6 long on 0.79 of bundles (1.36), the pallets
-      1.5 x 1.1 (0.94). Three of these were rounded down and each one let
-      a corner through the hoarding.
-    */
-    /*
-      `keep` is the radius of the circle about the piece's OWN ORIGIN that
-      contains it - not about the middle of its largest box. The cabin is
-      the trap: its body is centred, but the steps hang off the door side
-      at z +1.65, so the footprint is not centred on the group and the true
-      radius is the one about that origin, not about the body. The cabin
-      is centred on its own footprint now (see `Cabin`), which brings it
-      from 2.37 to 2.15: x reaches 1.7 and z reaches 1.315 either way.
-      Measure every child, including the ones bolted on the outside.
-    */
-    const cabin = at(2.45, 0.8, 2.15);
-    const skip = at(-2.15, 1.2, 1.25);
-    const rebar = at(1.5, 1.0, 1.4);
-    const mast = at(clearOfPile * 1.35, 1.6, 0.5);
-    const tubes = at(2.0, 1.0, 1.56);
-    const panels = at(-2.7, 1.0, 1.30);
-    const genset = at(-1.2, 1.1, 0.94);
-    const drums = at(0.95, 0.9, 0.74);
-    return {
-      cabin: cabin.p,
-      cabinTurn: cabin.a,
-      skip: skip.p,
-      skipTurn: skip.a,
-      rebar: rebar.p,
-      rebarTurn: rebar.a,
-      mast: mast.p,
-      tubes: tubes.p,
-      tubesTurn: tubes.a,
-      panels: panels.p,
-      panelsTurn: panels.a,
-      genset: genset.p,
-      gensetTurn: genset.a,
-      drums: drums.p,
-      drumsTurn: drums.a,
-      /*
-        The small stuff last, so it fills whatever the big pieces left
-        rather than pushing them around. The apron is wide enough now that
-        a bare deck reads as an empty car park, which is the failure mode
-        on the other side of everything standing in the building.
-      */
-      cones: [
-        at(-0.6, 0.7, 0.3).p,
-        at(0.55, 0.9, 0.3).p,
-        at(1.05, 0.6, 0.3).p,
-        at(-1.45, 0.8, 0.3).p,
-        at(1.9, 0.7, 0.3).p,
-      ],
-      pallets: [at(-1.75, 1.0, 0.94).p, at(2.95, 1.2, 0.94).p, at(0.35, 1.1, 0.94).p],
-      jitter: rnd.range(-0.15, 0.15),
-    };
-  }, [site, base]);
-
+  const layout = useMemo(() => layoutYard(site, base), [site, base]);
   const yard = useMemo(() => yardPosition(site), [site]);
   const turn = useMemo(() => yardTurn(site), [site]);
   const plates = useRef<THREE.InstancedMesh>(null);
   const dunnage = useRef<THREE.InstancedMesh>(null);
+  const shown = useRef<{ site?: Site; mesh?: THREE.InstancedMesh; left: number }>({ left: -1 });
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  /*
-    The pile draws down as the building goes up and then holds at STACK_MIN.
-    It used to run to nothing by the top floor, which reads as a yard that
-    has finished rather than one that is working — there is always more
-    ready to go.
-  */
   const maxPlates = STACK_MIN + site.floors.length;
-  /** Two bearers under every plate, so the gap is filled with timber. */
-  const maxBearers = maxPlates * 2;
 
   useFrame(() => {
     const mesh = plates.current;
     const bearers = dunnage.current;
     if (!mesh || !bearers) return;
     const left = stackCount(site, build.current ?? 0);
+    // The pile only changes when a plate leaves it. Keyed on the mesh too:
+    // r3f rebuilds an instancedMesh when its args change, with empty matrices.
+    const last = shown.current;
+    if (last.site === site && last.mesh === mesh && last.left === left) return;
+    shown.current = { site, mesh, left };
     for (let i = 0; i < maxPlates; i++) {
-      const y = stackPlateY(i);
-      if (i < left) {
-        dummy.position.set(yard[0], y, yard[2]);
-        dummy.rotation.set(0, turn + i * 0.008, 0);
-        dummy.scale.set(PLATE.w, SLAB, PLATE.d);
-      } else {
-        dummy.scale.set(0, 0, 0);
-        dummy.position.set(yard[0], y, yard[2]);
-        dummy.rotation.set(0, 0, 0);
+      if (i >= left) {
+        mesh.setMatrixAt(i, HIDDEN);
+        bearers.setMatrixAt(i * 2, HIDDEN);
+        bearers.setMatrixAt(i * 2 + 1, HIDDEN);
+        continue;
       }
+      const y = stackPlateY(i);
+      const a = turn + i * 0.008;
+      dummy.position.set(yard[0], y, yard[2]);
+      dummy.rotation.set(0, a, 0);
+      dummy.scale.set(PLATE.w, SLAB, PLATE.d);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-
-      /*
-        Timber between every pair of plates — which is how precast is
-        actually stacked, and also the fix for the black line that ran
-        between each plate and the next. The gap was there so the pile did
-        not read as one solid block; empty, all it did was put a shadowed
-        void between two lit faces, and the pile read as striped.
-      */
+      // Timber between every pair of plates, out near the edges and running
+      // past the ends so it reads from any face.
       for (let b = 0; b < 2; b++) {
-        const k = i * 2 + b;
-        if (i < left) {
-          // Out near the edges and running past the ends, so the timber
-          // reads from any face. Tucked into the middle of the plate it was
-          // only visible through the gap it was supposed to be filling.
-          const off = (b === 0 ? -1 : 1) * PLATE.d * 0.42;
-          const a = turn + i * 0.008;
-          dummy.position.set(
-            yard[0] - Math.cos(a) * off,
-            y - SLAB / 2 - DUNNAGE_H / 2,
-            yard[2] + Math.sin(a) * off,
-          );
-          dummy.rotation.set(0, a, 0);
-          dummy.scale.set(PLATE.w * 1.04, DUNNAGE_H, 0.22);
-        } else {
-          dummy.scale.set(0, 0, 0);
-          dummy.position.set(yard[0], y, yard[2]);
-          dummy.rotation.set(0, 0, 0);
-        }
+        const off = (b === 0 ? -1 : 1) * PLATE.d * 0.42;
+        dummy.position.set(yard[0] - Math.cos(a) * off, y - SLAB / 2 - DUNNAGE_H / 2, yard[2] + Math.sin(a) * off);
+        dummy.scale.set(PLATE.w * 1.04, DUNNAGE_H, 0.22);
         dummy.updateMatrix();
-        bearers.setMatrixAt(k, dummy.matrix);
+        bearers.setMatrixAt(i * 2 + b, dummy.matrix);
       }
     }
     mesh.instanceMatrix.needsUpdate = true;
     bearers.instanceMatrix.needsUpdate = true;
   });
 
+  const on = (p: [number, number]): [number, number, number] => [p[0], deck, p[1]];
+
   return (
     <group>
       {/* The laydown: the plates still waiting to go up. */}
-      <instancedMesh
-        ref={plates}
-        args={[undefined, m.precast, maxPlates]}
-        castShadow
-        receiveShadow
-        frustumCulled={false}
-      >
+      <instancedMesh ref={plates} args={[undefined, m.precast, maxPlates]} castShadow receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
-      <instancedMesh
-        ref={dunnage}
-        args={[undefined, m.timber, maxBearers]}
-        receiveShadow
-        frustumCulled={false}
-      >
+      <instancedMesh ref={dunnage} args={[undefined, m.timber, maxPlates * 2]} receiveShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} />
       </instancedMesh>
       {/* Ground bearers, so the bottom plate is not resting on the deck. */}
@@ -393,19 +94,19 @@ export function SiteYard({
         ))}
       </group>
 
-      <Cabin position={[layout.cabin[0], deck, layout.cabin[1]]} turn={layout.cabinTurn} m={m} />
-      <Skip position={[layout.skip[0], deck, layout.skip[1]]} turn={layout.skipTurn} m={m} />
-      <RebarStack position={[layout.rebar[0], deck, layout.rebar[1]]} turn={layout.rebarTurn} m={m} />
-      <Mast position={[layout.mast[0], deck, layout.mast[1]]} m={m} />
-      <TubeStack position={[layout.tubes[0], deck, layout.tubes[1]]} turn={layout.tubesTurn} m={m} />
-      <PanelStack position={[layout.panels[0], deck, layout.panels[1]]} turn={layout.panelsTurn} m={m} />
-      <Genset position={[layout.genset[0], deck, layout.genset[1]]} turn={layout.gensetTurn} m={m} />
-      <Drums position={[layout.drums[0], deck, layout.drums[1]]} turn={layout.drumsTurn} m={m} />
+      <Cabin position={on(layout.cabin.p)} turn={layout.cabin.a} m={m} />
+      <Skip position={on(layout.skip.p)} turn={layout.skip.a} m={m} />
+      <RebarStack position={on(layout.rebar.p)} turn={layout.rebar.a} m={m} />
+      <Mast position={on(layout.mast.p)} m={m} />
+      <TubeStack position={on(layout.tubes.p)} turn={layout.tubes.a} m={m} />
+      <PanelStack position={on(layout.panels.p)} turn={layout.panels.a} m={m} />
+      <Genset position={on(layout.genset.p)} turn={layout.genset.a} m={m} />
+      <Drums position={on(layout.drums.p)} turn={layout.drums.a} m={m} />
 
       {layout.cones.map((c, i) => (
-        <Cone key={i} position={[c[0], deck, c[1]]} m={m} />
+        <Cone key={i} position={on(c.p)} m={m} />
       ))}
-      {layout.pallets.map((p, i) => (
+      {layout.pallets.map(({ p }, i) => (
         <mesh key={i} position={[p[0], deck + 0.11, p[1]]} rotation={[0, layout.jitter + i, 0]} material={m.timber}>
           <boxGeometry args={[1.5, 0.22, 1.1]} />
         </mesh>
@@ -513,6 +214,7 @@ function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
     to agree with it or the light will be coming from somewhere the beam is
     not.
   */
+  const [px, py, pz] = position;
   const aim = useMemo(() => {
     /*
       Aimed short of the tower, at the deck in front of it. Aimed at the
@@ -520,12 +222,12 @@ function Mast({ position, m }: { position: [number, number, number]; m: Kit }) {
       metres — the mast stands outside the runs, so anything it points at
       the frame goes through them first.
     */
-    const target = new THREE.Vector3(-position[0] * 0.42, 0.2 - position[1], -position[2] * 0.42);
+    const target = new THREE.Vector3(-px * 0.42, 0.2 - py, -pz * 0.42);
     return [-0.26, 0.26].map((o) => ({
       from: new THREE.Vector3(o, 4.35, 0.27),
       to: target.clone().add(new THREE.Vector3(o * 2.4, 0, 0)),
     }));
-  }, [position]);
+  }, [px, py, pz]);
 
   return (
     <group position={position}>

@@ -31,9 +31,9 @@ import { PLACED_AT, floorProgress } from "@/lib/construction";
 
 const SPARKS = 200;
 const GRAVITY = -13;
-/** Seconds of arc, then seconds of pause. Re-rolled each cycle. */
 /** How long the connections at a newly landed plate are burned off for. */
 const FIXING = 2.6;
+/** Seconds of arc, then seconds of pause. Re-rolled each cycle. */
 const BURST = [0.6, 1.5] as const;
 const GAP = [0.35, 1.1] as const;
 
@@ -45,6 +45,77 @@ type Spark = {
   vz: number;
   bounced: boolean;
 };
+
+const between = (lo: number, hi: number) => lo + Math.random() * (hi - lo);
+
+/** Wake one dead spark at (x, y, z). Returns false when the pool is full. */
+function emitSpark(pool: Spark[], positions: Float32Array, x: number, y: number, z: number, life: [number, number], speed: [number, number], lift: [number, number]) {
+  const i = pool.findIndex((sp) => sp.life <= 0);
+  if (i < 0) return false;
+  const sp = pool[i];
+  sp.max = sp.life = between(...life);
+  sp.bounced = false;
+  const a = Math.random() * Math.PI * 2;
+  const v = between(...speed);
+  sp.vx = Math.cos(a) * v;
+  sp.vz = Math.sin(a) * v;
+  sp.vy = between(...lift);
+  positions.set([x, y, z], i * 3);
+  return true;
+}
+
+/** Fall, bounce once off the slab below, cool and die. */
+function stepSparks(pool: Spark[], positions: Float32Array, shades: Float32Array, delta: number, floor: number) {
+  pool.forEach((sp, i) => {
+    if (sp.life > 0) sp.life -= delta;
+    if (sp.life <= 0) {
+      shades[i] = 0;
+      return;
+    }
+    sp.vy += GRAVITY * delta;
+    const o = i * 3;
+    positions[o] += sp.vx * delta;
+    positions[o + 1] += sp.vy * delta;
+    positions[o + 2] += sp.vz * delta;
+    if (!sp.bounced && positions[o + 1] < floor && sp.vy < 0) {
+      positions[o + 1] = floor;
+      sp.vy *= -0.32;
+      sp.vx *= 0.55;
+      sp.vz *= 0.55;
+      sp.bounced = true;
+    }
+    shades[i] = sp.life / sp.max;
+  });
+}
+
+/** Round additive points that shrink and cool from white-hot to orange. */
+function createSparkMaterial() {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: /* glsl */ `
+      attribute float aShade;
+      varying float vShade;
+      void main() {
+        vShade = aShade;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = (3.4 * aShade + 0.8) * (34.0 / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying float vShade;
+      void main() {
+        vec2 d = gl_PointCoord - 0.5;
+        float r = dot(d, d);
+        if (r > 0.25) discard;
+        vec3 col = mix(vec3(1.0, 0.36, 0.06), vec3(1.0, 0.96, 0.86), vShade * vShade);
+        gl_FragColor = vec4(col * (0.6 + vShade), (1.0 - r * 4.0) * vShade);
+      }
+    `,
+  });
+}
 
 export function Welding({
   site,
@@ -74,41 +145,7 @@ export function Welding({
     return g;
   }, [positions, shades]);
 
-  const sparkMaterial = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        uniforms: {},
-        vertexShader: /* glsl */ `
-          attribute float aShade;
-          varying float vShade;
-          void main() {
-            vShade = aShade;
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            // Hold roughly constant on screen, smaller as it cools.
-            gl_PointSize = (3.4 * aShade + 0.8) * (34.0 / -mv.z);
-            gl_Position = projectionMatrix * mv;
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          varying float vShade;
-          void main() {
-            vec2 d = gl_PointCoord - 0.5;
-            float r = dot(d, d);
-            if (r > 0.25) discard;
-            // A spark cools as it falls: white hot, then orange, then out.
-            vec3 hot = vec3(1.0, 0.96, 0.86);
-            vec3 cool = vec3(1.0, 0.36, 0.06);
-            vec3 col = mix(cool, hot, vShade * vShade);
-            float a = (1.0 - r * 4.0) * vShade;
-            gl_FragColor = vec4(col * (0.6 + vShade), a);
-          }
-        `,
-      }),
-    [],
-  );
+  const sparkMaterial = useMemo(() => createSparkMaterial(), []);
 
   const spots = useMemo(
     () => weldSpots(site).map((p) => new THREE.Vector3(p[0], p[1], p[2])),
@@ -224,26 +261,9 @@ export function Welding({
       mesh.position.set(cx, fixing.y + 0.06, cz);
       mesh.scale.setScalar(0.11 * on * fade + 0.03);
 
+      // Sparks off the corner being burned.
       if (on > 0.5 && fade > 0) {
-        // Sparks off the corner being burned.
-        for (let n = 0; n < 2; n++) {
-          for (let i = 0; i < SPARKS; i++) {
-            const sp = pool[i];
-            if (sp.life > 0) continue;
-            sp.max = 0.32 + Math.random() * 0.5;
-            sp.life = sp.max;
-            sp.bounced = false;
-            const a = Math.random() * Math.PI * 2;
-            const speed = 1.1 + Math.random() * 2.6;
-            sp.vx = Math.cos(a) * speed;
-            sp.vz = Math.sin(a) * speed;
-            sp.vy = 1.0 + Math.random() * 2.0;
-            positions[i * 3] = cx;
-            positions[i * 3 + 1] = fixing.y + 0.06;
-            positions[i * 3 + 2] = cz;
-            break;
-          }
-        }
+        for (let n = 0; n < 2; n++) emitSpark(pool, positions, cx, fixing.y + 0.06, cz, [0.32, 0.82], [1.1, 3.7], [1.0, 3.0]);
       }
     }
     if (fixing && light.current) {
@@ -252,58 +272,15 @@ export function Welding({
       light.current.intensity += 14 * fade;
     }
 
-    // Spawn while burning.
+    // Spawn while burning: mostly sideways and down off the joint, a few thrown up.
     if (burning && spot) {
       const want = 3 + Math.floor(Math.random() * 4);
-      let spawned = 0;
-      for (let i = 0; i < SPARKS && spawned < want; i++) {
-        const s = pool[i];
-        if (s.life > 0) continue;
-        s.max = 0.5 + Math.random() * 0.85;
-        s.life = s.max;
-        s.bounced = false;
-        // Mostly sideways and down off the joint, a few thrown up.
-        const a = Math.random() * Math.PI * 2;
-        const speed = 1.4 + Math.random() * 3.4;
-        s.vx = Math.cos(a) * speed;
-        s.vz = Math.sin(a) * speed;
-        s.vy = 1.6 + Math.random() * 2.6;
-        positions[i * 3] = spot.x;
-        positions[i * 3 + 1] = spot.y;
-        positions[i * 3 + 2] = spot.z;
-        spawned++;
+      for (let n = 0; n < want; n++) {
+        if (!emitSpark(pool, positions, spot.x, spot.y, spot.z, [0.5, 1.35], [1.4, 4.8], [1.6, 4.2])) break;
       }
     }
 
-    // Integrate.
-    const slabBelow = fixing ? fixing.y : spot ? spot.y - 0.42 : -999;
-    for (let i = 0; i < SPARKS; i++) {
-      const s = pool[i];
-      if (s.life <= 0) {
-        shades[i] = 0;
-        continue;
-      }
-      s.life -= delta;
-      if (s.life <= 0) {
-        shades[i] = 0;
-        continue;
-      }
-      s.vy += GRAVITY * delta;
-      const o = i * 3;
-      positions[o] += s.vx * delta;
-      positions[o + 1] += s.vy * delta;
-      positions[o + 2] += s.vz * delta;
-      // One bounce off the slab it lands on, which is what makes the sparks
-      // read as being in a place rather than falling through it.
-      if (!s.bounced && positions[o + 1] < slabBelow && s.vy < 0) {
-        positions[o + 1] = slabBelow;
-        s.vy = -s.vy * 0.32;
-        s.vx *= 0.55;
-        s.vz *= 0.55;
-        s.bounced = true;
-      }
-      shades[i] = Math.max(0, s.life / s.max);
-    }
+    stepSparks(pool, positions, shades, delta, fixing ? fixing.y : spot ? spot.y - 0.42 : -999);
 
     if (points.current) {
       const g = points.current.geometry;
