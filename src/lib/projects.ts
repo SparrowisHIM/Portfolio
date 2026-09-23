@@ -85,24 +85,6 @@ export const projects: Project[] = [
   },
 ];
 
-/**
- * Bound for the component yard rather than a floor: a built thing rather than
- * a site. Kept here so the copy and the deployment survive until the yard is
- * rebuilt. Nothing on the front page reads this.
- */
-export const yardProjects: Project[] = [
-  {
-    slug: "kinetic-network-globe",
-    title: "Kinetic Network Globe",
-    description:
-      "A spinning globe with live network arcs between cities. Built directly on three.js to keep the whole thing under one frame budget.",
-    stack: ["React", "three.js", "Vite"],
-    year: "2026",
-    live: "https://kinetic-network-globe.vercel.app",
-    finished: true,
-  },
-];
-
 export const owner = {
   name: "Efe Ebomwonyi",
   role: "Design engineer",
