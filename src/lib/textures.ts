@@ -202,36 +202,6 @@ export function siteDeckTexture(seed = 17) {
   );
 }
 
-/** Debris netting: a fine diamond mesh on a transparent ground. */
-export function nettingTexture(color = "#ff7a2f") {
-  return make(
-    `net-${color}`,
-    256,
-    (ctx, s) => {
-      ctx.clearRect(0, 0, s, s);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.4;
-      ctx.globalAlpha = 0.9;
-      const cell = 16;
-      ctx.beginPath();
-      for (let i = -s; i < s * 2; i += cell) {
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i + s, s);
-        ctx.moveTo(i + s, 0);
-        ctx.lineTo(i, s);
-      }
-      ctx.stroke();
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath();
-      ctx.moveTo(0, 4);
-      ctx.lineTo(s, 4);
-      ctx.stroke();
-    },
-    [6, 4],
-  );
-}
-
 /**
  * A radial ramp, opaque at the middle and gone at the rim.
  *
@@ -442,30 +412,5 @@ export function deckTexture() {
       }
     },
     [8, 6],
-  );
-}
-
-/** Lit office ceiling seen through glass: tiles and light troughs. */
-export function ceilingTexture(color = "#f5b043") {
-  return make(
-    `ceiling-${color}`,
-    256,
-    (ctx, s) => {
-      ctx.fillStyle = "#1a2330";
-      ctx.fillRect(0, 0, s, s);
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 2;
-      for (let i = 0; i <= s; i += 32) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, s);
-        ctx.moveTo(0, i);
-        ctx.lineTo(s, i);
-        ctx.stroke();
-      }
-      ctx.fillStyle = color;
-      for (let y = 16; y < s; y += 64) ctx.fillRect(8, y - 4, s - 16, 8);
-    },
-    [3, 2],
   );
 }

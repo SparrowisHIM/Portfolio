@@ -7,7 +7,6 @@ import { createRandom } from "./random";
  * wall grid room to be a grid.
  */
 export const FLOOR_HEIGHT = 3.55;
-export const SLAB_THICKNESS = 0.32;
 /** Scaffold lifts are half a storey. */
 export const LIFT = FLOOR_HEIGHT / 2;
 
@@ -36,9 +35,9 @@ export const HERO = {
 } as const;
 
 export type Side = "+x" | "-x" | "+z" | "-z";
-export const SIDES: readonly Side[] = ["+x", "-x", "+z", "-z"] as const;
+const SIDES: readonly Side[] = ["+x", "-x", "+z", "-z"] as const;
 
-export const SIDE_ANGLE: Record<Side, number> = {
+const SIDE_ANGLE: Record<Side, number> = {
   "+z": 0,
   "+x": Math.PI / 2,
   "-z": Math.PI,
@@ -48,7 +47,7 @@ export const SIDE_ANGLE: Record<Side, number> = {
 const OPPOSITE: Record<Side, Side> = { "+x": "-x", "-x": "+x", "+z": "-z", "-z": "+z" };
 
 /** Face index (+x, -x, +z, -z) for a side, as used by `extend` and `void`. */
-export const SIDE_FACE: Record<Side, 0 | 1 | 2 | 3> = { "+x": 0, "-x": 1, "+z": 2, "-z": 3 };
+const SIDE_FACE: Record<Side, 0 | 1 | 2 | 3> = { "+x": 0, "-x": 1, "+z": 2, "-z": 3 };
 
 export type Floor = {
   index: number;
@@ -86,7 +85,7 @@ export type ScaffoldRun = {
   netted: boolean;
 };
 
-export type Crane = {
+type Crane = {
   position: Vec3;
   mastHeight: number;
   jibLength: number;
@@ -120,10 +119,10 @@ export type Site = {
   bracedBay: { face: 0 | 1 | 2 | 3; s0: number; s1: number };
 };
 
-export type Lamp = { name: string; color: string };
+type Lamp = { name: string; color: string };
 
 /** Each rebuild may switch the accent. */
-export const LAMPS: Lamp[] = [
+const LAMPS: Lamp[] = [
   { name: "amber", color: "#f5b043" },
   { name: "ember", color: "#ff8a3d" },
   { name: "arc", color: "#7fb4ff" },
@@ -139,8 +138,8 @@ export const LAMPS: Lamp[] = [
 export const SCAFFOLD_GAP = 0.9;
 
 /** Bays across the plan in each direction. Three reads as a frame; two reads as a shed. */
-export const BAYS_X = 3;
-export const BAYS_Z = 3;
+const BAYS_X = 3;
+const BAYS_Z = 3;
 /** How far the slab oversails the column centre line. */
 export const SLAB_OVERHANG = 0.55;
 

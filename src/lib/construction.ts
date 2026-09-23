@@ -62,7 +62,7 @@ export const DECK_Y = -(PLATE_T + 0.07);
 export const BEARER_H = 0.12;
 /** Timber between each pair of plates, so the pile is not a solid block. */
 export const DUNNAGE_H = 0.07;
-export const STACK_PITCH = PLATE_T + DUNNAGE_H;
+const STACK_PITCH = PLATE_T + DUNNAGE_H;
 
 /**
  * Plates left in the laydown when every floor has been lifted.
@@ -92,19 +92,19 @@ export function stackPlateY(i: number) {
 export const PLACED_AT = 0.66;
 
 /** When the hook takes the weight and the plate leaves the pile. */
-export const HITCH_AT = 0.12;
+const HITCH_AT = 0.12;
 /** When the slings go on. Between here and HITCH_AT the crane is hitching. */
-export const SLINGS_AT = 0.06;
+const SLINGS_AT = 0.06;
 
 /** The frame hovers this far above its plate before it is released. */
-export const HOVER = 0.55;
+const HOVER = 0.55;
 
 /** Floor `index` is under construction while f runs from start to end. */
 function window(index: number) {
   return { start: index - 0.72, end: index + 0.18 };
 }
 
-export function clamp01(v: number) {
+function clamp01(v: number) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
@@ -113,7 +113,7 @@ export function smoothstep(a: number, b: number, v: number) {
   return t * t * (3 - 2 * t);
 }
 
-export function lerp(a: number, b: number, t: number) {
+function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
@@ -141,7 +141,7 @@ export function toppedOutAt(site: Site) {
  * holding a plate overhead" and the roof slab simply appeared on the frame
  * with no crane involved. The top floor is a lift like any other.
  */
-export function craneJob(site: Site, f: number) {
+function craneJob(site: Site, f: number) {
   const count = site.floors.length;
   for (let i = 1; i <= count; i++) {
     const t = floorProgress(i, f);
@@ -218,7 +218,7 @@ const MIN_ROPE = 0.9;
 const HOIST_CLEAR = FLOOR_HEIGHT * 0.36;
 
 /** Centre of a floor plate in world x/z, cantilevers and setbacks included. */
-export function plateCentre(floor: Floor): [number, number] {
+function plateCentre(floor: Floor): [number, number] {
   const dx = (floor.extend[0] - floor.extend[1]) / 2;
   const dz = (floor.extend[2] - floor.extend[3]) / 2;
   const c = Math.cos(floor.rotation);
@@ -226,16 +226,8 @@ export function plateCentre(floor: Floor): [number, number] {
   return [floor.offset[0] + dx * c - dz * s, floor.offset[1] + dx * s + dz * c];
 }
 
-/** Outer size of a floor plate, cantilevers and setbacks included. */
-export function plateSize(floor: Floor) {
-  return {
-    width: floor.width + floor.extend[0] + floor.extend[1],
-    depth: floor.depth + floor.extend[2] + floor.extend[3],
-  };
-}
-
 /** Clear air between the building and the plate waiting to be lifted. */
-export const YARD_GAP = 1.9;
+const YARD_GAP = 1.9;
 
 /**
  * Which way the laydown lies, snapped to an axis.
@@ -399,7 +391,7 @@ export function cranePose(site: Site, f: number): CranePose {
 }
 
 /** Lifts still to come: plates in the pile that are spoken for. */
-export function remainingSlabs(site: Site, f: number) {
+function remainingSlabs(site: Site, f: number) {
   let n = 0;
   for (let i = 1; i < site.floors.length; i++) {
     if (floorProgress(i, f) < HITCH_AT) n++;
@@ -414,17 +406,4 @@ export function builtHeight(site: Site, f: number) {
     if (floorProgress(i, f) >= PLACED_AT) top = site.floors[i].y + FLOOR_HEIGHT;
   }
   return top;
-}
-
-/** Height of the core, which runs a storey ahead of the frame. */
-export function coreHeight(site: Site, f: number) {
-  const count = site.floors.length;
-  let top = FLOOR_HEIGHT;
-  for (let i = 1; i <= count; i++) {
-    const t = floorProgress(i, f);
-    const y = i * FLOOR_HEIGHT;
-    if (t >= 1) top = y + FLOOR_HEIGHT;
-    else if (t > 0) top = y + FLOOR_HEIGHT * smoothstep(0, 0.5, t);
-  }
-  return Math.min(top, site.totalHeight + FLOOR_HEIGHT * 0.6);
 }

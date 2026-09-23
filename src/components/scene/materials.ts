@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { boardConcreteTexture, concreteTexture, deckTexture } from "@/lib/textures";
 
-export const palette = {
+const palette = {
   night: "#0d1b2e",
   nightDeep: "#071120",
   void: "#040609",
@@ -36,9 +36,6 @@ export const palette = {
  * The lifting gear stays painted. See `rigging`.
  */
 const CRANE_PAINT = "#454a53";
-/** Tried and set aside: a works yellow, and a light unpainted grey. */
-export const CRANE_PAINT_YELLOW = "#cfae55";
-export const CRANE_PAINT_GREY = "#b9bec4";
 
 /**
  * Shared materials for the parts that still use the standard pipeline: the

@@ -17,7 +17,7 @@ export type Block = {
   section?: { offsetX: number; offsetZ: number; width: number; depth: number };
 };
 
-export type Debris = Block & {
+type Debris = Block & {
   vx: number;
   vy: number;
   vz: number;
@@ -26,7 +26,7 @@ export type Debris = Block & {
   life: number;
 };
 
-export type Axis = "x" | "z";
+type Axis = "x" | "z";
 export type FloorPose = { x: number; y: number; z: number; rotationZ: number };
 export type GameState = {
   active: boolean;

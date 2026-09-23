@@ -137,7 +137,7 @@ function shortestTurn(delta: number) {
  */
 const RHYTHM = [0.35, 1, 0.5, 0.9, 0.3];
 
-export function buildKeyframes(site: Site): Keyframe[] {
+function buildKeyframes(site: Site): Keyframe[] {
   // A three-quarter view, held. The building is an object on a plinth now,
   // not a tower you stand under, and an object shot wants the whole of its
   // subject in frame — the old rig deliberately cropped, because cropping is

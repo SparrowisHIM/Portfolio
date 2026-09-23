@@ -22,16 +22,6 @@ export const wind: Wind = {
   time: 0,
 };
 
-/** Wind strength at a moment: slow swells with the occasional gust on top. */
-export function windAt(t: number) {
-  const swell =
-    0.5 +
-    0.3 * Math.sin(t * 0.31 + 1.7) +
-    0.2 * Math.sin(t * 0.113 + 4.1) +
-    0.12 * Math.sin(t * 0.73 + 0.5);
-  return wind.breeze * Math.max(0, swell) + wind.gust;
-}
-
 export function stepWind(delta: number) {
   wind.time += delta;
   wind.gust = Math.max(0, wind.gust - wind.gust * 1.6 * delta);

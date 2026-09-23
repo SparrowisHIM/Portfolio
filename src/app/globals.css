@@ -8,7 +8,6 @@
 :root {
   --night: #0d1b2e;
   --night-deep: #071120;
-  --fog: #16263a;
   --steel: #7c8797;
   --steel-dim: #3d4a5c;
   --sodium: #f5b043;
@@ -23,11 +22,9 @@
 @theme inline {
   --color-night: var(--night);
   --color-night-deep: var(--night-deep);
-  --color-fog: var(--fog);
   --color-steel: var(--steel);
   --color-steel-dim: var(--steel-dim);
   --color-sodium: var(--sodium);
-  --color-safety: var(--safety);
   --color-chalk: var(--chalk);
   --color-chalk-dim: var(--chalk-dim);
   --color-background: var(--background);
@@ -252,56 +249,5 @@ body {
 @media (min-width: 1760px) and (min-height: 640px) {
   .sheet-wide {
     display: block;
-  }
-}
-
-/* Works: the sky behind the sheet. `.bay-grid` lived here too and went
-   with the seven components it sat behind. */
-.yard-backdrop {
-  background:
-    radial-gradient(60% 50% at 70% 0%, rgba(245, 176, 67, 0.08), transparent 70%),
-    radial-gradient(50% 40% at 10% 100%, rgba(74, 111, 158, 0.16), transparent 70%);
-}
-
-.bg-hazard {
-  background: repeating-linear-gradient(135deg, #f0c020 0 3px, #15171a 3px 6px);
-}
-
-/* Headline lines rise out of a clipped box. */
-@keyframes rise-in {
-  from {
-    transform: translateY(110%);
-  }
-  to {
-    transform: none;
-  }
-}
-
-.rise-in {
-  animation: rise-in 1s var(--ease-out-expo) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rise-in {
-    animation: none;
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.fade-in {
-  animation: fade-in 0.8s ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fade-in {
-    animation: none;
   }
 }

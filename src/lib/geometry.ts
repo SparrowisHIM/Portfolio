@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 export type Vec3 = [number, number, number];
-export type Quat = [number, number, number, number];
+type Quat = [number, number, number, number];
 
 /** One box (or any unit geometry) placed in the world. */
 export type Instance = {
@@ -15,18 +15,6 @@ const UP = new THREE.Vector3(0, 1, 0);
 const tmpA = new THREE.Vector3();
 const tmpB = new THREE.Vector3();
 const tmpQ = new THREE.Quaternion();
-
-export function add(a: Vec3, b: Vec3): Vec3 {
-  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-}
-
-export function scaleVec(a: Vec3, s: number): Vec3 {
-  return [a[0] * s, a[1] * s, a[2] * s];
-}
-
-export function distance(a: Vec3, b: Vec3) {
-  return Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-}
 
 /** A box member running from `a` to `b`, `size` across (square section unless `size2`). */
 export function strut(a: Vec3, b: Vec3, size: number, size2 = size): Instance {
@@ -169,64 +157,4 @@ export function truss(o: TrussOptions): { chords: Instance[]; braces: Instance[]
     }
   }
   return { chords, braces };
-}
-
-const tmpM = new THREE.Matrix4();
-const tmpN = new THREE.Vector3();
-const tmpX = new THREE.Vector3();
-
-/**
- * A steel H-section column or beam as three boxes: web and two flanges.
- * `across` is the unit direction of the section depth (from flange to flange),
- * perpendicular to the member.
- */
-export function hSection(
-  a: Vec3,
-  b: Vec3,
-  depth: number,
-  flange: number,
-  thickness: number,
-  across: Vec3,
-): Instance[] {
-  tmpA.set(a[0], a[1], a[2]);
-  tmpB.set(b[0], b[1], b[2]);
-  const dir = tmpB.sub(tmpA);
-  const length = Math.max(0.0001, dir.length());
-  dir.divideScalar(length);
-  tmpX.set(across[0], across[1], across[2]).normalize();
-  tmpN.crossVectors(dir, tmpX).normalize();
-  tmpM.makeBasis(tmpN, dir, tmpX);
-  tmpQ.setFromRotationMatrix(tmpM);
-  const q: Quat = [tmpQ.x, tmpQ.y, tmpQ.z, tmpQ.w];
-  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
-  const off = depth / 2 - thickness / 2;
-  const ox = tmpX.x * off;
-  const oy = tmpX.y * off;
-  const oz = tmpX.z * off;
-  return [
-    { position: mid, scale: [thickness, length, depth - thickness * 2], quaternion: q },
-    { position: [mid[0] + ox, mid[1] + oy, mid[2] + oz], scale: [flange, length, thickness], quaternion: q },
-    { position: [mid[0] - ox, mid[1] - oy, mid[2] - oz], scale: [flange, length, thickness], quaternion: q },
-  ];
-}
-
-/** Points along a hanging cable (a parabola sag between two anchors). */
-export function catenary(a: Vec3, b: Vec3, sag: number, segments = 10): Vec3[] {
-  const pts: Vec3[] = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    pts.push([
-      a[0] + (b[0] - a[0]) * t,
-      a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t),
-      a[2] + (b[2] - a[2]) * t,
-    ]);
-  }
-  return pts;
-}
-
-/** Struts along a polyline. */
-export function chain(points: Vec3[], size: number): Instance[] {
-  const out: Instance[] = [];
-  for (let i = 0; i < points.length - 1; i++) out.push(strut(points[i], points[i + 1], size));
-  return out;
 }

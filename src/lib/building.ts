@@ -29,18 +29,18 @@ export const COLUMN = 0.44;
 /** One plate thick. Defined in construction.ts, where the laydown needs it. */
 export const SLAB = PLATE_T;
 /** Core wall. */
-export const CORE_WALL = 0.3;
+const CORE_WALL = 0.3;
 /** Edge protection: top rail height above the slab. */
-export const RAIL_H = 1.1;
-export const RAIL = 0.05;
+const RAIL_H = 1.1;
+const RAIL = 0.05;
 /** Starter bars left standing out of the topmost columns. */
-export const STARTER = 0.036;
-export const STARTER_LEN = 0.78;
+const STARTER = 0.036;
+const STARTER_LEN = 0.78;
 /** Curtain wall. */
-export const MULLION = 0.075;
-export const GLASS = 0.04;
+const MULLION = 0.075;
+const GLASS = 0.04;
 /** Panes per structural bay. */
-export const PANES_PER_BAY = 2;
+const PANES_PER_BAY = 2;
 
 /**
  * How many levels the frame has to climb above a storey before that storey

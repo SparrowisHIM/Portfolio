@@ -16,14 +16,6 @@ export const HUES: Record<Hue, [number, number, number]> = {
 
 export type RGB = [number, number, number];
 
-/**
- * The site runs on two colours, and which one you see means something.
- * Warm sodium is work: the floor on the hook, a member locking, a pulse.
- * Cold steel is finished: everything below the level being built goes
- * quiet and blue. Warmth climbs the building as you scroll.
- */
-export const COLD: RGB = [0.56, 0.67, 0.86];
-
 /** The colour of work, set from the site lamp on each rebuild. */
 export function workHue(): RGB {
   return scene.warm;
@@ -32,7 +24,7 @@ export function workHue(): RGB {
 export type Pulse = { x: number; y: number; z: number; t0: number; hue: Hue | RGB };
 export type Burst = { x: number; y: number; z: number; t0: number; hue: Hue; count: number };
 
-export const MAX_PULSES = 8;
+const MAX_PULSES = 8;
 
 export const events = {
   time: 0,
@@ -52,7 +44,7 @@ export function emitBurst(x: number, y: number, z: number, hue: Hue = "amber", c
 }
 
 /** Scene-wide dials. `glow` is how much the structure lights itself at rest, 0 to 1. */
-export const scene = {
+const scene = {
   glow: 0.34,
   /** The lamp colour of this site: what every working event is lit with. */
   warm: [1.0, 0.7, 0.28] as RGB,

@@ -781,5 +781,3 @@ export function InteriorLights({ site, build }: { site: Site; build: RefObject<n
     </group>
   );
 }
-
-export { smoothstep };
