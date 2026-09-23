@@ -1,71 +1,58 @@
-# Build site
+# Portfolio v1 — Build Site
 
-A portfolio under construction. A building made of code, engineered live in
-a dark void while you scroll: thin graphite lines fly in, overshoot, snap and
-shiver; the crane lowers each floor's frame in on a cable; smoked, near-black
-skin grows over finished floors without ever hiding the skeleton. Nothing
-glows by default. Light is feedback: a connection flashes, a pulse runs
-through the beams, a finished floor sends one lap round its outline, then it
-all fades back to dark.
+> **Archived.** This is the first version of my portfolio, finished and frozen
+> in September 2026. Version 2 is a different idea, built from scratch.
+
+**Live:** [portfolio-v1.vercel.app](https://portfolio-v1.vercel.app)
+
+A portfolio that is a construction site. A concrete-frame tower goes up floor
+by floor as you scroll: a tower crane lifts each precast slab off a laydown
+pile and lands it on the frame, the connections are welded off, and each
+finished storey glazes, lights up and becomes one of my projects. At the top
+there is a stacking game, **Night Shift**.
+
+Everything in the scene is generated in code from a seed. There are no 3D
+models, no image assets and no textures on disk.
 
 Built by [Efe Ebomwonyi](https://github.com/SparrowisHIM), design engineer.
 
-## What you are looking at
+## What's in it
 
-**The skeleton.** `src/lib/structure.ts` turns a seeded site into columns,
-beams, outline segments, diagonals, a spine and connection nodes, each with
-the moment in its floor's window when it arrives, where it flies in from and
-a seed for its personality. The whole building is three instanced draws
-(`Structure.tsx`): members, nodes and skin panels, driven by custom shaders
-in `src/components/scene/shaders/`.
+**The site.** A seeded building on a plinth in a black studio: a hoarded
+yard with scaffold, a working crew, a site cabin, a lighting mast and a
+laydown pile that shrinks as the tower grows. **Rebuild** generates another.
 
-**The build.** Scroll is damped and mapped to a construction timeline
-(`src/lib/construction.ts`). Columns rise and lock, the crane brings the
-floor frame and snaps it down, diagonals arrive late, the floor completes.
-Scroll back and it comes apart in the same order.
+**The build.** Scroll is damped and mapped to a construction timeline.
+Perimeter columns rise, the crane slews, hoists and lands the slab, four
+welding arcs burn it off with sparks that bounce once and cool, then the core
+grows up off it. Scroll back and it comes apart in the same order.
 
-**The skin.** The floor being built stays skeletal; one floor down is half
-skinned; three floors down is finished, at 65 to 90 percent opacity with faint
-lit edges. Floors still in progress never close fully.
+**The crane.** A lattice tower crane with a spreader beam, slings and a
+hook block. The load is a damped spring pendulum that the wind leans on, and
+the jib's lag behind the timeline is capped so a fast scroll can't swing it
+through the building.
 
-**The cursor.** Hover a finished part and a soft hole x-rays the skin away to
-the skeleton; nearby nodes wake up; move away and it heals. Lines close to
-the cursor lean toward where it just was, a weak magnetic field, never jelly.
-A fast sweep is a gust of wind for the netting and the load on the hook.
+**The floors.** Each storey is a project: title, stack, status and a link to
+the live site. **Walk in** opens it in place over the scene. Click a finished
+storey in the model to travel to it.
 
-**The crane.** A thin dark lattice mast, an A-frame top, a tapered truss jib,
-cables, a few node lights, fading into the fog. Its load is a damped
-pendulum; the vertical spring is what gives the overshoot and snap.
+**The sheet.** The page is drawn as an architectural sheet: rulers, a title
+block, a levels rule, a floor schedule. Those pieces only show up when the
+window has room for them.
 
-**The form.** Still a building: offset floor plates, a cantilever or a
-setback, a void bay, one twisted floor. **Rebuild** makes another.
-
-**The void.** Black to blue-black, thin fog, a faint grid, a few floating
-fragments and sparse dust. Nothing else.
-
-## Interactions
-
-- **Scroll** builds the tower and guides the camera: low at first, rising
-  with the build, coming in on the floor being framed and pulling back as it
-  completes. Drag sideways for a little orbit.
-- **Click a floor** to jump to its section. **Visit the site** opens the
-  live project; **Walk in** opens it in place, over the site.
-- **Night shift** is the stacking game: the crane swings the next slab over
-  the tower; click, tap or press space to land it. Overhang is cut off and
-  falls. Best shift is kept in local storage.
-- **Components** switches to the yard: the parts the site is built from,
-  each one live.
+**Night Shift.** A stacking game on its own platform in a night-time city.
+The crane swings a prefab floor over the tower; click, tap or press Space to
+drop it. Off-centre landings shift the tower's balance, and when balance
+runs out the tower falls. Your best score is kept in local storage.
 
 ## Stack
 
-- Next.js (App Router), TypeScript
+- [Next.js](https://nextjs.org) 16 (App Router), React 19, TypeScript
+- [three.js](https://threejs.org) via `@react-three/fiber`, `@react-three/drei`
+  and `@react-three/postprocessing`
+- Framer Motion for the HTML overlay
 - Tailwind CSS v4
-- three.js with `@react-three/fiber`, `@react-three/drei` and
-  `@react-three/postprocessing`
-- Framer Motion for the HTML overlay and the component yard
-- Self-hosted variable fonts (Big Shoulders, Archivo) via Fontsource
-
-Everything in the scene is generated. There are no models or images.
+- Self-hosted variable fonts via Fontsource: Big Shoulders, Archivo, Roboto Mono
 
 ## Run it
 
@@ -74,19 +61,50 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-Other scripts: `npm run build`, `npm run lint`.
+| Script          | What it does                                           |
+| --------------- | ------------------------------------------------------ |
+| `npm run dev`   | Development server                                     |
+| `npm run build` | Production build                                       |
+| `npm run lint`  | ESLint                                                 |
+| `npm test`      | Night Shift engine tests (`tools/test-stack-game.mjs`) |
 
-## Add a floor
+## Project structure
 
-Add a project to `src/lib/projects.ts`. Floors are ordered bottom to top.
-Set `live` to the URL of the site itself to enable **Visit the site** and
-**Walk in**. Set `finished: false` for work still in progress and that floor
-never fully closes its skin.
+```
+src/
+  app/                 layout, page, OpenGraph image, globals.css
+  components/
+    SiteExperience.tsx the page: scroll state, overlay and scene wiring
+    overlay/           HTML layer: hero, floor panels, sheet furniture, game HUD
+    scene/             three.js layer: building, crane, yard, crew, camera, game
+  hooks/               scroll progress, media queries
+  lib/                 pure logic: site generator, construction timeline,
+                       building parts, crane geometry, game engine, textures
+tools/
+  test-stack-game.mjs  game engine tests (no test framework needed)
+  cdp.py               captures real GPU frames from Chrome over CDP
+  measure.py           finds the model's bounds in a capture
+```
+
+How it works, and the traps that cost real time, are in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Changing the floors
+
+The projects live in `src/lib/projects.ts`, ordered bottom to top. The number
+of projects sets the number of storeys. Set `live` to a deployment URL to
+enable **Visit the site** and **Walk in**, and set `finished: false` for
+work that's still in progress.
 
 ## Credits
 
 The idea of a portfolio that *is* its own pun comes from
-[dhin.dev](https://dhin.dev/), a website that is a web. This one is a site that
-is a site.
+[dhin.dev](https://dhin.dev/), a website that is a web. This one is a site
+that is a site.
+
+## License
+
+© 2026 Efe Ebomwonyi. All rights reserved. The code is public to read and
+learn from; please don't redeploy it as your own portfolio.
